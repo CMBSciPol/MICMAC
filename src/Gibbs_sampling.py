@@ -93,7 +93,7 @@ def get_inverse_wishart_sampling_from_c_ells(sigma_ell, q_prior=0, l_min=0, opti
     return np.linalg.pinv(sampling_Wishart)
 
 
-def get_fluctuating_term_maps(param_dict, red_cov_matrix, red_inverse_noise, map_white_noise_xi, map_white_noise_chi, lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
+def get_fluctuating_term_maps(param_dict, red_cov_matrix, red_inverse_noise, map_white_noise_xi, map_white_noise_chi, initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
     """ 
         Solve fluctuation term with formulation (C^-1 + N^-1) for the left member
 
@@ -145,7 +145,8 @@ def get_fluctuating_term_maps(param_dict, red_cov_matrix, red_inverse_noise, map
     func_left_term = lambda x : (maps_x_reduced_matrix_generalized_sqrt_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), new_matrix_cov_sqrt, lmin=lmin, n_iter=n_iter)).ravel()
 
     # Initial guess for the CG
-    initial_guess = np.zeros_like(map_white_noise_xi)
+    if len(initial_guess):
+        initial_guess = np.zeros_like(map_white_noise_xi)
 
     # Actual start of the CG
     fluctuating_map, number_iterations, exit_code = generalized_cg_from_func(initial_guess.ravel(), func_left_term, right_member, limit_iter_cg=limit_iter_cg, tolerance=tolerance)
@@ -157,7 +158,7 @@ def get_fluctuating_term_maps(param_dict, red_cov_matrix, red_inverse_noise, map
 
 
 
-def solve_generalized_wiener_filter_term(param_dict, data_var, red_cov_matrix, red_inverse_noise, lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
+def solve_generalized_wiener_filter_term(param_dict, data_var, red_cov_matrix, red_inverse_noise, initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
     """ 
         Solve Wiener filter term with formulation (1 + C^1/2 N^-1 C^1/2) for the left member
 
@@ -202,7 +203,8 @@ def solve_generalized_wiener_filter_term(param_dict, data_var, red_cov_matrix, r
     func_left_term = lambda x : (maps_x_reduced_matrix_generalized_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), new_matrix_cov, lmin=lmin, n_iter=n_iter)).ravel()
 
     # Initial guess for the CG
-    initial_guess = np.zeros_like(data_var)
+    if len(initial_guess):
+        initial_guess = np.zeros_like(data_var)
     # Actual start of the CG
     wiener_filter_term_z, number_iterations, exit_code = generalized_cg_from_func(initial_guess.ravel(), func_left_term, right_member, limit_iter_cg=limit_iter_cg, tolerance=tolerance)
     print("CG-Python-1 WF sqrt finished in ", number_iterations, "iterations !!")
@@ -258,7 +260,7 @@ class Gibbs_Sampling(object):
             6 (TT,EE,BB,TE,EB,TB) for 3 Stokes parameters ; 3 (EE,BB,EB) for 2 Stokes parameters ; 1 (TT) for 1 Stokes parameter"""
         return int(np.ceil(self.nstokes**2/2) + np.floor(self.nstokes/2))
     
-    def constrained_map_realization(self, initial_map, red_covariance_matrix, red_inverse_noise):
+    def constrained_map_realization(self, initial_map, red_covariance_matrix, red_inverse_noise, initial_guess=[]):
         """ Constrained map realization step, given the data """
         
         assert red_covariance_matrix.shape[0] == self.lmax + 1 - self.lmin
@@ -273,9 +275,9 @@ class Gibbs_Sampling(object):
         map_white_noise_xi = []
         map_white_noise_chi = []
 
-        fluctuating_map = get_fluctuating_term_maps(param_dict, red_covariance_matrix, red_inverse_noise, map_white_noise_xi, map_white_noise_chi, lmin=self.lmin, n_iter=self.n_iter, limit_iter_cg=self.limit_iter_cg, tolerance=self.tolerance_fluctuation)
+        fluctuating_map = get_fluctuating_term_maps(param_dict, red_covariance_matrix, red_inverse_noise, map_white_noise_xi, map_white_noise_chi, initial_guess=initial_guess, lmin=self.lmin, n_iter=self.n_iter, limit_iter_cg=self.limit_iter_cg, tolerance=self.tolerance_fluctuation)
         
-        wiener_filter_term = solve_generalized_wiener_filter_term(param_dict, initial_map, red_covariance_matrix, red_inverse_noise, lmin=self.lmin, n_iter=self.n_iter, limit_iter_cg=self.limit_iter_cg, tolerance=self.tolerance_PCG)
+        wiener_filter_term = solve_generalized_wiener_filter_term(param_dict, initial_map, red_covariance_matrix, red_inverse_noise, initial_guess=initial_guess, lmin=self.lmin, n_iter=self.n_iter, limit_iter_cg=self.limit_iter_cg, tolerance=self.tolerance_PCG)
 
         return wiener_filter_term + fluctuating_map
     
@@ -312,8 +314,8 @@ class Gibbs_Sampling(object):
 
             red_covariance_matrix = get_reduced_matrix_from_c_ell(c_ell_sampled)[self.lmin:,...]
 
-            # Constrained realization step
-            pixel_maps_sampled = self.constrained_map_realization(initial_map, red_covariance_matrix, red_inverse_noise)
+            # Constrained map realization step
+            pixel_maps_sampled = self.constrained_map_realization(initial_map, red_covariance_matrix, red_inverse_noise, initial_guess=pixel_maps_sampled)
             
             # C_ell sampling step
             red_cov_mat_sampled = self.sample_covariance(pixel_maps_sampled)
