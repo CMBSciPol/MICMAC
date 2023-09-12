@@ -1,7 +1,6 @@
 import os, sys, time
 import numpy as np
 import healpy as hp
-import scipy
 import scipy.linalg
 
 def get_reduced_matrix_from_c_ell(c_ells_input):
@@ -11,6 +10,7 @@ def get_reduced_matrix_from_c_ell(c_ells_input):
     """
     c_ells_array = np.copy(c_ells_input)
     number_correlations = c_ells_array.shape[0]
+    assert number_correlations == 1 or number_correlations == 3 or number_correlations == 6
     lmax = c_ells_array.shape[1]
     if number_correlations == 1:
         nstokes = 1
@@ -18,7 +18,8 @@ def get_reduced_matrix_from_c_ell(c_ells_input):
         nstokes = 2
         # c_ells_array = np.vstack((c_ells_array, np.zeros(lmax)))
         number_correlations = 3
-    elif number_correlations > 3:
+    # elif number_correlations > 3:
+    else :
         nstokes = 3
         if number_correlations != 6:
             for i in range(6 - number_correlations):
