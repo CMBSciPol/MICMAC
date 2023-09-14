@@ -4,6 +4,7 @@ import healpy as hp
 import scipy
 # import mappraiser_wrapper_WF as mappraiser
 from .tools import *
+from .algorithm_toolbox import *
 from .proba_functions import *
 
 def get_inverse_wishart_sampling_from_c_ells(sigma_ell, q_prior=0, l_min=0, option_ell_2=1):
@@ -127,15 +128,87 @@ def get_fluctuating_term_maps(param_dict, red_cov_matrix, red_inverse_noise, map
 
     # Creation of the random maps
     if len(map_white_noise_xi) == 0:
-        map_white_noise_xi = np.random.normal(loc=0, scale=1, size=(param_dict["nstokes"],12*param_dict["nside"]**2))
+        print("Recalculating xi !")
+        map_white_noise_xi = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
     if len(map_white_noise_chi) == 0:
-        map_white_noise_chi = np.random.normal(loc=0, scale=1, size=(param_dict["nstokes"],12*param_dict["nside"]**2))
+        print("Recalculating chi !")
+        map_white_noise_chi = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
 
     # Computation of the right side member of the CG
     red_inv_cov_sqrt = get_sqrt_reduced_matrix_from_matrix(red_inverse_cov_matrix)
     red_inv_noise_sqrt = get_sqrt_reduced_matrix_from_matrix(red_inverse_noise)
-    right_member_1 = maps_x_reduced_matrix_generalized_sqrt(map_white_noise_xi.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inv_cov_sqrt, lmin=lmin, n_iter=n_iter)
-    right_member_2 = maps_x_reduced_matrix_generalized_sqrt(map_white_noise_chi.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inv_noise_sqrt, lmin=lmin, n_iter=n_iter)
+    # right_member_1 = maps_x_reduced_matrix_generalized_sqrt(map_white_noise_xi.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inv_cov_sqrt, lmin=lmin, n_iter=n_iter)
+    # right_member_2 = maps_x_reduced_matrix_generalized_sqrt(map_white_noise_chi.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inv_noise_sqrt, lmin=lmin, n_iter=n_iter)
+    right_member_1 = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_white_noise_xi.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inv_cov_sqrt, lmin=lmin, n_iter=n_iter)
+    right_member_2 = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_white_noise_chi.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inv_noise_sqrt, lmin=lmin, n_iter=n_iter)
+
+    right_member = (right_member_1 + right_member_2).ravel()
+    
+    # Computation of the left side member of the CG
+    new_matrix_cov = red_inverse_cov_matrix + red_inverse_noise
+    func_left_term = lambda x : (maps_x_reduced_matrix_generalized_sqrt_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), new_matrix_cov, lmin=lmin, n_iter=n_iter)).ravel()
+    # new_matrix_cov_sqrt = get_sqrt_reduced_matrix_from_matrix(new_matrix_cov)
+    # func_left_term = lambda x : (maps_x_reduced_matrix_generalized_sqrt_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), new_matrix_cov_sqrt, lmin=lmin, n_iter=n_iter)).ravel()
+
+    # Initial guess for the CG
+    if len(initial_guess) == 0:
+        initial_guess = np.zeros_like(map_white_noise_xi)
+
+    # Actual start of the CG
+    fluctuating_map, number_iterations, exit_code = generalized_cg_from_func(initial_guess.ravel(), func_left_term, right_member, limit_iter_cg=limit_iter_cg, tolerance=tolerance)
+    print("CG-Python-0 Fluct sqrt finished in ", number_iterations, "iterations for fluctuating term !!")    
+
+    if exit_code != 0:
+        print("CG didn't converge with generalized_CG for fluctuating term ! Exitcode :", exit_code, flush=True)
+    return fluctuating_map.reshape((param_dict["nstokes"], 12*param_dict["nside"]**2))
+
+def get_fluctuating_term_maps_alternative(param_dict, red_cov_matrix, red_inverse_noise, map_white_noise_xi, map_white_noise_chi, initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
+    """ 
+        Solve fluctuation term with formulation (1 + C^1/2 N^-1 C^1/2) for the left member
+
+        Parameters
+        ----------
+        param_dict : dictionnary containing the following fields : nside, nstokes, lmax
+        
+        red_cov_matrix : covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+        red_inverse_noise : matrices of inverse noise in harmonic domain (yet), dimension [lmin:lmax, nstokes, nstokes]
+
+        map_white_noise_xi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, npix]
+        map_white_noise_chi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, npix]
+        
+        lmin : minimum multipole to be considered, default 0
+        
+        n_iter : number of iterations for harmonic computations, default 8
+
+        limit_iter_cg : maximum number of iterations for the CG, default 1000
+        tolerance : CG tolerance, default 10**(-12)
+
+        Returns
+        -------
+        Fluctuation maps [nstokes, npix]
+    """
+
+    assert red_cov_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
+    assert red_inverse_noise.shape[0] == param_dict['lmax'] + 1 - lmin
+
+    red_inverse_cov_matrix = np.linalg.pinv(red_cov_matrix)
+    
+
+    # Creation of the random maps
+    if len(map_white_noise_xi) == 0:
+        print("Recalculating xi !")
+        map_white_noise_xi = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
+    if len(map_white_noise_chi) == 0:
+        print("Recalculating chi !")
+        map_white_noise_chi = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
+
+    # Computation of the right side member of the CG
+    red_inv_cov_sqrt = get_sqrt_reduced_matrix_from_matrix(red_inverse_cov_matrix)
+    red_inv_noise_sqrt = get_sqrt_reduced_matrix_from_matrix(red_inverse_noise)
+    # right_member_1 = maps_x_reduced_matrix_generalized_sqrt(map_white_noise_xi.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inv_cov_sqrt, lmin=lmin, n_iter=n_iter)
+    # right_member_2 = maps_x_reduced_matrix_generalized_sqrt(map_white_noise_chi.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inv_noise_sqrt, lmin=lmin, n_iter=n_iter)
+    right_member_1 = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_white_noise_xi.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inv_cov_sqrt, lmin=lmin, n_iter=n_iter)
+    right_member_2 = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_white_noise_chi.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inv_noise_sqrt, lmin=lmin, n_iter=n_iter)
 
     right_member = (right_member_1 + right_member_2).ravel()
     
@@ -145,7 +218,7 @@ def get_fluctuating_term_maps(param_dict, red_cov_matrix, red_inverse_noise, map
     func_left_term = lambda x : (maps_x_reduced_matrix_generalized_sqrt_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), new_matrix_cov_sqrt, lmin=lmin, n_iter=n_iter)).ravel()
 
     # Initial guess for the CG
-    if len(initial_guess):
+    if len(initial_guess) == 0:
         initial_guess = np.zeros_like(map_white_noise_xi)
 
     # Actual start of the CG
@@ -196,21 +269,24 @@ def solve_generalized_wiener_filter_term(param_dict, data_var, red_cov_matrix, r
     red_cov_sqrt = get_sqrt_reduced_matrix_from_matrix(red_cov_matrix)
     # new_right_member_mat = np.zeros_like(red_cov_matrix)
     new_right_member_mat = np.einsum('ljk,lkm->ljm', red_cov_sqrt,red_inverse_noise)
-    right_member = (maps_x_reduced_matrix_generalized_sqrt(np.copy(data_var).reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), new_right_member_mat, lmin=lmin, n_iter=n_iter)).ravel()    
+    # right_member = (maps_x_reduced_matrix_generalized_sqrt(np.copy(data_var).reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), new_right_member_mat, lmin=lmin, n_iter=n_iter)).ravel()
+    right_member = (maps_x_reduced_matrix_generalized_sqrt_sqrt(np.copy(data_var).reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), new_right_member_mat, lmin=lmin, n_iter=n_iter)).ravel()
 
     # Computation of the left side member of the CG
     new_matrix_cov = np.eye(param_dict['nstokes']) + np.einsum('ljk,lkm,lmn->ljn', red_cov_sqrt,red_inverse_noise,red_cov_sqrt)
-    func_left_term = lambda x : (maps_x_reduced_matrix_generalized_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), new_matrix_cov, lmin=lmin, n_iter=n_iter)).ravel()
+    # func_left_term = lambda x : (maps_x_reduced_matrix_generalized_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), new_matrix_cov, lmin=lmin, n_iter=n_iter)).ravel()
+    func_left_term = lambda x : (maps_x_reduced_matrix_generalized_sqrt_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), new_matrix_cov, lmin=lmin, n_iter=n_iter)).ravel()
 
     # Initial guess for the CG
-    if len(initial_guess):
+    if len(initial_guess) == 0:
         initial_guess = np.zeros_like(data_var)
     # Actual start of the CG
     wiener_filter_term_z, number_iterations, exit_code = generalized_cg_from_func(initial_guess.ravel(), func_left_term, right_member, limit_iter_cg=limit_iter_cg, tolerance=tolerance)
     print("CG-Python-1 WF sqrt finished in ", number_iterations, "iterations !!")
 
     # Change of variable to get the correct Wiener Filter term
-    wiener_filter_term = maps_x_reduced_matrix_generalized_sqrt(wiener_filter_term_z.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_cov_sqrt, lmin=lmin, n_iter=n_iter)
+    # wiener_filter_term = maps_x_reduced_matrix_generalized_sqrt(wiener_filter_term_z.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_cov_sqrt, lmin=lmin, n_iter=n_iter)
+    wiener_filter_term = maps_x_reduced_matrix_generalized_sqrt_sqrt(wiener_filter_term_z.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_cov_sqrt, lmin=lmin, n_iter=n_iter)
 
     if exit_code != 0:
         print("CG didn't converge with WF ! Exitcode :", exit_code, flush=True)
@@ -218,7 +294,7 @@ def solve_generalized_wiener_filter_term(param_dict, data_var, red_cov_matrix, r
 
 
 class Gibbs_Sampling(object):
-    def __init__(self, nside, lmax, nstokes, lmin=0, n_iter=8, number_iterations_sampling=1000, limit_iter_cg=1000, tolerance_fluctuation=10**(-4), tolerance_PCG=10**(-12), prior=0, option_ell_2=1):
+    def __init__(self, nside, lmax, nstokes, lmin=0, n_iter=8, number_iterations_sampling=1000, limit_iter_cg=1000, tolerance_fluctuation=10**(-4), tolerance_PCG=10**(-12), prior=0, option_ell_2=2):
         """ Gibbs sampling object
         """
 
@@ -269,8 +345,8 @@ class Gibbs_Sampling(object):
             assert initial_map.shape[0] == self.nstokes
         
         param_dict = {'nside':self.nside, 'lmax':self.lmax, 'nstokes':self.nstokes, 'number_correlations':self.number_correlations}
-        
-        initial_guess = np.zeros((self.nstokes, self.npix))
+        if len(initial_guess) == 0:
+            initial_guess = np.zeros((self.nstokes, self.npix))
 
         map_white_noise_xi = []
         map_white_noise_chi = []
@@ -284,7 +360,7 @@ class Gibbs_Sampling(object):
     def sample_covariance(self, pixel_maps):
         """ Power spectrum sampling, given the sampled maps """
         c_ells_Wishart = get_cell_from_map(pixel_maps, lmax=self.lmax, n_iter=self.n_iter)
-        return get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart, lmax=self.lmax, q_prior=self.prior, l_min=self.lmin, option_ell_2=self.option_ell_2)#[self.lmin:,...]
+        return get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart, q_prior=self.prior, l_min=self.lmin, option_ell_2=self.option_ell_2)#[self.lmin:,...]
 
     def perform_sampling(self, initial_map, c_ells_array, red_inverse_noise):
         """ Perform sampling steps with :
@@ -315,7 +391,7 @@ class Gibbs_Sampling(object):
             red_covariance_matrix = get_reduced_matrix_from_c_ell(c_ell_sampled)[self.lmin:,...]
 
             # Constrained map realization step
-            pixel_maps_sampled = self.constrained_map_realization(initial_map, red_covariance_matrix, red_inverse_noise, initial_guess=pixel_maps_sampled)
+            pixel_maps_sampled = self.constrained_map_realization(initial_map, red_covariance_matrix, red_inverse_noise, initial_guess=np.copy(pixel_maps_sampled))
             
             # C_ell sampling step
             red_cov_mat_sampled = self.sample_covariance(pixel_maps_sampled)

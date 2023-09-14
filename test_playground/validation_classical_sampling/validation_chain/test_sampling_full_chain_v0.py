@@ -2,8 +2,8 @@ import os, sys, time
 import numpy as np
 import healpy as hp
 import astropy.io.fits as fits
-import ctypes as ct
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# import ctypes as ct
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from func_tools_for_tests import *
 
 from mpi4py import MPI
@@ -21,7 +21,7 @@ nstokes = 2
 
 npix = 12*nside**2
 
-number_iterations_sampling=100
+number_iterations_sampling=50
 
 limit_iter_cg=2000
 tolerance_PCG=10**(-12)
@@ -74,9 +74,12 @@ param_dict["number_correlations"] = number_correlations
 
 # c_ells_input = hp.anafast(CMB_map_input, lmax=lmax, iter=n_iter)
 # c_ells_input[:,:2] = 0
+# c_ells_input = np.zeros((6, lmax+1))
+# c_ells_input[:4,] = camb_cls.T
 c_ells_input = np.zeros((6, lmax+1))
-c_ells_input[:4,] = camb_cls.T
-
+ell_arange = np.arange(lmin, lmax+1)
+c_ells_input[:3,lmin:] = 10**(-4)/(ell_arange*(ell_arange+1))
+c_ells_input[:3,:lmin] = 10**(-30)
 
 if nstokes == 2:
     indices_polar = np.array([1,2,4])
@@ -110,17 +113,32 @@ all_samples[0,...] = c_ell_sampled
 
 if red_inverse_noise.shape[0] == lmax+1:
     red_inverse_noise = red_inverse_noise[lmin:,...]
-
+if nstokes != 1:
+        assert map_total.shape[0] == nstokes
+    
 for iteration in range(number_iterations_sampling):
     print("### Start Iteration n°", iteration, flush=True)
 
     red_covariance_matrix = blindcp.get_reduced_matrix_from_c_ell(c_ell_sampled)[lmin:,...]
 
+    print("### Number nan begining iterations :", len(red_covariance_matrix[np.isnan(red_covariance_matrix)]))
+
     # Constrained map realization step
-    pixel_maps_sampled = blindcp.constrained_map_realization(map_total, red_covariance_matrix, red_inverse_noise, initial_guess=pixel_maps_sampled)
+    # pixel_maps_sampled = Gibbs_sampler.constrained_map_realization(map_total, red_covariance_matrix, red_inverse_noise, initial_guess=np.copy(pixel_maps_sampled))
+    assert red_covariance_matrix.shape[0] == lmax + 1 - lmin
+    assert red_inverse_noise.shape[0] == lmax + 1 - lmin
+    initial_guess = np.copy(pixel_maps_sampled)
+    # initial_guess = np.zeros_like(pixel_maps_sampled)
     
+    map_white_noise_xi = []
+    map_white_noise_chi = []
+
+    fluctuating_map = blindcp.get_fluctuating_term_maps(param_dict, red_covariance_matrix, red_inverse_noise, map_white_noise_xi, map_white_noise_chi, initial_guess=initial_guess, lmin=lmin, n_iter=n_iter, limit_iter_cg=limit_iter_cg, tolerance=tolerance_fluctuation)
+    wiener_filter_term = blindcp.solve_generalized_wiener_filter_term(param_dict, map_total, red_covariance_matrix, red_inverse_noise, initial_guess=initial_guess, lmin=lmin, n_iter=n_iter, limit_iter_cg=limit_iter_cg, tolerance=tolerance_PCG)
+    pixel_maps_sampled = fluctuating_map + wiener_filter_term
+
     # C_ell sampling step
-    red_cov_mat_sampled = blindcp.sample_covariance(pixel_maps_sampled)
+    red_cov_mat_sampled = Gibbs_sampler.sample_covariance(pixel_maps_sampled)
 
     # Few tests to verify everything's fine
     all_eigenvalues = np.linalg.eigh(red_cov_mat_sampled[lmin:])[0]
@@ -129,6 +147,7 @@ for iteration in range(number_iterations_sampling):
     # Preparation of next step
     c_ell_sampled = blindcp.get_c_ells_from_red_covariance_matrix(red_cov_mat_sampled)
     
+    # print("### Number nan after inv Wishart :", len(c_ell_sampled[np.isnan(c_ell_sampled)]))
     # Recording of the samples
     all_maps[iteration+1,...] = pixel_maps_sampled
     all_samples[iteration+1,...] = c_ell_sampled
