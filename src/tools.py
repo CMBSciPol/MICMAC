@@ -182,7 +182,7 @@ def maps_x_reduced_matrix_generalized_sqrt_sqrt(maps_TQU_input, red_matrix_sqrt,
         red_sqrt_decomp[lmin:,...] = red_matrix_sqrt
 
     if maps_TQU_input.shape[0] == 2:
-        maps_TQU = np.vstack((np.zeros_like(maps_TQU_input[0]),maps_TQU_input))
+        maps_TQU = np.vstack((np.zeros_like(maps_TQU_input[0]),np.copy(maps_TQU_input)))
     else:
         maps_TQU = np.copy(maps_TQU_input)
 

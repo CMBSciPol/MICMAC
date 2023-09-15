@@ -162,72 +162,72 @@ def get_fluctuating_term_maps(param_dict, red_cov_matrix, red_inverse_noise, map
         print("CG didn't converge with generalized_CG for fluctuating term ! Exitcode :", exit_code, flush=True)
     return fluctuating_map.reshape((param_dict["nstokes"], 12*param_dict["nside"]**2))
 
-def get_fluctuating_term_maps_alternative(param_dict, red_cov_matrix, red_inverse_noise, map_white_noise_xi, map_white_noise_chi, initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
-    """ 
-        Solve fluctuation term with formulation (1 + C^1/2 N^-1 C^1/2) for the left member
+# def get_fluctuating_term_maps_alternative(param_dict, red_cov_matrix, red_inverse_noise, map_white_noise_xi, map_white_noise_chi, initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
+#     """ 
+#         Solve fluctuation term with formulation (1 + C^1/2 N^-1 C^1/2) for the left member
 
-        Parameters
-        ----------
-        param_dict : dictionnary containing the following fields : nside, nstokes, lmax
+#         Parameters
+#         ----------
+#         param_dict : dictionnary containing the following fields : nside, nstokes, lmax
         
-        red_cov_matrix : covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        red_inverse_noise : matrices of inverse noise in harmonic domain (yet), dimension [lmin:lmax, nstokes, nstokes]
+#         red_cov_matrix : covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+#         red_inverse_noise : matrices of inverse noise in harmonic domain (yet), dimension [lmin:lmax, nstokes, nstokes]
 
-        map_white_noise_xi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, npix]
-        map_white_noise_chi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, npix]
+#         map_white_noise_xi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, npix]
+#         map_white_noise_chi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, npix]
         
-        lmin : minimum multipole to be considered, default 0
+#         lmin : minimum multipole to be considered, default 0
         
-        n_iter : number of iterations for harmonic computations, default 8
+#         n_iter : number of iterations for harmonic computations, default 8
 
-        limit_iter_cg : maximum number of iterations for the CG, default 1000
-        tolerance : CG tolerance, default 10**(-12)
+#         limit_iter_cg : maximum number of iterations for the CG, default 1000
+#         tolerance : CG tolerance, default 10**(-12)
 
-        Returns
-        -------
-        Fluctuation maps [nstokes, npix]
-    """
+#         Returns
+#         -------
+#         Fluctuation maps [nstokes, npix]
+#     """
 
-    assert red_cov_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
-    assert red_inverse_noise.shape[0] == param_dict['lmax'] + 1 - lmin
+#     assert red_cov_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
+#     assert red_inverse_noise.shape[0] == param_dict['lmax'] + 1 - lmin
 
-    red_inverse_cov_matrix = np.linalg.pinv(red_cov_matrix)
+#     red_inverse_cov_matrix = np.linalg.pinv(red_cov_matrix)
     
 
-    # Creation of the random maps
-    if len(map_white_noise_xi) == 0:
-        print("Recalculating xi !")
-        map_white_noise_xi = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
-    if len(map_white_noise_chi) == 0:
-        print("Recalculating chi !")
-        map_white_noise_chi = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
+#     # Creation of the random maps
+#     if len(map_white_noise_xi) == 0:
+#         print("Recalculating xi !")
+#         map_white_noise_xi = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
+#     if len(map_white_noise_chi) == 0:
+#         print("Recalculating chi !")
+#         map_white_noise_chi = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
 
-    # Computation of the right side member of the CG
-    red_inv_cov_sqrt = get_sqrt_reduced_matrix_from_matrix(red_inverse_cov_matrix)
-    red_inv_noise_sqrt = get_sqrt_reduced_matrix_from_matrix(red_inverse_noise)
-    # right_member_1 = maps_x_reduced_matrix_generalized_sqrt(map_white_noise_xi.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inv_cov_sqrt, lmin=lmin, n_iter=n_iter)
-    # right_member_2 = maps_x_reduced_matrix_generalized_sqrt(map_white_noise_chi.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inv_noise_sqrt, lmin=lmin, n_iter=n_iter)
-    right_member_1 = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_white_noise_xi.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inv_cov_sqrt, lmin=lmin, n_iter=n_iter)
-    right_member_2 = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_white_noise_chi.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inv_noise_sqrt, lmin=lmin, n_iter=n_iter)
+#     # Computation of the right side member of the CG
+#     red_inv_cov_sqrt = get_sqrt_reduced_matrix_from_matrix(red_inverse_cov_matrix)
+#     red_inv_noise_sqrt = get_sqrt_reduced_matrix_from_matrix(red_inverse_noise)
+#     # right_member_1 = maps_x_reduced_matrix_generalized_sqrt(map_white_noise_xi.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inv_cov_sqrt, lmin=lmin, n_iter=n_iter)
+#     # right_member_2 = maps_x_reduced_matrix_generalized_sqrt(map_white_noise_chi.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inv_noise_sqrt, lmin=lmin, n_iter=n_iter)
+#     right_member_1 = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_white_noise_xi.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inv_cov_sqrt, lmin=lmin, n_iter=n_iter)
+#     right_member_2 = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_white_noise_chi.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inv_noise_sqrt, lmin=lmin, n_iter=n_iter)
 
-    right_member = (right_member_1 + right_member_2).ravel()
+#     right_member = (right_member_1 + right_member_2).ravel()
     
-    # Computation of the left side member of the CG
-    new_matrix_cov = red_inverse_cov_matrix + red_inverse_noise
-    new_matrix_cov_sqrt = get_sqrt_reduced_matrix_from_matrix(new_matrix_cov)
-    func_left_term = lambda x : (maps_x_reduced_matrix_generalized_sqrt_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), new_matrix_cov_sqrt, lmin=lmin, n_iter=n_iter)).ravel()
+#     # Computation of the left side member of the CG
+#     new_matrix_cov = red_inverse_cov_matrix + red_inverse_noise
+#     new_matrix_cov_sqrt = get_sqrt_reduced_matrix_from_matrix(new_matrix_cov)
+#     func_left_term = lambda x : (maps_x_reduced_matrix_generalized_sqrt_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), new_matrix_cov_sqrt, lmin=lmin, n_iter=n_iter)).ravel()
 
-    # Initial guess for the CG
-    if len(initial_guess) == 0:
-        initial_guess = np.zeros_like(map_white_noise_xi)
+#     # Initial guess for the CG
+#     if len(initial_guess) == 0:
+#         initial_guess = np.zeros_like(map_white_noise_xi)
 
-    # Actual start of the CG
-    fluctuating_map, number_iterations, exit_code = generalized_cg_from_func(initial_guess.ravel(), func_left_term, right_member, limit_iter_cg=limit_iter_cg, tolerance=tolerance)
-    print("CG-Python-0 Fluct sqrt finished in ", number_iterations, "iterations for fluctuating term !!")    
+#     # Actual start of the CG
+#     fluctuating_map, number_iterations, exit_code = generalized_cg_from_func(initial_guess.ravel(), func_left_term, right_member, limit_iter_cg=limit_iter_cg, tolerance=tolerance)
+#     print("CG-Python-0 Fluct sqrt finished in ", number_iterations, "iterations for fluctuating term !!")    
 
-    if exit_code != 0:
-        print("CG didn't converge with generalized_CG for fluctuating term ! Exitcode :", exit_code, flush=True)
-    return fluctuating_map.reshape((param_dict["nstokes"], 12*param_dict["nside"]**2))
+#     if exit_code != 0:
+#         print("CG didn't converge with generalized_CG for fluctuating term ! Exitcode :", exit_code, flush=True)
+#     return fluctuating_map.reshape((param_dict["nstokes"], 12*param_dict["nside"]**2))
 
 
 
@@ -294,7 +294,7 @@ def solve_generalized_wiener_filter_term(param_dict, data_var, red_cov_matrix, r
 
 
 class Gibbs_Sampling(object):
-    def __init__(self, nside, lmax, nstokes, lmin=0, n_iter=8, number_iterations_sampling=1000, limit_iter_cg=1000, tolerance_fluctuation=10**(-4), tolerance_PCG=10**(-12), prior=0, option_ell_2=2):
+    def __init__(self, nside, lmax, nstokes, lmin=0, n_iter=8, number_iterations_sampling=1000, limit_iter_cg=1000, tolerance_fluctuation=10**(-12), tolerance_PCG=10**(-12), prior=0, option_ell_2=2):
         """ Gibbs sampling object
         """
 
