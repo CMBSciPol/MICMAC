@@ -107,10 +107,11 @@ class Non_parametric_Likelihood_Sampling(object):
             map_random_y = []
             eta_maps = get_sampling_eta(param_dict, red_cov_approx_matrix, red_inverse_noise, red_mixed_noise, map_random_x=map_random_x, map_random_y=map_random_y, initial_guess=np.copy(eta_maps), lmin=self.lmin, n_iter=self.n_iter, limit_iter_cg=self.limit_iter_cg, tolerance=self.tolerance_CG)
 
-            # Sampling step 2 : sampling of s_c with Wiener filter
-            wiener_filter_term = solve_generalized_wiener_filter_term(param_dict, ML_initial_data, red_covariance_matrix, red_inverse_noise, initial_guess=np.copy(wiener_filter_term), lmin=self.lmin, n_iter=self.n_iter, limit_iter_cg=self.limit_iter_cg, tolerance=self.tolerance_CG)
+            # Sampling step 2 : sampling of Gaussian variable s_c with mean ML_initial_data_maps and variance (S_c + E^t (B^t N^{-1} B)^{-1} E)
+            map_random_xi = []
+            map_random_chi = []
+            get_gaussian_sample_maps(param_dict, ML_initial_data_maps, red_covariance_matrix, cp_freq_noise, cp_cp_inverse_noise_sqrt, map_random_realization_xi=map_random_xi, map_random_realization_chi=map_random_chi, lmin=self.lmin, n_iter=self.n_iter)
 
-    
             # Sampling step 3 : c_ell sampling assuming inverse Wishart distribution
             red_cov_mat_sampled = self.sample_covariance(pixel_maps_sampled)
 
