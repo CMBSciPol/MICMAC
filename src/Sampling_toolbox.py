@@ -5,6 +5,8 @@ import emcee
 from .tools import *
 from .algorithm_toolbox import *
 from .proba_functions import *
+from .mixingmatrix import *
+from .noisecovar import *
 
 
 def get_sampling_eta(param_dict, red_cov_approx_matrix, cp_cp_noise, cp_freq_inv_noise_sqrt, map_random_x=[], map_random_y=[], initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
@@ -248,21 +250,21 @@ def get_inverse_wishart_sampling_from_c_ells(sigma_ell, q_prior=0, l_min=0, opti
 
 
 
-def get_conditional_proba_mixing_matrix_foregrounds(variable_mixing_matrix, full_data_without_CMB, eta_maps, freq_freq_inverse_noise, red_cov_approx_matrix, mixingmatrix_object, param_dict, lmin, n_iter):
+def get_conditional_proba_mixing_matrix_foregrounds(variable_mixing_matrix, full_data_without_CMB, eta_maps, freq_inverse_noise, red_cov_approx_matrix, mixingmatrix_object, param_dict, lmin, n_iter):
     """ Get conditional probability of mixing matrix
 
         cp_cp_noise : matrices of noise combined with mixing matrices corresponding to (B^t N^{-1} B)^{-1}, dimension [component, component]
         cp_freq_inv_noise : matrices of noise combined with mixing matrices corresponding to B^T N^{-1/2}, dimension [component, frequencies]
     """
 
-    nstokes = eta_maps.shape[0]
-    npix = eta_maps.shape[1]
+    # nstokes = eta_maps.shape[0]
+    # npix = eta_maps.shape[1]
 
     complete_mixing_matrix = mixingmatrix_object.get_B()
     complete_mixing_matrix[1:,1:] = variable_mixing_matrix.reshape((param_dict["number_components"-1, "number_frequencies"]))
 
-    cp_cp_noise = get_cp_cp_noise(freq_freq_inverse_noise, variable_mixing_matrix)
-    cp_freq_inv_noise = get_cp_freq_noise(freq_freq_inverse_noise, variable_mixing_matrix)
+    cp_cp_noise = get_inv_BtinvNB(freq_inverse_noise, complete_mixing_matrix)
+    cp_freq_inv_noise = get_BtinvN(freq_inverse_noise, complete_mixing_matrix)
 
 
     # Building the first term
@@ -282,7 +284,7 @@ def get_conditional_proba_mixing_matrix_foregrounds(variable_mixing_matrix, full
 
 
 
-def sample_mixing_matrix_term(param_dict, full_data_without_CMB, eta_maps, red_cov_approx_matrix, freq_freq_inverse_noise, mixingmatrix_object, initial_guess_mixing_matrix=[], lmin=0, n_iter=8, n_walkers=1, number_steps_sampler=1000):
+def sample_mixing_matrix_term(param_dict, full_data_without_CMB, eta_maps, red_cov_approx_matrix, freq_inverse_noise, mixingmatrix_object, initial_guess_fg_mixing_matrix=[], lmin=0, n_iter=8, n_walkers=1, number_steps_sampler=1000):
     """ Solve sampling step 4 : sampling B_f
         Sample mixing matrix with formualtion : -(d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c) + eta^t (S_{approx} + E^t (B^T N^{-1} B)^{-1} E) eta
 
@@ -310,11 +312,14 @@ def sample_mixing_matrix_term(param_dict, full_data_without_CMB, eta_maps, red_c
     # if param_dict['nstokes'] != 1:
     #     assert data_variable.shape[0] == param_dict['nstokes']
 
+    assert initial_guess_fg_mixing_matrix.shape[0] == param_dict['number_components']-1
+    assert initial_guess_fg_mixing_matrix.shape[1] == param_dict['number_frequencies']
+
     dimensions_mixing_matrix = (param_dict['number_components']-1)*param_dict['number_frequencies']
 
-    sampler_mixing_matrix = emcee.EnsembleSampler(n_walkers, dimensions_mixing_matrix, get_conditional_proba_mixing_matrix_foregrounds, args=[full_data_without_CMB, eta_maps, freq_freq_inverse_noise, red_cov_approx_matrix, mixingmatrix_object, param_dict, lmin, n_iter])
+    sampler_mixing_matrix = emcee.EnsembleSampler(n_walkers, dimensions_mixing_matrix, get_conditional_proba_mixing_matrix_foregrounds, args=[full_data_without_CMB, eta_maps, freq_inverse_noise, red_cov_approx_matrix, mixingmatrix_object, param_dict, lmin, n_iter])
 
-    full_initial_guess = np.repeat(initial_guess_mixing_matrix.ravel(), n_walkers)
+    full_initial_guess = np.repeat(initial_guess_fg_mixing_matrix.ravel(), n_walkers)
     
     sampler_mixing_matrix.run_mcmc(full_initial_guess, number_steps_sampler)
 
