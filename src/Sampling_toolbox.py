@@ -263,18 +263,17 @@ def get_conditional_proba_mixing_matrix(variable_mixing_matrix, full_data_withou
     cp_cp_noise = get_cp_cp_noise(freq_freq_inverse_noise, variable_mixing_matrix)
     cp_freq_inv_noise = get_cp_freq_noise(freq_freq_inverse_noise, variable_mixing_matrix)
 
-    
+
     # Building the first term
-    mixing_matrix_fg_only = variable_mixing_matrix[1:,1:]
-    full_data_without_CMB_with_noise = np.einsum('cf,fsp->csp', cp_freq_inv_noise,full_data_without_CMB)
-    
-    first_term_complete = np.einsum('psc,cm,msp ', full_data_without_CMB_with_noise.T, cp_cp_noise, full_data_without_CMB_with_noise)
+    full_data_without_CMB_with_noise = np.einsum('cf,fsp->csp', cp_freq_inv_noise[1:], full_data_without_CMB)
+    first_term_complete = np.einsum('psc,cm,msp', full_data_without_CMB_with_noise.T, cp_cp_noise[1:,1:], full_data_without_CMB_with_noise)
 
     # Building the second term term \eta^t (S_approx + E^t (B^t N^{-1} B)^{-1} E) \eta
     second_term_1 = maps_x_reduced_matrix_generalized_sqrt_sqrt(eta.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_cov_approx_matrix, lmin=lmin, n_iter=n_iter)
 
-    cmb_noise_map = cp_cp_noise[0,0]
-    second_term_2 = cmb_noise_map*(eta.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)))
+    # cmb_noise_map = cp_cp_noise[0,0]
+    # second_term_2 = cmb_noise_map*(eta.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)))
+    second_term_2 = np.einsum('sp,sp->sp', cp_cp_noise[0,0]*np.ones_like(eta), eta.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)))
     
     second_term_complete = np.einsum('sk,sk',eta, second_term_1 + second_term_2)
 
