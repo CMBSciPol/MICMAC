@@ -28,3 +28,42 @@ def get_inv_BtinvNB(invN, B):
     invBtinvNB = np.linalg.inv(BtinvNB)
     
     return invBtinvNB
+
+
+def get_BtinvN(invN, B):
+    """
+    B can be full Mixing Matrix, 
+    or just the cmb part, 
+    or just the fgs part.
+    """
+    BtinvN = np.einsum('fc,fh->ch', B, invN)
+    
+    return BtinvN
+
+
+
+## Choose if we want to keep these ones
+## (this could be done directly in the code)
+def select_cmb_EtX(X, ncomp):
+    """
+    It acts on object w ncomp as external dimension 
+    and it selects only cmb.
+    """
+    # check that the ext dim is indeed ncomp
+    assert X.shape[0] == ncomp
+    EtX = X[0, ...]
+    
+    return EtX
+
+
+def select_cmb_EtXE(X, ncomp):
+    """
+    It acts on object w (ncomp,ncomp) as external dimensions
+    and it selects only cmb.
+    """
+    # check that the ext dims are indeed (ncomp,ncomp)
+    assert X.shape[0] == ncomp
+    assert X.shape[1] == ncomp
+    EtXE = X[0, 0, ...]
+    
+    return EtXE
