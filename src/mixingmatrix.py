@@ -26,7 +26,7 @@ class MixingMatrix():
         self.pos_special_freqs = pos_special_freqs
 
 
-    def B_mat_fgs(self):
+    def get_B_fgs(self):
         """
         fgs part of the mixing matrix.
         """
@@ -49,24 +49,21 @@ class MixingMatrix():
         return B_fgs
 
 
-    def B_mat_cmb(self):
+    def get_B_cmb(self):
         """
         CMB column of the mixing matrix.
         """
+        B_cmb = np.ones((self.nfreq))
+        B_cmb = B_cmb[:, np.newaxis]
+        
+        return B_cmb
 
-        return np.ones((self.nfreq))
 
-
-    def B_mat(self):
+    def get_B(self):
         """
         Full mixing matrix, (nfreqs*ncomps).
         cmb is given as the first component.
         """
-        # check dimensions of cmb components
-        B_cmb = self.B_mat_cmb()
-        if len(B_cmb.shape) == 1:
-            B_cmb = B_cmb[:, np.newaxis]
-
-        B_mat = np.concatenate((B_cmb, self.B_mat_fgs()), axis=1)
+        B_mat = np.concatenate((self.get_B_cmb(), self.get_B_fgs()), axis=1)
         
         return B_mat
