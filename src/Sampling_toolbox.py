@@ -15,7 +15,7 @@ def get_sampling_eta(param_dict, red_cov_approx_matrix, cp_cp_noise, cp_freq_inv
 
         Parameters
         ----------
-        param_dict : dictionnary containing the following fields : nside, nstokes, lmax
+        param_dict : dictionnary containing the following fields : nside, nstokes, lmax, number_frequencies
         
         red_cov_approx_matrix : correction covariance matrice (S_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
         cp_cp_noise : matrices of noise combined with mixing matrices corresponding to (B^t N^{-1} B)^{-1}, dimension [component, component]
@@ -46,7 +46,7 @@ def get_sampling_eta(param_dict, red_cov_approx_matrix, cp_cp_noise, cp_freq_inv
         map_random_x = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
     if len(map_random_y) == 0:
         print("Recalculating chi !")
-        map_random_y = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["frequencies"],param_dict["nstokes"],12*param_dict["nside"]**2))
+        map_random_y = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["number_frequencies"],param_dict["nstokes"],12*param_dict["nside"]**2))
 
     # Computation of the right hand side member of the CG
     red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix(red_cov_approx_matrix)
@@ -55,9 +55,8 @@ def get_sampling_eta(param_dict, red_cov_approx_matrix, cp_cp_noise, cp_freq_inv
     right_member_1 = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_random_x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_cov_approx_matrix_sqrt, lmin=lmin, n_iter=n_iter)
 
     # Second right member : E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2}
-    right_member_2 = np.einsum('kc,cf,fsp', cp_cp_noise, cp_freq_inv_noise_sqrt, map_random_y)[0] # Selecting CMB component of the random variable
-    right_member_2 = get_band_limited_map(right_member_2, lmin=lmin, lmax=param_dict["lmax"])
-
+    right_member_2 = np.einsum('kc,cf,fsp->ksp', cp_cp_noise, cp_freq_inv_noise_sqrt, map_random_y)[0] # Selecting CMB component of the random variable
+    # right_member_2 = get_band_limited_map(right_member_2, lmin=lmin, lmax=param_dict["lmax"])
     right_member = (right_member_1 + right_member_2).ravel()
 
 
@@ -115,17 +114,17 @@ def get_gaussian_variance_maps(param_dict, red_cov_matrix, cp_cp_noise, cp_freq_
         map_random_realization_xi = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
     if len(map_random_realization_chi) == 0:
         print("Recalculating chi !")
-        map_random_realization_chi = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["frequencies"],param_dict["nstokes"],12*param_dict["nside"]**2))
+        map_random_realization_chi = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["number_frequencies"],param_dict["nstokes"],12*param_dict["nside"]**2))
 
     # Computation of the right side member of the CG
     red_inv_cov_sqrt = get_sqrt_reduced_matrix_from_matrix(np.linalg.pinv(red_cov_matrix))
 
     first_term = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_random_realization_xi.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inv_cov_sqrt, lmin=lmin, n_iter=n_iter)
 
-    second_term = np.einsum('kc,cf,fsp', cp_cp_noise, cp_freq_inv_noise_sqrt, map_random_realization_chi)[0] # Selecting CMB component of the random variable
+    second_term = np.einsum('kc,cf,fsp->ksp', cp_cp_noise, cp_freq_inv_noise_sqrt, map_random_realization_chi)[0] # Selecting CMB component of the random variable
 
     # Make second term band limited ?
-    second_term = get_band_limited_map(second_term, lmin=lmin, lmax=param_dict["lmax"])
+    # second_term = get_band_limited_map(second_term, lmin=lmin, lmax=param_dict["lmax"])
 
     return first_term + second_term
 
@@ -317,10 +316,10 @@ def sample_mixing_matrix_term(param_dict, full_data_without_CMB, eta_maps, red_c
 
     dimensions_mixing_matrix = (param_dict['number_components']-1)*param_dict['number_frequencies']
 
-    sampler_mixing_matrix = emcee.EnsembleSampler(n_walkers, dimensions_mixing_matrix, get_conditional_proba_mixing_matrix_foregrounds, args=[full_data_without_CMB, eta_maps, freq_inverse_noise, red_cov_approx_matrix, mixingmatrix_object, param_dict, lmin, n_iter])
+    sample_mixing_matrix_FG = emcee.EnsembleSampler(n_walkers, dimensions_mixing_matrix, get_conditional_proba_mixing_matrix_foregrounds, args=[full_data_without_CMB, eta_maps, freq_inverse_noise, red_cov_approx_matrix, mixingmatrix_object, param_dict, lmin, n_iter])
 
     full_initial_guess = np.repeat(initial_guess_fg_mixing_matrix.ravel(), n_walkers)
     
-    sampler_mixing_matrix.run_mcmc(full_initial_guess, number_steps_sampler)
+    sample_mixing_matrix_FG.run_mcmc(full_initial_guess, number_steps_sampler)
 
-    return sampler_mixing_matrix.get_chain().reshape((n_walkers, param_dict['number_components']-1,param_dict['number_frequencies']))
+    return sample_mixing_matrix_FG.get_chain().reshape((n_walkers, param_dict['number_components']-1,param_dict['number_frequencies']-len(pos_special_freqs)))

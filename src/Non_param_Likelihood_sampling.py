@@ -169,7 +169,7 @@ class Non_parametric_Likelihood_Sampling(object):
             # Sampling step 4
             fg_mixing_matrix_sampled = np.copy(mixing_matrix_sampled[:,1:])
             sample_fg_mixing_matrix = sample_mixing_matrix_term(param_dict, full_data_without_CMB, eta_maps, red_cov_approx_matrix, freq_inverse_noise, Mixingmatrix_obj, initial_guess_fg_mixing_matrix=fg_mixing_matrix_sampled, lmin=self.lmin, n_iter=self.n_iter, n_walkers=self.number_walkers, limit_steps_sampler_mixing_matrix=self.limit_steps_sampler_mixing_matrix)
-            mixing_matrix_sampled[:,1:] = sample_fg_mixing_matrix
+            mixing_matrix_sampled[1:,:] = sample_fg_mixing_matrix
 
             # Few tests to verify everything's fine
             all_eigenvalues = np.linalg.eigh(red_covariance_matrix_sampled[self.lmin:])[0]
