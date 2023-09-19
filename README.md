@@ -9,3 +9,7 @@ In your virtual environment and from the root directory of this package, just ty
 `python -m pip install .`
 
 Then, you may call this package using `import non_parametric_ML_compsep`
+
+# Required dependencies
+emcee
+cmbdb (https://github.com/dpole/cmbdb/tree/master)
