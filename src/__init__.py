@@ -5,3 +5,4 @@ from non_parametric_ML_compsep.Non_param_Likelihood_sampling import * #Gibbs_Sam
 from non_parametric_ML_compsep.tools import * #get_reduced_matrix_from_c_ell, get_inverse_reduced_matrix_from_c_ell, get_inverse_reduced_matrix_from_red_matrix, get_cholesky_reduced_matrix_from_matrix, generalized_cg_from_func, get_c_ells_from_red_covariance_matrix, get_sqrt_reduced_matrix_from_matrix, maps_x_reduced_matrix_generalized, maps_x_reduced_matrix_generalized_sqrt
 from non_parametric_ML_compsep.mixingmatrix import *
 from non_parametric_ML_compsep.noisecovar import *
+from non_parametric_ML_compsep.init_mixingmatrix import *

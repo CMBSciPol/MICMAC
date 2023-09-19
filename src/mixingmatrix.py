@@ -3,19 +3,21 @@ import numpy as np
 # Note: the mixing matrix is supposed to be the same 
 # for Q and U Stokes params and all pixels.
 # (also we supposed that I is never used)
-# Thus it has dimensions (nfreq*ncomps).
+# Thus it has dimensions (nfreq*ncomp).
 
 
 
 class MixingMatrix():
-    def __init__(self, nfreq, ncomp, params, pos_special_freqs):
+    def __init__(self, freqs, ncomp, params, pos_special_freqs):
         """
         Note: units are K_CMB.
         """
-        self.nfreq = nfreq    # all input freq bands
-        self.ncomp = ncomp    # all comps (also cmb)
-        self.params = params  # of dim: (nfreq-ncomps+1)*(ncomp-1)
-        
+        self.freqs = freqs
+        self.nfreq = len(freqs)    # all input freq bands
+        self.ncomp = ncomp         # all comps (also cmb)
+        assert np.shape(params) == (self.nfreq-self.ncomp+1, self.ncomp-1)
+        self.params = params
+
         ### checks on pos_special_freqs
         # check no duplicates
         assert len(pos_special_freqs) == len(set(pos_special_freqs))
@@ -25,6 +27,16 @@ class MixingMatrix():
                 pos_special_freqs[i] = self.nfreq + pos_special_freqs[i]
         self.pos_special_freqs = pos_special_freqs
 
+
+    def update_params(self, new_params):
+        """
+        Update values of the params in the mixing matrix.
+        """
+        assert np.shape(new_params) == (self.nfreq-self.ncomp+1, self.ncomp-1)
+        self.params = new_params
+
+        return
+    
 
     def get_B_fgs(self):
         """
@@ -61,7 +73,7 @@ class MixingMatrix():
 
     def get_B(self):
         """
-        Full mixing matrix, (nfreqs*ncomps).
+        Full mixing matrix, (nfreq*ncomp).
         cmb is given as the first component.
         """
         B_mat = np.concatenate((self.get_B_cmb(), self.get_B_fgs()), axis=1)
