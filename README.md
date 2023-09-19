@@ -11,5 +11,6 @@ In your virtual environment and from the root directory of this package, just ty
 Then, you may call this package using `import non_parametric_ML_compsep`
 
 # Required dependencies
-emcee
-cmbdb (https://github.com/dpole/cmbdb/tree/master)
+* emcee
+* cmbdb (https://github.com/dpole/cmbdb/tree/master)
+* fgbuster (only fgbuster.observation_helpers to get the input frequency maps in the tutorials, the src code is completely independent from fgbuster)
