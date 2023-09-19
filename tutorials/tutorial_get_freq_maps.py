@@ -14,7 +14,7 @@ instr_name = 'LiteBIRD'
 instrument = get_instrument('LiteBIRD')
 
 # get input freq maps
-np.random.seed(42)
+np.random.seed(noise_seed)
 freq_maps = get_observation(instrument, model, nside=NSIDE, noise=noise)[:, 1:, :]   # keep only Q and U
 print(freq_maps.shape)
 
