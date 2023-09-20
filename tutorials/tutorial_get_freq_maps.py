@@ -5,13 +5,13 @@ from non_parametric_ML_compsep import *
 
 # General parameters
 NSIDE = 128
-model = 'd0s0'
+model = 'c1d0s0'
 noise = True
 noise_seed = 42
 instr_name = 'LiteBIRD'
 
 # get instrument from public database
-instrument = get_instrument('LiteBIRD')
+instrument = get_instrument(instr_name)
 
 # get input freq maps
 np.random.seed(noise_seed)
