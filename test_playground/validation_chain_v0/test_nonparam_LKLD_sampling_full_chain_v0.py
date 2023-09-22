@@ -144,8 +144,9 @@ pixel_maps_sampled = np.copy(map_total)
 red_covariance_matrix_sampled = blindcp.get_reduced_matrix_from_c_ell(c_ell_sampled)[lmin:,...]
 
 # Preparation of the mixing matrix object
-Mixingmatrix_obj = blindcp.MixingMatrix(number_frequencies, number_components, init_params_mixing_matrix, pos_special_freqs)
-mixing_matrix_sampled = Mixingmatrix_obj.get_B()
+sample_mixing_matrix_full = blindcp.MixingMatrix(number_frequencies, number_components, init_params_mixing_matrix, pos_special_freqs)
+fg_params_mixing_matrix_sampled = sample_mixing_matrix_full.params
+
 
 
 param_dict = {'nside':nside, 'lmax':lmax, 'nstokes':nstokes, 'number_correlations':number_correlations,'number_frequencies':number_frequencies, 'number_components':number_components}
@@ -154,12 +155,12 @@ param_dict = {'nside':nside, 'lmax':lmax, 'nstokes':nstokes, 'number_correlation
 all_eta = np.zeros((number_iterations_sampling+1, nstokes, npix))
 all_maps = np.zeros((number_iterations_sampling+1, nstokes, npix))
 all_cell_samples = np.zeros((number_iterations_sampling+1, number_correlations, lmax+1))
-all_mixing_matrix_samples = np.zeros((number_iterations_sampling+1, number_frequencies, number_components))
+all_mixing_matrix_samples = np.zeros((number_iterations_sampling+1, fg_params_mixing_matrix_sampled.shape[0], fg_params_mixing_matrix_sampled.shape[1]))
 
 # Initial values
 all_maps[0,...] = pixel_maps_sampled
 all_cell_samples[0,...] = c_ell_sampled
-all_mixing_matrix_samples[0,...] = mixing_matrix_sampled
+all_mixing_matrix_samples[0,...] = fg_params_mixing_matrix_sampled
 
 if nstokes != 1:
         assert initial_freq_maps.shape[0] == number_frequencies
@@ -174,6 +175,7 @@ assert freq_inverse_noise.shape[1] == number_frequencies
 for iteration in range(number_iterations_sampling):
     print("### Start Iteration n°", iteration, flush=True)
 
+    mixing_matrix_sampled = sample_mixing_matrix_full.get_B()
     # Application of new mixing matrix
     cp_cp_noise = blindcp.get_inv_BtinvNB(freq_inverse_noise, mixing_matrix_sampled)
     cp_freq_inv_noise_sqrt = blindcp.get_BtinvN(np.sqrt(freq_inverse_noise), mixing_matrix_sampled)
@@ -213,10 +215,9 @@ for iteration in range(number_iterations_sampling):
     red_covariance_matrix_sampled = SemiBlindLKLD_sampler.sample_covariance(pixel_maps_sampled)
 
     # Sampling step 4
-    fg_mixing_matrix_sampled = np.copy(mixing_matrix_sampled[:,1:])
-    sample_fg_mixing_matrix = blindcp.sample_mixing_matrix_term(param_dict, full_data_without_CMB, eta_maps, red_cov_approx_matrix, freq_inverse_noise, Mixingmatrix_obj, initial_guess_fg_mixing_matrix=fg_mixing_matrix_sampled, lmin=lmin, n_iter=n_iter, n_walkers=number_walkers, number_steps_sampler=limit_steps_sampler_mixing_matrix)
-    mixing_matrix_sampled[:,1:] = sample_fg_mixing_matrix
+    sample_params_mixing_matrix_FG = blindcp.sample_mixing_matrix_term(param_dict, sample_mixing_matrix_full, full_data_without_CMB, eta_maps, red_cov_approx_matrix, freq_inverse_noise, lmin=lmin, n_iter=n_iter, n_walkers=number_walkers, number_steps_sampler=limit_steps_sampler_mixing_matrix)
 
+    sample_mixing_matrix_full.update_params(sample_params_mixing_matrix_FG)
     # Few tests to verify everything's fine
     all_eigenvalues = np.linalg.eigh(red_covariance_matrix_sampled[lmin:])[0]
     assert np.all(all_eigenvalues[np.abs(np.linalg.eigh(red_covariance_matrix_sampled[lmin:])[0])>10**(-15)]>0)
@@ -226,7 +227,7 @@ for iteration in range(number_iterations_sampling):
     all_eta[iteration+1,...] = eta_maps
     all_maps[iteration+1,...] = pixel_maps_sampled
     all_cell_samples[iteration+1,...] = blindcp.get_c_ells_from_red_covariance_matrix(red_covariance_matrix_sampled)
-    all_mixing_matrix_samples[iteration+1,...] = mixing_matrix_sampled
+    all_mixing_matrix_samples[iteration+1,...] = sample_params_mixing_matrix_FG
 
     if iteration%50 == 0:
         print("### Iteration n°", iteration, flush=True)
