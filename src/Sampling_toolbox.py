@@ -11,7 +11,7 @@ from .noisecovar import *
 
 def get_sampling_eta(param_dict, red_cov_approx_matrix, cp_cp_noise, cp_freq_inv_noise_sqrt, map_random_x=[], map_random_y=[], initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
     """ Solve sampling step 1 : sampling eta
-        Solve CG for eta term with formulation :  eta = C_approx^(1/2) x + (B^t N^{-1} B)^{-1} B^T N^{-1/2} y
+        Solve CG for eta term with formulation : (B^t N^{-1} B)^{1/2} eta = C_approx^(1/2) x + (B^t N^{-1} B)^{-1} B^T N^{-1/2} y
 
         Parameters
         ----------
@@ -60,8 +60,19 @@ def get_sampling_eta(param_dict, red_cov_approx_matrix, cp_cp_noise, cp_freq_inv
 
     right_member = (right_member_1 + right_member_2).ravel()
 
+    # ## Left hand side term : (E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2} eta
+    # func_left_term = lambda x : np.einsum('kc,cf,fsp->ksp', cp_cp_noise, cp_freq_inv_noise_sqrt, x.reshape((param_dict["number_frequencies"],param_dict["nstokes"],12*param_dict["nside"]**2)))[0].ravel()
     ## Left hand side term : (E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2} eta
-    func_left_term = lambda x : np.einsum('kc,cf,fsp->ksp', cp_cp_noise, cp_freq_inv_noise_sqrt, x)[0].ravel()
+    # func_left_term = lambda x : np.einsum('kc,csp->ksp', np.sqrt(cp_cp_noise), x.reshape((param_dict["number_components"],param_dict["nstokes"],12*param_dict["nside"]**2)))[0].ravel()
+
+    def func_left_term(x, number_component=param_dict['number_components']):
+        cg_variable = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
+        x_all_components = np.zeros((number_component, cg_variable.shape[0], cg_variable.shape[1]))
+        x_all_components[0,...] = cg_variable
+        return np.einsum('kc,csp->ksp', scipy.linalg.sqrtm(cp_cp_noise), x_all_components)[0].ravel()
+        # return np.einsum('kc,csp->ksp', np.sqrt(cp_cp_noise), x_all_components)[0].ravel()
+    
+
 
     eta_maps, number_iterations, exit_code = generalized_cg_from_func(initial_guess.ravel(), func_left_term, right_member, limit_iter_cg=limit_iter_cg, tolerance=tolerance)
     print("CG-Python eta sampling finished in ", number_iterations, "iterations !!")    
@@ -69,7 +80,8 @@ def get_sampling_eta(param_dict, red_cov_approx_matrix, cp_cp_noise, cp_freq_inv
     if exit_code != 0:
         print("CG didn't converge with generalized_CG for eta sampling ! Exitcode :", exit_code, flush=True)
 
-    return eta_maps.reshape((param_dict["number_frequencies"], param_dict["nstokes"],12*param_dict["nside"]**2))
+    return eta_maps.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
+    # return eta_maps.reshape((param_dict["number_frequencies"], param_dict["nstokes"],12*param_dict["nside"]**2))
 
 
 def get_fluctuating_term_maps(param_dict, red_cov_matrix, cp_cp_noise, cp_freq_inv_noise_sqrt, map_random_realization_xi=[], map_random_realization_chi=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):

@@ -1,7 +1,7 @@
 from distutils.core import setup
 
 setup(name='non_parametric_ML_compsep',
-      version='0.1',
+      version='0.2',
       description='Non-parametric maximum likelihood component separation for CMB polarization data',
       author='',
       author_email='',
