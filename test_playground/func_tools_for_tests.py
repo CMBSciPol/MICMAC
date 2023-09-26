@@ -185,3 +185,120 @@ def hp_synfast(param_dict, red_matrix, lmin=2, n_iter=8):
         raise Exception("Error")
 
     return hp.synfast(c_ell_to_use, param_dict['nside'], lmax=param_dict['lmax'], new=True)
+
+
+
+
+def personalized_get_inverse_wishart_sampling_from_c_ells(sigma_ell, lmax=None, q_prior=0, n_iter=0, l_min=0, option_ell_2=0):
+    """ Assume sigma_ell to be with all ells
+        
+        Also assumes the monopole and dipole to be 0
+
+        q_prior = 0 : uniform prior
+        q_prior = 1 : Jeffrey prior
+
+    """
+
+    # nstokes = len(pixel_maps.shape)
+    # if nstokes > 1:
+    #     nstokes = pixel_maps.shape[0]
+
+    if len(sigma_ell.shape) == 1:
+        nstokes == 1
+    elif sigma_ell.shape[0] == 6:
+        nstokes = 3
+    elif sigma_ell.shape[0] == 3:
+        nstokes = 2
+
+
+    # sigma_ell = hp.anafast(pixel_maps, lmax=lmax, iter=n_iter)
+
+    # number_correl = c_ells_observed.shape[0]
+    # print("Test", nstokes, number_correl)
+    # c_ells_observed = np.vstack((np.zeros((number_correl,1)), c_ells_observed))
+    # c_ells_observed = np.hstack((np.zeros((number_correl,1)), c_ells_observed))
+    for i in range(nstokes):
+        sigma_ell[i] *= 2*np.arange(lmax+1) + 1
+
+    lmin = l_min
+    # invert_parameter_Wishart = get_inverse_reduced_matrix_from_red_matrix(get_reduced_matrix_from_c_ell(sigma_ell))
+    # invert_parameter_Wishart = np.linalg.pinv(pss.get_reduced_matrix_from_c_ell(sigma_ell))[l_min:,...]
+    invert_parameter_Wishart = np.linalg.pinv(blindcp.get_reduced_matrix_from_c_ell(sigma_ell))
+    # print("Test size red:", invert_parameter_Wishart.shape, "sigma_ell", sigma_ell.shape)
+    assert invert_parameter_Wishart.shape[0] == lmax + 1 #- lmin
+    sampling_Wishart = np.zeros_like(invert_parameter_Wishart)
+
+    # Option sampling without caring about inverse Wishart not defined
+    ell_2 = 2
+    if l_min <= 2 and (2*ell_2 + 1 - 2*nstokes + 2*q_prior <= 0):
+        # 2*ell_2 + 1 - 2*nstokes + 2*q_prior <= 0) correspond to the definition condition of the inverse Wishart distribution
+
+        # Option sampling with brute force inverse Wishart
+        if option_ell_2 == -1:
+            print("Not caring about inverse Wishart distribution not defined !", flush=True)
+            mean = np.zeros(nstokes)
+            sample_gaussian = np.random.multivariate_normal(np.zeros(nstokes), invert_parameter_Wishart[ell_2], size=(2*ell_2 - nstokes + 2*q_prior))
+            sampling_Wishart[ell_2] = np.dot(sample_gaussian.T,sample_gaussian)
+            
+        # Option sampling with Jeffrey prior
+        elif option_ell_2 == 0:
+            Jeffrey_prior = 1
+            print("Applying Jeffry prior for ell=2 !", flush=True)
+            mean = np.zeros(nstokes)
+            sample_gaussian = np.random.multivariate_normal(mean, invert_parameter_Wishart[ell_2], size=(2*ell_2 - nstokes + 2*Jeffrey_prior))
+            # new_cov_matrix[ell] = np.linalg.inv(np.dot(sample_gaussian.T,sample_gaussian))
+            # sampling_Wishart[ell] = np.linalg.pinv(np.dot(sample_gaussian.T,sample_gaussian))
+            sampling_Wishart[ell_2] = np.dot(sample_gaussian.T,sample_gaussian)
+
+        # Option sampling separately TE and B
+        elif option_ell_2 == 1:
+            print("Sampling separately TE and B for ell=2 !", flush=True)
+            invert_parameter_Wishart_2 = np.zeros((nstokes,nstokes))
+            reduced_matrix_2 = blindcp.get_reduced_matrix_from_c_ell(sigma_ell)[ell_2]
+            invert_parameter_Wishart_2[:nstokes-1, :nstokes-1] = np.linalg.pinv(reduced_matrix_2[:nstokes-1,:nstokes-1])
+            invert_parameter_Wishart_2[nstokes-1, nstokes-1] = 1/reduced_matrix_2[nstokes-1,nstokes-1]
+            # sample_gaussian_TE = np.random.multivariate_normal(np.zeros(nstokes-1), invert_parameter_Wishart[ell_2][:nstokes-1, :nstokes-1], size=(2*ell_2 - (nstokes-1)))
+            # sample_gaussian_B = np.random.normal(loc=0, scale=invert_parameter_Wishart[ell_2][nstokes-1, nstokes-1], size=(2*ell_2 - 1))
+            sample_gaussian_TE = np.random.multivariate_normal(np.zeros(nstokes-1), invert_parameter_Wishart_2[:nstokes-1, :nstokes-1], size=(2*ell_2 - (nstokes-1)))
+            sample_gaussian_B = np.random.normal(loc=0, scale=invert_parameter_Wishart_2[nstokes-1, nstokes-1], size=(2*ell_2 - 1))
+            sampling_Wishart[ell_2][:nstokes-1,:nstokes-1] = np.dot(sample_gaussian_TE.T,sample_gaussian_TE)
+            sampling_Wishart[ell_2][nstokes-1,nstokes-1] = np.dot(sample_gaussian_B.T,sample_gaussian_B)
+        
+        lmin = 3
+
+
+    # print("### TEST : lmax+1", lmax+1, "lmin", max(lmin,2), "nstokes", nstokes, flush=True)
+    for ell in range(max(lmin,2),lmax+1):
+        # number_vectors = 2*ell - nstokes + 2*q_prior
+        # mean = np.zeros(nstokes)
+        # sample_gaussian = np.random.multivariate_normal(np.diag(cov_matrix[ell]), cov_matrix[ell], size=(2*ell - nstokes + 2*q_prior))
+        # sample_gaussian = np.random.multivariate_normal(np.zeros(nstokes), invert_parameter_Wishart[ell-l_min], size=(2*ell - nstokes + 2*q_prior))
+        sample_gaussian = np.random.multivariate_normal(np.zeros(nstokes), invert_parameter_Wishart[ell], size=(2*ell - nstokes + 2*q_prior))
+        # if ell >= lmax-1 or ell == 2:
+        #     print("ell", ell, cov_matrix[ell], np.dot(sample_gaussian.T,sample_gaussian))
+        #     print("rank", ell, np.linalg.matrix_rank(cov_matrix[ell]), np.linalg.matrix_rank(np.dot(sample_gaussian.T,sample_gaussian)))
+        # new_cov_matrix[ell] = np.linalg.inv(np.dot(sample_gaussian.T,sample_gaussian))
+        # sampling_Wishart[ell] = np.linalg.pinv(np.dot(sample_gaussian.T,sample_gaussian))
+        # sampling_Wishart[ell-lmin] = np.dot(sample_gaussian.T,sample_gaussian)
+        sampling_Wishart[ell] = np.dot(sample_gaussian.T,sample_gaussian)
+        # print("## ell ", ell, end='')
+
+    # return get_inverse_reduced_matrix_from_red_matrix(sampling_Wishart)
+    return np.linalg.pinv(sampling_Wishart)
+
+def get_all_invW(sigma_ell, number_samples=1, lmax=None, q_prior=0, n_iter=0, l_min=0, option_ell_2=0):
+    # nstokes = len(pixel_maps.shape)
+    # if nstokes > 1:
+    #     nstokes = pixel_maps.shape[0]
+    if len(sigma_ell.shape) == 1:
+        nstokes == 1
+    elif sigma_ell.shape[0] == 6:
+        nstokes = 3
+    elif sigma_ell.shape[0] == 3:
+        nstokes = 2
+
+    # result_covariance = np.zeros((number_samples, lmax+1-l_min, nstokes, nstokes))
+    result_covariance = np.zeros((number_samples, lmax+1, nstokes, nstokes))
+    for nb_sample in range(number_samples):
+        result_covariance[nb_sample] = personalized_get_inverse_wishart_sampling_from_c_ells(np.copy(sigma_ell), lmax, q_prior, n_iter, l_min, option_ell_2)
+    return result_covariance

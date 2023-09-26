@@ -84,7 +84,7 @@ def get_sampling_eta(param_dict, red_cov_approx_matrix, cp_cp_noise, cp_freq_inv
     # return eta_maps.reshape((param_dict["number_frequencies"], param_dict["nstokes"],12*param_dict["nside"]**2))
 
 
-def get_fluctuating_term_maps(param_dict, red_cov_matrix, cp_cp_noise, cp_freq_inv_noise_sqrt, map_random_realization_xi=[], map_random_realization_chi=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
+def get_fluctuating_term_maps(param_dict, red_cov_matrix, cp_cp_noise, cp_freq_inv_noise_sqrt, map_random_realization_xi=[], map_random_realization_chi=[], initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
     """ 
         Solve fluctuation term with formulation (C^-1 + N^-1) for the left member :
         (C^{-1} + E^t (B^t N^{-1} B)^{-1} E) \zeta = C^{-1/2} xi + (E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2} chi
@@ -140,11 +140,12 @@ def get_fluctuating_term_maps(param_dict, red_cov_matrix, cp_cp_noise, cp_freq_i
     # First left member : C^{-1} 
     first_term_left = lambda x : maps_x_reduced_matrix_generalized_sqrt_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inverse_cov_matrix, lmin=lmin, n_iter=n_iter)
     
-    ## Second left member : (E^t (B^t N^{-1} B)^{-1}
+    ## Second left member : (E^t (B^t N^{-1} B) E)
     def second_term_left(x, number_component=param_dict['number_components']):
-        x_all_components = np.zeros((number_component, x.shape[0], x.shape[1]))
-        x_all_components[0,...] = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
-        return np.einsum('kc,csp->ksp', cp_cp_noise, x_all_components)[0]
+        cg_variable = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
+        x_all_components = np.zeros((number_component, cg_variable.shape[0], cg_variable.shape[1]))
+        x_all_components[0,...] =cg_variable
+        return np.einsum('kc,csp->ksp', np.linalg.pinv(cp_cp_noise), x_all_components)[0]
 
     func_left_term = lambda x : (first_term_left(x) + second_term_left(x)).ravel()
     # Initial guess for the CG
@@ -191,22 +192,23 @@ def solve_generalized_wiener_filter_term(param_dict, s_cML, red_cov_matrix, cp_c
     assert red_cov_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
     if param_dict['nstokes'] != 1:
         assert s_cML.shape[0] == param_dict['nstokes']
-        assert s_cML.shape[0] == param_dict['lmax'] + 1 - lmin
+        assert s_cML.shape[1] == 12*param_dict['nside']**2
     
 
     # Computation of the right side member of the CG
     s_cML_extended = np.zeros((param_dict['number_components'], s_cML.shape[0], s_cML.shape[1]))
     s_cML_extended[0,...] = s_cML
-    right_member = np.einsum('kc,csp->ksp', cp_cp_noise, s_cML_extended)[0] # Selecting CMB component of the
+    right_member = np.einsum('kc,csp->ksp', np.linalg.pinv(cp_cp_noise), s_cML_extended)[0].ravel() # Selecting CMB component of the
 
     # Computation of the left side member of the CG
     first_term_left = lambda x : maps_x_reduced_matrix_generalized_sqrt_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), np.linalg.pinv(red_cov_matrix), lmin=lmin, n_iter=n_iter)
     
     ## Second left member : (E^t (B^t N^{-1} B)^{-1}
     def second_term_left(x, number_component=param_dict['number_components']):
-        x_all_components = np.zeros((number_component, x.shape[0], x.shape[1]))
-        x_all_components[0,...] = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
-        return np.einsum('kc,csp->ksp', cp_cp_noise, x_all_components)[0]
+        cg_variable = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
+        x_all_components = np.zeros((number_component, cg_variable.shape[0], cg_variable.shape[1]))
+        x_all_components[0,...] = cg_variable
+        return np.einsum('kc,csp->ksp', np.linalg.pinv(cp_cp_noise), x_all_components)[0]
 
     func_left_term = lambda x : (first_term_left(x) + second_term_left(x)).ravel()
 
@@ -224,7 +226,7 @@ def solve_generalized_wiener_filter_term(param_dict, s_cML, red_cov_matrix, cp_c
 
 
 
-def get_inverse_wishart_sampling_from_c_ells(sigma_ell, q_prior=0, l_min=0, option_ell_2=1):
+def get_inverse_wishart_sampling_from_c_ells(sigma_ell, q_prior=0, l_min=0, option_ell_2=2):
     """ Solve sampling step 3 : inverse Wishart distribution with S_c
         Compute a matrix sample following an inverse Wishart distribution. The 3 steps follow Gupta & Nagar (2000) :
             1. Sample n = 2*ell - p + 2*q_prior independent Gaussian vectors with covariance (sigma_ell)^{-1}
@@ -266,7 +268,7 @@ def get_inverse_wishart_sampling_from_c_ells(sigma_ell, q_prior=0, l_min=0, opti
     lmin = l_min
 
     invert_parameter_Wishart = np.linalg.pinv(get_reduced_matrix_from_c_ell(sigma_ell))
-    
+
     assert invert_parameter_Wishart.shape[0] == lmax + 1 #- lmin
     sampling_Wishart = np.zeros_like(invert_parameter_Wishart)
 
@@ -365,7 +367,7 @@ def get_conditional_proba_mixing_matrix_foregrounds(params_mixing_matrix, mixing
     # Building the second term term \eta^t N_c^{1/2] (C_approx + E^t (B^t N^{-1} B)^{-1} E)^{-1} N_c^{1/2] \eta
     complete_mixing_matrix = mixingmatrix_object.get_B()
     cp_cp_noise = get_inv_BtinvNB(freq_inverse_noise, complete_mixing_matrix)
-    cp_freq_inv_noise_sqrt = get_BtinvN(np.sqrt(freq_inverse_noise), complete_mixing_matrix)
+    cp_freq_inv_noise_sqrt = get_BtinvN(scipy.linalg.sqrtm(freq_inverse_noise), complete_mixing_matrix)
 
     ## Left hand side term : N_c^{1/2] \eta = (E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2} \eta
     noise_weighted_eta = np.einsum('kc,cf,fsp->ksp', cp_cp_noise, cp_freq_inv_noise_sqrt, eta_maps)[0] # Selecting CMB component

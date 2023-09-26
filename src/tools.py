@@ -150,7 +150,7 @@ def get_cell_from_map(pixel_maps, lmax, n_iter=8):
         nstokes = pixel_maps.shape[0]
     
     if nstokes == 2:
-            pixel_maps_for_Wishart = np.vstack((np.zeros_like(pixel_maps[0]), pixel_maps))
+        pixel_maps_for_Wishart = np.vstack((np.zeros_like(pixel_maps[0]), pixel_maps))
             # print("Test 5 :", pixel_maps_for_Wishart.shape, pixel_maps_for_Wishart[0].mean(), pixel_maps_for_Wishart[1].mean(), pixel_maps_for_Wishart[2].mean())
     else:
         pixel_maps_for_Wishart = pixel_maps
