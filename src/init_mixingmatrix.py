@@ -78,6 +78,6 @@ class InitMixingMatrix():
         params = np.zeros((len(unknown_freqs),self.ncomp-1))
         for f, val_f in enumerate(unknown_freqs):
             params[f, 0] = self.modifiedblackbody(nu0_dust, val_f)
-            params[f, 1] = self.modifiedblackbody(nu0_synch, val_f)
+            params[f, 1] = self.powerlaw(nu0_synch, val_f)
 
         return params
