@@ -19,47 +19,35 @@ def get_noise_covar(depth_p, nside):
     return invN
 
 
-def get_inv_BtinvNB(invN, B):
+def get_inv_BtinvNB(invN, B, jax_use=False):
     """
     B can be full Mixing Matrix, 
     or just the cmb part, 
     or just the fgs part.
     """
+
+    if jax_use:
+        BtinvNB = jnp.einsum('fc,fh,hg->cg', B, invN, B)
+        return jnp.linalg.inv(BtinvNB)
+
     BtinvNB = np.einsum('fc,fh,hg->cg', B, invN, B)
     invBtinvNB = np.linalg.inv(BtinvNB)
     
     return invBtinvNB
 
 
-def get_BtinvN(invN, B):
+def get_BtinvN(invN, B, jax_use=False):
     """
     B can be full Mixing Matrix, 
     or just the cmb part, 
     or just the fgs part.
     """
+
+    if jax_use:
+        return jnp.einsum('fc,fh->ch', B, invN)
+
     BtinvN = np.einsum('fc,fh->ch', B, invN)
     
-    return BtinvN
-
-def get_inv_BtinvNB_jax(invN, B):
-    """
-    B can be full Mixing Matrix, 
-    or just the cmb part, 
-    or just the fgs part.
-    """
-    BtinvNB = jnp.einsum('fc,fh,hg->cg', B, invN, B)
-    invBtinvNB = jnp.linalg.inv(BtinvNB)
-    
-    return invBtinvNB
-
-
-def get_BtinvN_jax(invN, B):
-    """
-    B can be full Mixing Matrix, 
-    or just the cmb part, 
-    or just the fgs part.
-    """
-    BtinvN = jnp.einsum('fc,fh->ch', B, invN)
     return BtinvN
 
 
