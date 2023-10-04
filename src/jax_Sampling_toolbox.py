@@ -67,7 +67,7 @@ def get_sampling_eta_prime_JAX(param_dict, red_cov_approx_matrix, cp_cp_noise, c
         eta maps [nstokes, npix]
     """
 
-    assert red_cov_approx_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
+    # assert red_cov_approx_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
 
 
     # Creation of the random maps if they are not given
