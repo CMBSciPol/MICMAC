@@ -4,7 +4,7 @@ from non_parametric_ML_compsep import *
 
 
 # General parameters
-NSIDE = 64
+NSIDE = 128
 cmb_model = 'c1'
 fgs_model = 'd0s0'
 model = cmb_model+fgs_model

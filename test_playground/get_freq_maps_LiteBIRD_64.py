@@ -10,7 +10,7 @@ fgs_model = 'd0s0'
 model = cmb_model+fgs_model
 noise = True
 noise_seed = 42
-instr_name = 'SO_SAT'
+instr_name = 'LiteBIRD'
 
 # get instrument from public database
 instrument = get_instrument(instr_name)

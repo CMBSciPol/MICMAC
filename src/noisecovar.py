@@ -3,6 +3,7 @@ Noise covariance matrix and useful recurring operations.
 """
 import numpy as np
 import healpy as hp
+import jax.numpy as jnp
 
 # Note: we only consider diagonal noise covariance
 
@@ -40,6 +41,26 @@ def get_BtinvN(invN, B):
     
     return BtinvN
 
+def get_inv_BtinvNB_jax(invN, B):
+    """
+    B can be full Mixing Matrix, 
+    or just the cmb part, 
+    or just the fgs part.
+    """
+    BtinvNB = jnp.einsum('fc,fh,hg->cg', B, invN, B)
+    invBtinvNB = jnp.linalg.inv(BtinvNB)
+    
+    return invBtinvNB
+
+
+def get_BtinvN_jax(invN, B):
+    """
+    B can be full Mixing Matrix, 
+    or just the cmb part, 
+    or just the fgs part.
+    """
+    BtinvN = jnp.einsum('fc,fh->ch', B, invN)
+    return BtinvN
 
 
 ## Choose if we want to keep these ones

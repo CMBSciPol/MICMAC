@@ -83,6 +83,57 @@ def get_sampling_eta(param_dict, red_cov_approx_matrix, cp_cp_noise, cp_freq_inv
     return eta_maps.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
     # return eta_maps.reshape((param_dict["number_frequencies"], param_dict["nstokes"],12*param_dict["nside"]**2))
 
+def get_sampling_eta_prime(param_dict, red_cov_approx_matrix, cp_cp_noise, cp_freq_inv_noise_sqrt, map_random_x=[], map_random_y=[], initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
+    """ Solve sampling step 1 : sampling eta'
+        Solve CG for eta term with formulation : eta' = C_approx^(1/2) x + (B^t N^{-1} B)^{-1} B^T N^{-1/2} y
+
+        Parameters
+        ----------
+        param_dict : dictionnary containing the following fields : nside, nstokes, lmax, number_frequencies
+        
+        red_cov_approx_matrix : correction covariance matrice (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+        cp_cp_noise : matrices of noise combined with mixing matrices corresponding to (B^t N^{-1} B)^{-1}, dimension [component, component]
+        # cp_freq_inv_noise_sqrt : matrices of noise combined with mixing matrices corresponding to B^T N^{-1/2}, dimension [component, frequencies]
+
+        map_random_x : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
+        map_random_y : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
+        
+        lmin : minimum multipole to be considered, default 0
+        
+        n_iter : number of iterations for harmonic computations, default 8
+
+        limit_iter_cg : maximum number of iterations for the CG, default 1000
+        tolerance : CG tolerance, default 10**(-12)
+
+        initial_guess : initial guess for the CG, default [] (which is a covnention for its initialization to 0)
+
+        Returns
+        -------
+        eta maps [nstokes, npix]
+    """
+
+    assert red_cov_approx_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
+
+
+    # Creation of the random maps if they are not given
+    if len(map_random_x) == 0:
+        print("Recalculating x !")
+        map_random_x = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
+    if len(map_random_y) == 0:
+        print("Recalculating y !")
+        map_random_y = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["number_frequencies"],param_dict["nstokes"],12*param_dict["nside"]**2))
+
+    # Computation of the right hand side member of the CG
+    red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix(red_cov_approx_matrix)
+
+    # First right member : C_approx^{-1/2} x
+    first_member = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_random_x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_cov_approx_matrix_sqrt, lmin=lmin, n_iter=n_iter)
+
+    # # Second right member : E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2}
+    second_member = np.einsum('kc,cf,fsp->ksp', cp_cp_noise, cp_freq_inv_noise_sqrt, map_random_y)[0] # Selecting CMB component of the random variable
+
+    return first_member + second_member
+
 
 def get_fluctuating_term_maps(param_dict, red_cov_matrix, cp_cp_noise, cp_freq_inv_noise_sqrt, map_random_realization_xi=[], map_random_realization_chi=[], initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
     """ 
@@ -313,7 +364,7 @@ def get_inverse_wishart_sampling_from_c_ells(sigma_ell, q_prior=0, l_min=0, opti
     # sampling_Wishart[max(lmin,2):,...] = np.einsum('lkj,lkm->ljm',sample_gaussian,sample_gaussian)
     return np.linalg.pinv(sampling_Wishart)
 
-def get_inverse_operators_harm_pixel(param_dict, right_member, operator_harmonic, operator_pixel, initial_guess=[], lmin=2, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
+def get_inverse_operators_harm_pixel(param_dict, right_member, operator_harmonic, operator_pixel, initial_guess=[], lmin=2, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12), with_prints=False):
     """ Solve the CG given by :
         (operator_harmonic + operator_pixel) variable = right_member
 
@@ -330,39 +381,43 @@ def get_inverse_operators_harm_pixel(param_dict, right_member, operator_harmonic
     
     ## Second left member : (E^t (B^t N^{-1} B)^{-1}
     def second_term_left(x, number_component=param_dict['number_components']):
-        x_all_components = np.zeros((number_component, x.shape[0], x.shape[1]))
-        x_all_components[0,...] = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
+        cg_variable = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
+        x_all_components = np.zeros((number_component, cg_variable.shape[0], cg_variable.shape[1]))
+        x_all_components[0,...] = cg_variable
         return np.einsum('kc,csp->ksp', operator_pixel, x_all_components)[0]
 
     func_left_term = lambda x : (first_term_left(x) + second_term_left(x)).ravel()
 
     if len(initial_guess) == 0:
         initial_guess = np.zeros((param_dict["nstokes"],12*param_dict["nside"]**2))
-    inverse_term, number_iterations, exit_code = generalized_cg_from_func(initial_guess.ravel(), func_left_term, right_member, limit_iter_cg=limit_iter_cg, tolerance=tolerance)
-    # print("CG-Python-0 WF finished in ", number_iterations, "iterations !!")
-
-    # if exit_code != 0:
-    #     print("CG didn't converge with WF ! Exitcode :", exit_code, flush=True)
+    inverse_term, number_iterations, exit_code = generalized_cg_from_func(initial_guess.ravel(), func_left_term, right_member.ravel(), limit_iter_cg=limit_iter_cg, tolerance=tolerance)
+    if with_prints:
+        print("CG-Python-0 WF finished in ", number_iterations, "iterations !!")
+        if exit_code != 0:
+            print("CG didn't converge with WF ! Exitcode :", exit_code, flush=True)
     return inverse_term.reshape((param_dict["nstokes"], 12*param_dict["nside"]**2))
 
-def get_conditional_proba_mixing_matrix_foregrounds(params_mixing_matrix, mixingmatrix_object, full_data_without_CMB, eta_maps, freq_inverse_noise, red_cov_approx_matrix, param_dict, lmin, n_iter, limit_iter_cg, tolerance):
+def get_conditional_proba_mixing_matrix_foregrounds(params_mixing_matrix, mixingmatrix_object, full_data_without_CMB, eta_prime_maps, freq_inverse_noise, red_cov_approx_matrix, param_dict, lmin, n_iter, limit_iter_cg, tolerance, with_prints=False, regularization_constant=-1, regularization_factor=10**10):
     """ Get conditional probability of mixing matrix by sampling it using emcee
 
         The associated conditional probability is given by : 
-        - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c) 
+        - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
         + \eta^t N_c^{1/2} (C_{approx} + E^t (B^T N^{-1} B)^{-1} E)^{-1} N_c^{1/2} \ \eta 
     """
 
-    mixingmatrix_object.update_params(params_mixing_matrix)
+    # print("Test params :", params_mixing_matrix.reshape((param_dict['number_frequencies']-2,param_dict['number_components']-1)))
+    mixingmatrix_object.update_params(params_mixing_matrix.reshape((param_dict['number_frequencies']-2,param_dict['number_components']-1)))
 
-    # Building the first term
+    # Building the first term : - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
     complete_mixing_matrix_fg = mixingmatrix_object.get_B_fgs()
 
     cp_cp_noise_fg = get_inv_BtinvNB(freq_inverse_noise, complete_mixing_matrix_fg)
     cp_freq_inv_noise_fg = get_BtinvN(freq_inverse_noise, complete_mixing_matrix_fg)
 
     full_data_without_CMB_with_noise = np.einsum('cf,fsp->csp', cp_freq_inv_noise_fg, full_data_without_CMB)
+    # print("Test 1 :", np.mean(full_data_without_CMB_with_noise), np.max(full_data_without_CMB_with_noise), np.min(full_data_without_CMB_with_noise), full_data_without_CMB_with_noise)
     first_term_complete = np.einsum('psc,cm,msp', full_data_without_CMB_with_noise.T, cp_cp_noise_fg, full_data_without_CMB_with_noise)
+    # print("Test 2 :", np.mean(cp_cp_noise_fg), np.max(cp_cp_noise_fg), np.min(cp_cp_noise_fg), cp_cp_noise_fg)
 
     # Building the second term term \eta^t N_c^{1/2] (C_approx + E^t (B^t N^{-1} B)^{-1} E)^{-1} N_c^{1/2] \eta
     complete_mixing_matrix = mixingmatrix_object.get_B()
@@ -370,21 +425,25 @@ def get_conditional_proba_mixing_matrix_foregrounds(params_mixing_matrix, mixing
     cp_freq_inv_noise_sqrt = get_BtinvN(scipy.linalg.sqrtm(freq_inverse_noise), complete_mixing_matrix)
 
     ## Left hand side term : N_c^{1/2] \eta = (E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2} \eta
-    noise_weighted_eta = np.einsum('kc,cf,fsp->ksp', cp_cp_noise, cp_freq_inv_noise_sqrt, eta_maps)[0] # Selecting CMB component
+    # noise_weighted_eta = np.einsum('kc,cf,fsp->ksp', cp_cp_noise, cp_freq_inv_noise_sqrt, eta_maps)[0] # Selecting CMB component
+    eta_prime_maps_extended = np.zeros((param_dict['number_components'],param_dict['nstokes'],12*param_dict['nside']**2))
+    eta_prime_maps_extended[0] = eta_prime_maps
+    noise_weighted_eta = np.einsum('kc,csp->ksp', cp_cp_noise, eta_prime_maps_extended)[0] # Selecting CMB component
 
     # Then getting (C_approx + E^t (B^t N^{-1} B)^{-1} E)^{-1} N_c^{1/2] \eta
     operator_harmonic = red_cov_approx_matrix
     operator_pixel = cp_cp_noise
-    inverse_term = get_inverse_operators_harm_pixel(param_dict, noise_weighted_eta, operator_harmonic, operator_pixel, initial_guess=[], lmin=lmin, n_iter=n_iter, limit_iter_cg=limit_iter_cg, tolerance=tolerance)
+    inverse_term = get_inverse_operators_harm_pixel(param_dict, noise_weighted_eta, operator_harmonic, operator_pixel, initial_guess=[], lmin=lmin, n_iter=n_iter, limit_iter_cg=limit_iter_cg, tolerance=tolerance, with_prints=with_prints)
 
     # And finally \eta^t N_c^{1/2] (C_approx + E^t (B^t N^{-1} B)^{-1} E)^{-1} N_c^{1/2] \eta
-    second_term_complete = np.einsum('fsk,fsk', noise_weighted_eta, inverse_term)
+    # second_term_complete = np.einsum('fsk,fsk', noise_weighted_eta, inverse_term)
+    second_term_complete = np.einsum('sk,sk', noise_weighted_eta, inverse_term)
+    # print("Test", first_term_complete, second_term_complete)
+    return -(-first_term_complete + second_term_complete)/2./regularization_factor + regularization_constant
 
-    return first_term_complete + second_term_complete
 
 
-
-def sample_mixing_matrix_term(param_dict, mixingmatrix_object, full_data_without_CMB, eta_maps, red_cov_approx_matrix, freq_inverse_noise, lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12), n_walkers=1, number_steps_sampler=1000):
+def sample_mixing_matrix_term(param_dict, mixingmatrix_object, full_data_without_CMB, eta_prime_maps, red_cov_approx_matrix, freq_inverse_noise, lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12), n_walkers=1, number_steps_sampler=1000, with_prints=False):
     """ Solve sampling step 4 : sampling B_f
         Sample mixing matrix with formualtion : -(d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c) + eta^t (S_{approx} + E^t (B^T N^{-1} B)^{-1} E) eta
 
@@ -393,7 +452,7 @@ def sample_mixing_matrix_term(param_dict, mixingmatrix_object, full_data_without
         param_dict : dictionnary containing the following fields : nside, nstokes, lmax
 
         full_data : full data maps, for Wiener filter CG ; dimensions [nstokes, npix]
-        
+
         red_cov_matrix : covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
 
         
@@ -409,14 +468,89 @@ def sample_mixing_matrix_term(param_dict, mixingmatrix_object, full_data_without
     # assert initial_guess_fg_mixing_matrix.shape[0] == param_dict['number_components']-1
     # assert initial_guess_fg_mixing_matrix.shape[1] == param_dict['number_frequencies']
 
-    initial_guess_fg_mixing_matrix = mixingmatrix_object.params
-    dimensions_mixing_matrix = initial_guess_fg_mixing_matrix.shape
+    initial_guess_fg_mixing_matrix = mixingmatrix_object.params.ravel()
+    dimensions_mixing_matrix = len(initial_guess_fg_mixing_matrix)
     
-    sample_params_mixing_matrix_FG = emcee.EnsembleSampler(n_walkers, dimensions_mixing_matrix, get_conditional_proba_mixing_matrix_foregrounds, args=[mixingmatrix_object, full_data_without_CMB, eta_maps, freq_inverse_noise, red_cov_approx_matrix, param_dict, lmin, n_iter, limit_iter_cg, tolerance])
+    # sample_params_mixing_matrix_FG = emcee.EnsembleSampler(n_walkers, dimensions_mixing_matrix, get_conditional_proba_mixing_matrix_foregrounds, args=[mixingmatrix_object, full_data_without_CMB, eta_maps, freq_inverse_noise, red_cov_approx_matrix, param_dict, lmin, n_iter, limit_iter_cg, tolerance, with_prints])
+    sample_params_mixing_matrix_FG = emcee.EnsembleSampler(n_walkers, dimensions_mixing_matrix, get_conditional_proba_mixing_matrix_foregrounds, args=[mixingmatrix_object, full_data_without_CMB, eta_prime_maps, freq_inverse_noise, red_cov_approx_matrix, param_dict, lmin, n_iter, limit_iter_cg, tolerance, with_prints])
 
-    full_initial_guess = np.repeat(initial_guess_fg_mixing_matrix, n_walkers)
+    # full_initial_guess = np.tile(initial_guess_fg_mixing_matrix, n_walkers).reshape((dimensions_mixing_matrix,n_walkers)).T
+    # full_initial_guess = ((np.random.random(size=n_walkers*dimensions_mixing_matrix) - .5)*20).reshape((n_walkers,dimensions_mixing_matrix))
     
-    sample_params_mixing_matrix_FG.run_mcmc(full_initial_guess, number_steps_sampler)
+    # full_initial_guess = np.random.randn(n_walkers,dimensions_mixing_matrix)
+
+
+    full_initial_guess = np.random.uniform(low=initial_guess_fg_mixing_matrix*.25,high=initial_guess_fg_mixing_matrix*.75, size=(n_walkers,dimensions_mixing_matrix))
+    print("Test", full_initial_guess)
+    final_position_walkers = sample_params_mixing_matrix_FG.run_mcmc(full_initial_guess, number_steps_sampler)
 
     # return sample_params_mixing_matrix_FG.get_last_sample()
     return sample_params_mixing_matrix_FG.get_chain()
+
+
+def get_numpyro_conditional_proba_mixing_matrix_foregrounds(params_mixing_matrix, model_kwargs):
+    """ Get conditional probability of mixing matrix by sampling it using emcee
+
+        The associated conditional probability is given by : 
+        - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
+        + \eta^t N_c^{1/2} (C_{approx} + E^t (B^T N^{-1} B)^{-1} E)^{-1} N_c^{1/2} \ \eta 
+    """
+    mixingmatrix_object = model_kwargs['mixingmatrix_object']
+    full_data_without_CMB = model_kwargs['full_data_without_CMB']
+    eta_prime_maps = model_kwargs['eta_prime_maps']
+    freq_inverse_noise = model_kwargs['freq_inverse_noise']
+    red_cov_approx_matrix = model_kwargs['red_cov_approx_matrix']
+    param_dict = model_kwargs['param_dict']
+    lmin = model_kwargs['lmin']
+    n_iter = model_kwargs['n_iter']
+    limit_iter_cg = model_kwargs['limit_iter_cg']
+    tolerance = model_kwargs['tolerance']
+    try :
+        with_prints = model_kwargs['with_prints']
+    except :
+        with_prints =False
+    try :
+        regularization_constant = model_kwargs['regularization_constant']
+        regularization_factor = model_kwargs['regularization_factor']
+    except:
+        regularization_constant = -1
+        regularization_factor = 10**10
+        
+
+    # print("Test params :", params_mixing_matrix.reshape((param_dict['number_frequencies']-2,param_dict['number_components']-1)))
+    mixingmatrix_object.update_params(params_mixing_matrix.reshape((param_dict['number_frequencies']-2,param_dict['number_components']-1)))
+
+    # Building the first term : - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
+    complete_mixing_matrix_fg = mixingmatrix_object.get_B_fgs()
+
+    cp_cp_noise_fg = get_inv_BtinvNB(freq_inverse_noise, complete_mixing_matrix_fg)
+    cp_freq_inv_noise_fg = get_BtinvN(freq_inverse_noise, complete_mixing_matrix_fg)
+
+    full_data_without_CMB_with_noise = np.einsum('cf,fsp->csp', cp_freq_inv_noise_fg, full_data_without_CMB)
+    # print("Test 1 :", np.mean(full_data_without_CMB_with_noise), np.max(full_data_without_CMB_with_noise), np.min(full_data_without_CMB_with_noise), full_data_without_CMB_with_noise)
+    first_term_complete = np.einsum('psc,cm,msp', full_data_without_CMB_with_noise.T, cp_cp_noise_fg, full_data_without_CMB_with_noise)
+    # print("Test 2 :", np.mean(cp_cp_noise_fg), np.max(cp_cp_noise_fg), np.min(cp_cp_noise_fg), cp_cp_noise_fg)
+
+    # Building the second term term \eta^t N_c^{1/2] (C_approx + E^t (B^t N^{-1} B)^{-1} E)^{-1} N_c^{1/2] \eta
+    complete_mixing_matrix = mixingmatrix_object.get_B()
+    cp_cp_noise = get_inv_BtinvNB(freq_inverse_noise, complete_mixing_matrix)
+    cp_freq_inv_noise_sqrt = get_BtinvN(scipy.linalg.sqrtm(freq_inverse_noise), complete_mixing_matrix)
+
+    ## Left hand side term : N_c^{1/2] \eta = (E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2} \eta
+    # noise_weighted_eta = np.einsum('kc,cf,fsp->ksp', cp_cp_noise, cp_freq_inv_noise_sqrt, eta_maps)[0] # Selecting CMB component
+    eta_prime_maps_extended = np.zeros((param_dict['number_components'],param_dict['nstokes'],12*param_dict['nside']**2))
+    eta_prime_maps_extended[0] = eta_prime_maps
+    noise_weighted_eta = np.einsum('kc,csp->ksp', cp_cp_noise, eta_prime_maps_extended)[0] # Selecting CMB component
+
+    # Then getting (C_approx + E^t (B^t N^{-1} B)^{-1} E)^{-1} N_c^{1/2] \eta
+    operator_harmonic = red_cov_approx_matrix
+    operator_pixel = cp_cp_noise
+    inverse_term = get_inverse_operators_harm_pixel(param_dict, noise_weighted_eta, operator_harmonic, operator_pixel, initial_guess=[], lmin=lmin, n_iter=n_iter, limit_iter_cg=limit_iter_cg, tolerance=tolerance, with_prints=with_prints)
+
+    # And finally \eta^t N_c^{1/2] (C_approx + E^t (B^t N^{-1} B)^{-1} E)^{-1} N_c^{1/2] \eta
+    # second_term_complete = np.einsum('fsk,fsk', noise_weighted_eta, inverse_term)
+    second_term_complete = np.einsum('sk,sk', noise_weighted_eta, inverse_term)
+    # print("Test", first_term_complete, second_term_complete)
+    return -(-first_term_complete + second_term_complete)/2./regularization_factor + regularization_constant
+
+

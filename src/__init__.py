@@ -6,3 +6,6 @@ from non_parametric_ML_compsep.tools import * #get_reduced_matrix_from_c_ell, ge
 from non_parametric_ML_compsep.mixingmatrix import *
 from non_parametric_ML_compsep.noisecovar import *
 from non_parametric_ML_compsep.init_mixingmatrix import *
+
+from non_parametric_ML_compsep.jax_tools import *
+from non_parametric_ML_compsep.jax_Sampling_toolbox import *
