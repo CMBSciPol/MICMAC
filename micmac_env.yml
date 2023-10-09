@@ -184,9 +184,7 @@ dependencies:
   - zlib=1.2.13=h8a1eda9_5
   - zstd=1.5.2=hbc0c0cd_6
   - pip:
-      - cmbdb==0.0.0
       - corner==2.2.2
-      - inference-ps==1.0
       - jax-healpy==0.1
       - jaxtyping==0.2.22
       - llvmlite==0.40.1
