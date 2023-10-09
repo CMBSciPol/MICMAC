@@ -1,6 +1,6 @@
 import numpy as np
 from fgbuster.observation_helpers import *
-from non_parametric_ML_compsep import *
+from micmac import *
 
 
 # General parameters

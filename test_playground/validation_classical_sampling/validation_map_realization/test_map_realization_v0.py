@@ -8,7 +8,7 @@ from func_tools_for_tests import *
 
 from mpi4py import MPI
 
-import non_parametric_ML_compsep as blindcp
+import micmac as blindcp
 
 rank = MPI.COMM_WORLD.rank
 size = MPI.COMM_WORLD.size

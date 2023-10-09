@@ -1,6 +1,6 @@
 import numpy as np
 from fgbuster.observation_helpers import *
-from non_parametric_ML_compsep import *
+from micmac import *
 
 
 # General parameters
@@ -9,6 +9,7 @@ cmb_model = 'c1'
 fgs_model = 'd0s0'
 model = cmb_model+fgs_model
 noise = True
+noise = False
 noise_seed = 42
 instr_name = 'SO_SAT'
 

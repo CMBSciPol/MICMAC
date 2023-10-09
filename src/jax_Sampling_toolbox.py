@@ -38,7 +38,7 @@ class MetropolisHastings(numpyro.infer.mcmc.MCMCKernel):
 
 
 
-def get_sampling_eta_prime_JAX(param_dict, red_cov_approx_matrix, cp_cp_noise, cp_freq_inv_noise_sqrt, map_random_x=jnp.empty(0), map_random_y=jnp.empty(0), jax_key_PNRG=jax.random.PRNGKey(1), lmin=0, n_iter=8):
+def get_sampling_eta_prime_JAX(number_frequencies, nstokes, nside, red_cov_approx_matrix, cp_cp_noise, cp_freq_inv_noise_sqrt, map_random_x=jnp.empty(0), map_random_y=jnp.empty(0), jax_key_PNRG=jax.random.PRNGKey(1), lmin=0, n_iter=8):
     """ Solve sampling step 1 : sampling eta'
         Solve CG for eta term with formulation : eta' = C_approx^(1/2) x + (B^t N^{-1} B)^{-1} B^T N^{-1/2} y
 
@@ -73,18 +73,18 @@ def get_sampling_eta_prime_JAX(param_dict, red_cov_approx_matrix, cp_cp_noise, c
     # Creation of the random maps if they are not given
     if jnp.size(map_random_x) == 0:
         print("Recalculating x !")
-        # map_random_x = np.random.normal(loc=0, scale=1/jhp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
-        map_random_x = jax.random.normal(jax_key_PNRG, shape=(param_dict["nstokes"],12*param_dict["nside"]**2))/jhp.nside2resol(param_dict["nside"])
+        # map_random_x = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
+        map_random_x = jax.random.normal(jax_key_PNRG, shape=(nstokes,12*nside**2))/jhp.nside2resol(nside)
     if jnp.size(map_random_y) == 0:
         print("Recalculating y !")
         # map_random_y = np.random.normal(loc=0, scale=1/jhp.nside2resol(param_dict["nside"]), size=(param_dict["number_frequencies"],param_dict["nstokes"],12*param_dict["nside"]**2))
-        map_random_y = jax.random.normal(jax_key_PNRG+1, shape=(param_dict["number_frequencies"],param_dict["nstokes"],12*param_dict["nside"]**2))/jhp.nside2resol(param_dict["nside"])
+        map_random_y = jax.random.normal(jax_key_PNRG+1, shape=(number_frequencies,nstokes,12*nside**2))/jhp.nside2resol(nside)
     # Computation of the right hand side member of the CG
     red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix)
 
     # First right member : C_approx^{-1/2} x
     # first_member = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_random_x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_cov_approx_matrix_sqrt, lmin=lmin, n_iter=n_iter)
-    first_member = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(map_random_x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_cov_approx_matrix_sqrt, nside=param_dict["nside"], lmin=lmin, n_iter=n_iter)
+    first_member = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(map_random_x.reshape((nstokes,12*nside**2)), red_cov_approx_matrix_sqrt, nside=nside, lmin=lmin, n_iter=n_iter)
     # # Second right member : E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2}
     second_member = jnp.einsum('kc,cf,fsp->ksp', cp_cp_noise, cp_freq_inv_noise_sqrt, map_random_y)[0] # Selecting CMB component of the random variable
 
@@ -121,7 +121,6 @@ def get_fluctuating_term_maps_JAX(param_dict, red_cov_matrix, cp_cp_noise, cp_fr
     # assert red_cov_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
 
     red_inverse_cov_matrix = jnp.linalg.pinv(red_cov_matrix)
-    
 
     # Creation of the random maps
     if jnp.size(map_random_realization_xi) == 0:
@@ -153,7 +152,8 @@ def get_fluctuating_term_maps_JAX(param_dict, red_cov_matrix, cp_cp_noise, cp_fr
     def second_term_left(x, number_component=param_dict['number_components']):
         cg_variable = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
         x_all_components = jnp.zeros((number_component, cg_variable.shape[0], cg_variable.shape[1]))
-        x_all_components[0,...] = cg_variable
+        # x_all_components[0,...] = cg_variable
+        x_all_components = x_all_components.at[0,...].set(cg_variable)
         return jnp.einsum('kc,csp->ksp', jnp.linalg.pinv(cp_cp_noise), x_all_components)[0]
 
     func_left_term = lambda x : (first_term_left(x) + second_term_left(x)).ravel()
@@ -217,7 +217,8 @@ def solve_generalized_wiener_filter_term_JAX(param_dict, s_cML, red_cov_matrix, 
     def second_term_left(x, number_component=param_dict['number_components']):
         cg_variable = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
         x_all_components = jnp.zeros((number_component, cg_variable.shape[0], cg_variable.shape[1]))
-        x_all_components[0,...] = cg_variable
+        # x_all_components[0,...] = cg_variable
+        x_all_components = x_all_components.at[0,...].set(cg_variable)
         return jnp.einsum('kc,csp->ksp', jnp.linalg.pinv(cp_cp_noise), x_all_components)[0]
 
     func_left_term = lambda x : (first_term_left(x) + second_term_left(x)).ravel()
@@ -362,8 +363,8 @@ def get_inverse_operators_harm_pixel_JAX(number_components, nstokes, nside, righ
     return inverse_term.reshape((nstokes, 12*nside**2))
 
 
-@partial(jax.jit, static_argnames=['number_components', 'nstokes', 'nside', 'lmin', 'n_iter', 'limit_iter_cg', 'tolerance', 'with_prints', 'regularization_constant', 'regularization_factor'])
-def get_conditional_proba_mixing_matrix_foregrounds_alternative_JAX(complete_mixing_matrix, full_data_without_CMB, eta_prime_maps, freq_inverse_noise, red_cov_approx_matrix, number_components, nstokes, nside, lmin, n_iter, limit_iter_cg, tolerance, with_prints=False, regularization_constant=-1, regularization_factor=10**10):
+@partial(jax.jit, static_argnames=['number_components', 'nstokes', 'nside', 'lmin', 'n_iter', 'limit_iter_cg', 'tolerance', 'with_prints', 'regularization_constant'])
+def get_conditional_proba_mixing_matrix_foregrounds_alternative_JAX(complete_mixing_matrix, full_data_without_CMB, eta_prime_maps, freq_inverse_noise, red_cov_approx_matrix, number_components, nstokes, nside, lmin, n_iter, limit_iter_cg, tolerance, with_prints=False, regularization_constant=-10**10):
     """ Get conditional probability of mixing matrix by sampling it using emcee
 
         The associated conditional probability is given by : 
@@ -374,7 +375,7 @@ def get_conditional_proba_mixing_matrix_foregrounds_alternative_JAX(complete_mix
     # print("Test params :", params_mixing_matrix.reshape((param_dict['number_frequencies']-2,param_dict['number_components']-1)))
     # mixingmatrix_object = mixing_matrix_obj
     # mixingmatrix_object.update_params(params_mixing_matrix.reshape((param_dict['number_frequencies']-2,param_dict['number_components']-1)))
-    # mixingmatrix_object = katame.MixingMatrix(frequency_list, param_dict['number_components'], params_mixing_matrix, pos_special_freqs=pos_special_freqs)
+    # mixingmatrix_object = micmac.MixingMatrix(frequency_list, param_dict['number_components'], params_mixing_matrix, pos_special_freqs=pos_special_freqs)
 
     # Building the first term : - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
     # complete_mixing_matrix_fg = mixingmatrix_object.get_B_fgs()
@@ -410,4 +411,4 @@ def get_conditional_proba_mixing_matrix_foregrounds_alternative_JAX(complete_mix
     # second_term_complete = np.einsum('fsk,fsk', noise_weighted_eta, inverse_term)
     second_term_complete = jnp.einsum('sk,sk', noise_weighted_eta, inverse_term)
     # print("Test", first_term_complete, second_term_complete)
-    return -(-first_term_complete + second_term_complete)/2./regularization_factor + regularization_constant
+    return -(-first_term_complete + second_term_complete)/2. #+ regularization_constant

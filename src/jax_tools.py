@@ -62,7 +62,7 @@ def get_sqrt_reduced_matrix_from_matrix_jax(red_matrix, tolerance=10**(-15)):
     lmax = red_matrix.shape[0]
     nstokes = red_matrix.shape[1]
 
-    reduced_sqrtm = np.zeros_like(red_matrix)
+    reduced_sqrtm = jnp.zeros_like(red_matrix)
 
     for ell in range(red_matrix.shape[0]):
         # if np.any(np.iscomplex(scipy.linalg.sqrtm(red_matrix[ell,:,:]))):
@@ -75,10 +75,14 @@ def get_sqrt_reduced_matrix_from_matrix_jax(red_matrix, tolerance=10**(-15)):
         except:
             raise Exception("Error for ell=",ell, "eigvals", eigvals, "eigvect", eigvect, "red_matrix", red_matrix[ell,:,:])
 
-        if not(jnp.all(eigvals>0)) and (jnp.abs(eigvals[eigvals<0]) > tolerance):
-            raise Exception("Covariance matrix not consistent with a negative eigval for ell=",ell, "eigvals", eigvals, "eigvect", eigvect, "red_matrix", red_matrix[ell,:,:])
+        # boolean_test = jnp.logical_not(jnp.logical_and(jnp.all(eigvals>0),jnp.all(jnp.abs(eigvals[eigvals<0] > tolerance))))
+        # boolean_test = not(jnp.all(eigvals>0) and jnp.all(jnp.abs(eigvals[eigvals<0] > tolerance)))
+        # print("Test bool:", boolean_test, flush=True)
+        # if boolean_test:
+        #     raise Exception("Covariance matrix not consistent with a negative eigval for ell=",ell, "eigvals", eigvals, "eigvect", eigvect, "red_matrix", red_matrix[ell,:,:])
 
-        reduced_sqrtm[ell] = jnp.einsum('jk,km,m,mn->jn', eigvect, jnp.eye(nstokes), jnp.sqrt(np.abs(eigvals)), inv_eigvect)
+        # reduced_sqrtm[ell] = jnp.einsum('jk,km,m,mn->jn', eigvect, jnp.eye(nstokes), jnp.sqrt(np.abs(eigvals)), inv_eigvect)
+        reduced_sqrtm = reduced_sqrtm.at[ell].set(jnp.einsum('jk,km,m,mn->jn', eigvect, jnp.eye(nstokes), jnp.sqrt(jnp.abs(eigvals)), inv_eigvect))
     return reduced_sqrtm
 
 # @partial(jax.jit, static_argnums=(1,2,3,4))

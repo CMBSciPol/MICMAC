@@ -6,7 +6,7 @@ import astropy.io.fits as fits
 import camb
 # from matplotlib.colors import LogNorm, SymLogNorm
 
-import non_parametric_ML_compsep as blindcp
+import micmac as blindcp
 
 
 def generate_power_spectra_CAMB(Nside,  r=10**(-2), Alens=1, H0=67.5, ombh2=0.022, omch2=0.122, mnu=0.06, omk=0, tau=0.06, ns=0.965, lens_potential_accuracy=1, nt=0, ntrun=0, type_power='total', typeless_bool=False):
