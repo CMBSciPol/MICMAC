@@ -57,7 +57,7 @@ class InitMixingMatrix():
         """
         in K_CMB
         """
-        beta_pl = 3.
+        beta_pl = -3.
 
         analytic_expr = (nu / nu0)**(beta_pl)
         # conversion to K_CMB units
