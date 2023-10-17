@@ -85,6 +85,17 @@ def get_sqrt_reduced_matrix_from_matrix_jax(red_matrix, tolerance=10**(-15)):
         reduced_sqrtm = reduced_sqrtm.at[ell].set(jnp.einsum('jk,km,m,mn->jn', eigvect, jnp.eye(nstokes), jnp.sqrt(jnp.abs(eigvals)), inv_eigvect))
     return reduced_sqrtm
 
+
+def get_MCMC_batch_error(sample_single_chain, batch_size):
+    # number_iterations = np.size(sample_single_chain, axis=0)
+    number_iterations = sample_single_chain.shape[0]
+    assert number_iterations%batch_size == 0
+
+    overall_mean = np.average(sample_single_chain, axis=0)
+    standard_error = np.sqrt((batch_size/number_iterations)*((sample_single_chain-overall_mean)**2).sum())
+    return standard_error
+
+
 # @partial(jax.jit, static_argnums=(1,2,3,4))
 def maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(maps_TQU_input, red_matrix_sqrt, nside, lmin=0, n_iter=8):
     lmax = red_matrix_sqrt.shape[0] - 1 + lmin

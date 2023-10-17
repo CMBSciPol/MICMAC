@@ -1,5 +1,7 @@
 import numpy as np
+import jax
 import jax.numpy as jnp
+from functools import partial
 
 # Note: the mixing matrix is supposed to be the same 
 # for Q and U Stokes params and all pixels.
@@ -81,23 +83,28 @@ class MixingMatrix():
         
         return B_mat
 
+# @partial(jax.jit, static_argnames=['number_components', 'number_frequencies'])
 def create_mixing_matrix_jax(params_mixing_matrix, number_components, number_frequencies, pos_special_freqs=[-1,0]):
     # number_frequencies = params_mixing_matrix.shape[0] + 2
     # number_components = params_mixing_matrix.shape[1] + 1
 
-    new_mixing_matrix = jnp.ones((number_frequencies,number_components))
+    new_mixing_matrix = jnp.zeros((number_frequencies,number_components))
+    new_mixing_matrix = new_mixing_matrix.at[:,0].set(1)
     # new_mixing_matrix[0,1] = 0
     # new_mixing_matrix[-1,-1] = 0
     # new_mixing_matrix[1:,1:-1] = jnp.array(params_mixing_matrix.reshape((param_dict['number_frequencies']-2,param_dict['number_components']-1)))
-    for c in range(number_components-1):
-        new_mixing_matrix = new_mixing_matrix.at[pos_special_freqs[c],c].set(1)
+    
+    for c in range(1,number_components):
+        # print("Test :", pos_special_freqs[c-1],c)
+        new_mixing_matrix = new_mixing_matrix.at[pos_special_freqs[c-1],c].set(1)
     # new_mixing_matrix = new_mixing_matrix.at[0,1].set(0)
     # new_mixing_matrix = new_mixing_matrix.at[-1,-1].set(0)
 
     all_indexes_bool = jnp.ones(number_frequencies, dtype=bool)
     # all_indexes_bool[pos_special_freqs] = False
+
     all_indexes_bool = all_indexes_bool.at[jnp.array(pos_special_freqs)].set(False)
     
-    # new_mixing_matrix = new_mixing_matrix.at[1:-1,1:].set(jnp.array(params_mixing_matrix.reshape((number_frequencies-2,number_components-1),order='F')))
-    new_mixing_matrix = new_mixing_matrix.at[all_indexes_bool,1:].set(jnp.array(params_mixing_matrix.reshape((number_frequencies-2,number_components-1),order='F')))
+    new_mixing_matrix = new_mixing_matrix.at[1:-1,1:].set(jnp.array(params_mixing_matrix.reshape((number_frequencies-2,number_components-1),order='F')))
+    # new_mixing_matrix = new_mixing_matrix.at[all_indexes_bool,1:].set(jnp.array(params_mixing_matrix.reshape((number_frequencies-2,number_components-1),order='F')))
     return new_mixing_matrix
