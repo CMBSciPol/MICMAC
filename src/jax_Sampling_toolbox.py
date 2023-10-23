@@ -58,7 +58,7 @@ class MetropolisHastings_log(numpyro.infer.mcmc.MCMCKernel):
 
 
 
-def get_sampling_eta_prime_JAX(number_frequencies, nstokes, nside, red_cov_approx_matrix, cp_cp_noise, cp_freq_inv_noise_sqrt, map_random_x=jnp.empty(0), map_random_y=jnp.empty(0), jax_key_PNRG=jax.random.PRNGKey(1), lmin=0, n_iter=8):
+def get_sampling_eta_prime_JAX(number_frequencies, nstokes, nside, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, map_random_x=jnp.empty(0), map_random_y=jnp.empty(0), jax_key_PNRG=jax.random.PRNGKey(1), lmin=0, n_iter=8):
     """ Solve sampling step 1 : sampling eta'
         Solve CG for eta term with formulation : eta' = C_approx^(1/2) x + (B^t N^{-1} B)^{-1} B^T N^{-1/2} y
 
@@ -67,8 +67,8 @@ def get_sampling_eta_prime_JAX(number_frequencies, nstokes, nside, red_cov_appro
         param_dict : dictionnary containing the following fields : nside, nstokes, lmax, number_frequencies
         
         red_cov_approx_matrix : correction covariance matrice (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        cp_cp_noise : matrices of noise combined with mixing matrices corresponding to (B^t N^{-1} B)^{-1}, dimension [component, component]
-        # cp_freq_inv_noise_sqrt : matrices of noise combined with mixing matrices corresponding to B^T N^{-1/2}, dimension [component, frequencies]
+        BtinvNB : matrices of noise combined with mixing matrices corresponding to (B^t N^{-1} B)^{-1}, dimension [component, component]
+        # BtinvN_sqrt : matrices of noise combined with mixing matrices corresponding to B^T N^{-1/2}, dimension [component, frequencies]
 
         map_random_x : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
         map_random_y : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
@@ -106,12 +106,54 @@ def get_sampling_eta_prime_JAX(number_frequencies, nstokes, nside, red_cov_appro
     # first_member = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_random_x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_cov_approx_matrix_sqrt, lmin=lmin, n_iter=n_iter)
     first_member = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(map_random_x.reshape((nstokes,12*nside**2)), red_cov_approx_matrix_sqrt, nside=nside, lmin=lmin, n_iter=n_iter)
     # # Second right member : E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2}
-    second_member = jnp.einsum('kc,cf,fsp->ksp', cp_cp_noise, cp_freq_inv_noise_sqrt, map_random_y)[0] # Selecting CMB component of the random variable
+    second_member = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_y)[0] # Selecting CMB component of the random variable
 
     return first_member + second_member
 
 
-def get_fluctuating_term_maps_JAX(param_dict, red_cov_matrix, cp_cp_noise, cp_freq_inv_noise_sqrt, map_random_realization_xi=jnp.empty(0), map_random_realization_chi=jnp.empty(0), jax_key_PNRG=jax.random.PRNGKey(10), initial_guess=jnp.empty(0), lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
+def get_sampling_eta_JAX(number_frequencies, nstokes, nside, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, map_random_x=jnp.empty(0), map_random_y=jnp.empty(0), jax_key_PNRG=jax.random.PRNGKey(1), lmin=0, n_iter=8):
+    """ Solve sampling step 1 : sampling eta'
+        Solve CG for eta term with formulation : eta' = C_approx^(1/2) x + (B^t N^{-1} B)^{-1} B^T N^{-1/2} y
+
+        Parameters
+        ----------
+        param_dict : dictionnary containing the following fields : nside, nstokes, lmax, number_frequencies
+        
+        red_cov_approx_matrix : correction covariance matrice (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+        BtinvNB : matrices of noise combined with mixing matrices corresponding to (B^t N^{-1} B)^{-1}, dimension [component, component]
+        # BtinvN_sqrt : matrices of noise combined with mixing matrices corresponding to B^T N^{-1/2}, dimension [component, frequencies]
+
+        map_random_x : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
+        map_random_y : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
+        
+        lmin : minimum multipole to be considered, default 0
+        
+        n_iter : number of iterations for harmonic computations, default 8
+
+        limit_iter_cg : maximum number of iterations for the CG, default 1000
+        tolerance : CG tolerance, default 10**(-12)
+
+        initial_guess : initial guess for the CG, default [] (which is a covnention for its initialization to 0)
+
+        Returns
+        -------
+        eta maps [nstokes, npix]
+    """
+
+    # assert red_cov_approx_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
+    eta_prime_jax = get_sampling_eta_prime_JAX(number_frequencies, nstokes, nside, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, map_random_x=map_random_x, map_random_y=map_random_y, jax_key_PNRG=jax_key_PNRG, lmin=lmin, n_iter=n_iter)
+
+    eta_prime_jax_extended_frequencies = jnp.repeat(eta_prime_jax, number_frequencies).reshape((number_frequencies,nstokes,12*nside**2),order='F')
+
+    # Transform into eta maps by applying N_c^{-1/2} = N_c^{-1} N_c^{1/2} = (E^t (B^t N^{-1} B)^{-1} E)^{-1} E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2}
+    # First applying N_c^{1/2}
+    first_part = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, eta_prime_jax_extended_frequencies) 
+    
+    # Then applying N_c^{-1}
+    return jnp.einsum('kc,csp', jnp.linalg.pinv(BtinvNB), first_part)[0]
+
+
+def get_fluctuating_term_maps_JAX(param_dict, red_cov_matrix, BtinvNB, BtinvN_sqrt, map_random_realization_xi=jnp.empty(0), map_random_realization_chi=jnp.empty(0), jax_key_PNRG=jax.random.PRNGKey(10), initial_guess=jnp.empty(0), lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
     """ 
         Solve fluctuation term with formulation (C^-1 + N^-1) for the left member :
         (C^{-1} + E^t (B^t N^{-1} B)^{-1} E) \zeta = C^{-1/2} xi + (E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2} chi
@@ -159,7 +201,7 @@ def get_fluctuating_term_maps_JAX(param_dict, red_cov_matrix, cp_cp_noise, cp_fr
     right_member_1 = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(map_random_realization_xi, red_inv_cov_sqrt, nside=param_dict["nside"], lmin=lmin, n_iter=n_iter)
 
     ## Left hand side term : (E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2} \chi
-    right_member_2 = jnp.einsum('kc,cf,fsp->ksp', cp_cp_noise, cp_freq_inv_noise_sqrt, map_random_realization_chi)[0] # Selecting CMB component of the random variable
+    right_member_2 = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_realization_chi)[0] # Selecting CMB component of the random variable
 
     right_member = (right_member_1 + right_member_2).ravel()
 
@@ -174,7 +216,7 @@ def get_fluctuating_term_maps_JAX(param_dict, red_cov_matrix, cp_cp_noise, cp_fr
         x_all_components = jnp.zeros((number_component, cg_variable.shape[0], cg_variable.shape[1]))
         # x_all_components[0,...] = cg_variable
         x_all_components = x_all_components.at[0,...].set(cg_variable)
-        return jnp.einsum('kc,csp->ksp', jnp.linalg.pinv(cp_cp_noise), x_all_components)[0]
+        return jnp.einsum('kc,csp->ksp', jnp.linalg.pinv(BtinvNB), x_all_components)[0]
 
     func_left_term = lambda x : (first_term_left(x) + second_term_left(x)).ravel()
     # Initial guess for the CG
@@ -191,7 +233,7 @@ def get_fluctuating_term_maps_JAX(param_dict, red_cov_matrix, cp_cp_noise, cp_fr
     return fluctuating_map.reshape((param_dict["nstokes"], 12*param_dict["nside"]**2))
 
 
-def solve_generalized_wiener_filter_term_JAX(param_dict, s_cML, red_cov_matrix, cp_cp_noise, initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
+def solve_generalized_wiener_filter_term_JAX(param_dict, s_cML, red_cov_matrix, BtinvNB, initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
     """ 
         Solve Wiener filter term with formulation (1 + C^1/2 N^-1 C^1/2) for the left member
 
@@ -228,7 +270,7 @@ def solve_generalized_wiener_filter_term_JAX(param_dict, s_cML, red_cov_matrix, 
     # Computation of the right side member of the CG
     s_cML_extended = jnp.zeros((param_dict['number_components'], s_cML.shape[0], s_cML.shape[1]))
     s_cML_extended[0,...] = s_cML
-    right_member = jnp.einsum('kc,csp->ksp', jnp.linalg.pinv(cp_cp_noise), s_cML_extended)[0].ravel() # Selecting CMB component of the
+    right_member = jnp.einsum('kc,csp->ksp', jnp.linalg.pinv(BtinvNB), s_cML_extended)[0].ravel() # Selecting CMB component of the
 
     # Computation of the left side member of the CG
     first_term_left = lambda x : maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), jnp.linalg.pinv(red_cov_matrix), lmin=lmin, n_iter=n_iter)
@@ -239,7 +281,7 @@ def solve_generalized_wiener_filter_term_JAX(param_dict, s_cML, red_cov_matrix, 
         x_all_components = jnp.zeros((number_component, cg_variable.shape[0], cg_variable.shape[1]))
         # x_all_components[0,...] = cg_variable
         x_all_components = x_all_components.at[0,...].set(cg_variable)
-        return jnp.einsum('kc,csp->ksp', jnp.linalg.pinv(cp_cp_noise), x_all_components)[0]
+        return jnp.einsum('kc,csp->ksp', jnp.linalg.pinv(BtinvNB), x_all_components)[0]
 
     func_left_term = lambda x : (first_term_left(x) + second_term_left(x)).ravel()
 
@@ -401,29 +443,29 @@ def get_conditional_proba_mixing_matrix_foregrounds_alternative_JAX(complete_mix
     # complete_mixing_matrix_fg = mixingmatrix_object.get_B_fgs()
     complete_mixing_matrix_fg = complete_mixing_matrix[:,1:]
 
-    cp_cp_noise_fg = get_inv_BtinvNB(freq_inverse_noise, complete_mixing_matrix_fg, jax_use=True)
-    cp_freq_inv_noise_fg = get_BtinvN(freq_inverse_noise, complete_mixing_matrix_fg, jax_use=True)
+    BtinvNB_fg = get_inv_BtinvNB(freq_inverse_noise, complete_mixing_matrix_fg, jax_use=True)
+    BtinvN_fg = get_BtinvN(freq_inverse_noise, complete_mixing_matrix_fg, jax_use=True)
 
-    full_data_without_CMB_with_noise = jnp.einsum('cf,fsp->csp', cp_freq_inv_noise_fg, full_data_without_CMB)
+    full_data_without_CMB_with_noise = jnp.einsum('cf,fsp->csp', BtinvN_fg, full_data_without_CMB)
     # print("Test 1 :", np.mean(full_data_without_CMB_with_noise), np.max(full_data_without_CMB_with_noise), np.min(full_data_without_CMB_with_noise), full_data_without_CMB_with_noise)
-    first_term_complete = jnp.einsum('psc,cm,msp', full_data_without_CMB_with_noise.T, cp_cp_noise_fg, full_data_without_CMB_with_noise)
-    # print("Test 2 :", np.mean(cp_cp_noise_fg), np.max(cp_cp_noise_fg), np.min(cp_cp_noise_fg), cp_cp_noise_fg)
+    first_term_complete = jnp.einsum('psc,cm,msp', full_data_without_CMB_with_noise.T, BtinvNB_fg, full_data_without_CMB_with_noise)
+    # print("Test 2 :", np.mean(BtinvNB_fg), np.max(BtinvNB_fg), np.min(BtinvNB_fg), BtinvNB_fg)
 
     # Building the second term term \eta^t N_c^{1/2] (C_approx + E^t (B^t N^{-1} B)^{-1} E)^{-1} N_c^{1/2] \eta
     # complete_mixing_matrix = mixingmatrix_object.get_B()
-    cp_cp_noise = get_inv_BtinvNB(freq_inverse_noise, complete_mixing_matrix, jax_use=True)
+    BtinvNB = get_inv_BtinvNB(freq_inverse_noise, complete_mixing_matrix, jax_use=True)
 
     ## Left hand side term : N_c^{1/2] \eta = (E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2} \eta
-    # noise_weighted_eta = np.einsum('kc,cf,fsp->ksp', cp_cp_noise, cp_freq_inv_noise_sqrt, eta_maps)[0] # Selecting CMB component
+    # noise_weighted_eta = np.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, eta_maps)[0] # Selecting CMB component
     # eta_prime_maps_extended = jnp.array(np.zeros((param_dict['number_components'],param_dict['nstokes'],12*param_dict['nside']**2)))
     eta_prime_maps_extended = jnp.zeros((number_components,nstokes,12*nside**2))
     # eta_prime_maps_extended[0] = eta_prime_maps
     eta_prime_maps_extended = eta_prime_maps_extended.at[0].set(eta_prime_maps)
-    noise_weighted_eta = jnp.einsum('kc,csp->ksp', cp_cp_noise, eta_prime_maps_extended)[0] # Selecting CMB component
+    noise_weighted_eta = jnp.einsum('kc,csp->ksp', BtinvNB, eta_prime_maps_extended)[0] # Selecting CMB component
 
     # Then getting (C_approx + E^t (B^t N^{-1} B)^{-1} E)^{-1} N_c^{1/2] \eta
     operator_harmonic = red_cov_approx_matrix
-    operator_pixel = cp_cp_noise
+    operator_pixel = BtinvNB
     # print("Test 3 :", lmin, flush=True)
     inverse_term = get_inverse_operators_harm_pixel_JAX(number_components, nstokes, nside, noise_weighted_eta, operator_harmonic, operator_pixel, initial_guess=[], lmin=lmin, n_iter=n_iter, limit_iter_cg=limit_iter_cg, tolerance=tolerance, with_prints=with_prints)
 
