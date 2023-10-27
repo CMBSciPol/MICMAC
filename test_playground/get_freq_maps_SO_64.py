@@ -8,7 +8,7 @@ NSIDE = 64
 cmb_model = 'c1'
 fgs_model = 'd0s0'
 model = cmb_model+fgs_model
-noise = True
+noise = False
 noise_seed = 42
 instr_name = 'SO_SAT'
 

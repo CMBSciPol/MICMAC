@@ -102,7 +102,7 @@ def get_sampling_eta_prime_JAX(number_frequencies, nstokes, nside, red_cov_appro
     # Computation of the right hand side member of the CG
     red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix)
 
-    # First right member : C_approx^{-1/2} x
+    # First right member : C_approx^{1/2} x
     # first_member = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_random_x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_cov_approx_matrix_sqrt, lmin=lmin, n_iter=n_iter)
     first_member = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(map_random_x.reshape((nstokes,12*nside**2)), red_cov_approx_matrix_sqrt, nside=nside, lmin=lmin, n_iter=n_iter)
     # # Second right member : E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2}
@@ -143,14 +143,18 @@ def get_sampling_eta_JAX(number_frequencies, nstokes, nside, red_cov_approx_matr
     # assert red_cov_approx_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
     eta_prime_jax = get_sampling_eta_prime_JAX(number_frequencies, nstokes, nside, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, map_random_x=map_random_x, map_random_y=map_random_y, jax_key_PNRG=jax_key_PNRG, lmin=lmin, n_iter=n_iter)
 
-    eta_prime_jax_extended_frequencies = jnp.repeat(eta_prime_jax, number_frequencies).reshape((number_frequencies,nstokes,12*nside**2),order='F')
+    # eta_prime_jax_extended_frequencies = jnp.repeat(eta_prime_jax, number_frequencies).reshape((number_frequencies,nstokes,12*nside**2),order='F')
 
     # Transform into eta maps by applying N_c^{-1/2} = N_c^{-1} N_c^{1/2} = (E^t (B^t N^{-1} B)^{-1} E)^{-1} E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2}
     # First applying N_c^{1/2}
-    first_part = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, eta_prime_jax_extended_frequencies) 
-    
+    # first_part = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, eta_prime_jax_extended_frequencies)
+    # first_part = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, eta_prime_jax_extended_frequencies)[0]
+    first_part = jnp.einsum('fc,c,sp->fsp', BtinvN_sqrt.T, BtinvNB.T[0,:], eta_prime_jax/(BtinvNB[0,0]))
+
     # Then applying N_c^{-1}
-    return jnp.einsum('kc,csp', jnp.linalg.pinv(BtinvNB), first_part)[0]
+    # return 1/(BtinvNB[0,0])*first_part
+    return first_part
+    # return jnp.einsum('kc,csp', jnp.linalg.pinv(BtinvNB), first_part)[0]
 
 
 def get_fluctuating_term_maps_JAX(param_dict, red_cov_matrix, BtinvNB, BtinvN_sqrt, map_random_realization_xi=jnp.empty(0), map_random_realization_chi=jnp.empty(0), jax_key_PNRG=jax.random.PRNGKey(10), initial_guess=jnp.empty(0), lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):

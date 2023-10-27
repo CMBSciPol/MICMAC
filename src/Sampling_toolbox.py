@@ -126,7 +126,7 @@ def get_sampling_eta_prime(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sq
     # Computation of the right hand side member of the CG
     red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix(red_cov_approx_matrix)
 
-    # First right member : C_approx^{-1/2} x
+    # First right member : C_approx^{1/2} x
     first_member = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_random_x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_cov_approx_matrix_sqrt, lmin=lmin, n_iter=n_iter)
 
     # # Second right member : E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2}
@@ -166,16 +166,67 @@ def get_sampling_eta(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, ma
     # assert red_cov_approx_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
     eta_prime = get_sampling_eta_prime(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, map_random_x=map_random_x, map_random_y=map_random_y, initial_guess=np.copy(initial_guess), lmin=lmin, n_iter=n_iter)
     
-    eta_prime_extended_frequencies = np.repeat(eta_prime, param_dict['number_frequencies']).reshape((param_dict['number_frequencies'],param_dict['nstokes'],12*param_dict['nside']**2),order='F')
+    # eta_prime_extended_frequencies = np.repeat(eta_prime, param_dict['number_frequencies']).reshape((param_dict['number_frequencies'],param_dict['nstokes'],12*param_dict['nside']**2),order='F')
 
     # Transform into eta maps by applying N_c^{-1/2} = N_c^{-1} N_c^{1/2} = (E^t (B^t N^{-1} B)^{-1} E)^{-1} E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2}
     # First applying N_c^{1/2}
     # first_part = np.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, eta_prime_extended_frequencies)
-    first_part = np.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, eta_prime_extended_frequencies)[0]
-    
+    # first_part = np.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, eta_prime_extended_frequencies)[0]
+    first_part = np.einsum('fc,c,sp->fsp', BtinvN_sqrt.T, BtinvNB.T[0,:], eta_prime/(BtinvNB[0,0]))
     # Then applying N_c^{-1}
     # return np.einsum('kc,csp->ksp', np.linalg.pinv(BtinvNB), first_part)[0]
-    return 1/(BtinvNB[0,0])*first_part
+    # return 1/(BtinvNB[0,0])*first_part
+    return first_part
+
+def get_sampling_eta_v2(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, map_random_x=[], map_random_y=[], initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
+    """ Solve sampling step 1 : sampling eta
+        Solve CG for eta term with formulation : eta = C_approx^(1/2) (E (B^t N^{-1} B)^{-1} E^t)^{-1} C_approx^(1/2) x + y
+
+        Parameters
+        ----------
+        param_dict : dictionnary containing the following fields : nside, nstokes, lmax, number_frequencies
+        
+        red_cov_approx_matrix : correction covariance matrice (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+        BtinvNB : matrices of noise combined with mixing matrices corresponding to (B^t N^{-1} B)^{-1}, dimension [component, component]
+        # BtinvN_sqrt : matrices of noise combined with mixing matrices corresponding to B^T N^{-1/2}, dimension [component, frequencies]
+
+        map_random_x : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
+        map_random_y : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
+        
+        lmin : minimum multipole to be considered, default 0
+        
+        n_iter : number of iterations for harmonic computations, default 8
+
+        limit_iter_cg : maximum number of iterations for the CG, default 1000
+        tolerance : CG tolerance, default 10**(-12)
+
+        initial_guess : initial guess for the CG, default [] (which is a covnention for its initialization to 0)
+
+        Returns
+        -------
+        eta maps [nstokes, npix]
+    """
+
+    assert red_cov_approx_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
+
+
+    # Creation of the random maps if they are not given
+    if len(map_random_x) == 0:
+        print("Recalculating x !")
+        map_random_x = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
+    if len(map_random_y) == 0:
+        print("Recalculating y !")
+        map_random_y = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
+
+    # Computation of the right hand side member of the CG
+    red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix(red_cov_approx_matrix)
+
+    # First right member : C_approx^(1/2) (E (B^t N^{-1} B)^{-1} E^t)^{-1} C_approx^(1/2) x
+    first_member_1 = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_random_x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_cov_approx_matrix_sqrt, lmin=lmin, n_iter=n_iter)
+    first_member_2 = first_member_1/(BtinvNB[0,0])
+    first_member = maps_x_reduced_matrix_generalized_sqrt_sqrt(first_member_2.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_cov_approx_matrix_sqrt, lmin=lmin, n_iter=n_iter)
+
+    return first_member + map_random_x
 
 def get_fluctuating_term_maps(param_dict, red_cov_matrix, BtinvNB, BtinvN_sqrt, map_random_realization_xi=[], map_random_realization_chi=[], initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
     """ 
@@ -224,7 +275,7 @@ def get_fluctuating_term_maps(param_dict, red_cov_matrix, BtinvNB, BtinvN_sqrt, 
     right_member_1 = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_random_realization_xi, red_inv_cov_sqrt, lmin=lmin, n_iter=n_iter)
 
     ## Left hand side term : (E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2} \chi
-    right_member_2 = np.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_realization_chi)[0] # Selecting CMB component of the random variable
+    right_member_2 = np.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_realization_chi)[0]/BtinvNB[0,0] # Selecting CMB component of the random variable
 
     right_member = (right_member_1 + right_member_2).ravel()
     
@@ -235,12 +286,13 @@ def get_fluctuating_term_maps(param_dict, red_cov_matrix, BtinvNB, BtinvN_sqrt, 
     
     ## Second left member : (E^t (B^t N^{-1} B) E)
     def second_term_left(x, number_component=param_dict['number_components']):
-        cg_variable = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
-        x_all_components = np.zeros((number_component, cg_variable.shape[0], cg_variable.shape[1]))
-        x_all_components[0,...] =cg_variable
-        return np.einsum('kc,csp->ksp', np.linalg.pinv(BtinvNB), x_all_components)[0]
+        # cg_variable = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
+        # x_all_components = np.zeros((number_component, cg_variable.shape[0], cg_variable.shape[1]))
+        # x_all_components[0,...] =cg_variable
+        # return np.einsum('kc,csp->ksp', np.linalg.pinv(BtinvNB), x_all_components)[0]
+        return x/BtinvNB[0,0]
 
-    func_left_term = lambda x : (first_term_left(x) + second_term_left(x)).ravel()
+    func_left_term = lambda x : first_term_left(x).ravel() + second_term_left(x).ravel()
     # Initial guess for the CG
     if len(initial_guess) == 0:
         initial_guess = np.zeros_like(map_random_realization_xi)
@@ -291,19 +343,21 @@ def solve_generalized_wiener_filter_term(param_dict, s_cML, red_cov_matrix, Btin
     # Computation of the right side member of the CG
     s_cML_extended = np.zeros((param_dict['number_components'], s_cML.shape[0], s_cML.shape[1]))
     s_cML_extended[0,...] = s_cML
-    right_member = np.einsum('kc,csp->ksp', np.linalg.pinv(BtinvNB), s_cML_extended)[0].ravel() # Selecting CMB component of the
+    # right_member = np.einsum('kc,csp->ksp', np.linalg.pinv(BtinvNB), s_cML_extended)[0].ravel() # Selecting CMB component of the
+    right_member = (s_cML/BtinvNB[0,0]).ravel()
 
     # Computation of the left side member of the CG
     first_term_left = lambda x : maps_x_reduced_matrix_generalized_sqrt_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), np.linalg.pinv(red_cov_matrix), lmin=lmin, n_iter=n_iter)
     
     ## Second left member : (E^t (B^t N^{-1} B)^{-1}
     def second_term_left(x, number_component=param_dict['number_components']):
-        cg_variable = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
-        x_all_components = np.zeros((number_component, cg_variable.shape[0], cg_variable.shape[1]))
-        x_all_components[0,...] = cg_variable
-        return np.einsum('kc,csp->ksp', np.linalg.pinv(BtinvNB), x_all_components)[0]
+        # cg_variable = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
+        # x_all_components = np.zeros((number_component, cg_variable.shape[0], cg_variable.shape[1]))
+        # x_all_components[0,...] = cg_variable
+        # return np.einsum('kc,csp->ksp', np.linalg.pinv(BtinvNB), x_all_components)[0]
+        return x/BtinvNB[0,0]
 
-    func_left_term = lambda x : (first_term_left(x) + second_term_left(x)).ravel()
+    func_left_term = lambda x : first_term_left(x).ravel() + second_term_left(x).ravel()
 
     # Initial guess for the CG
     if len(initial_guess) == 0:
