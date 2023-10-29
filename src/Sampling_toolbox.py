@@ -172,7 +172,12 @@ def get_sampling_eta(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, ma
     # First applying N_c^{1/2}
     # first_part = np.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, eta_prime_extended_frequencies)
     # first_part = np.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, eta_prime_extended_frequencies)[0]
-    first_part = np.einsum('fc,c,sp->fsp', BtinvN_sqrt.T, BtinvNB.T[0,:], eta_prime/(BtinvNB[0,0]))
+    # first_part = np.einsum('fc,c,sp->fsp', BtinvN_sqrt.T, BtinvNB.T[0,:], eta_prime/(BtinvNB[0,0]))
+
+    N_c_sqrt = np.einsum('ck,kf->cf', BtinvNB, BtinvN_sqrt)[0,:]
+    first_part = np.einsum('f,sp->fsp', N_c_sqrt, eta_prime/(BtinvNB[0,0]))
+
+
     # Then applying N_c^{-1}
     # return np.einsum('kc,csp->ksp', np.linalg.pinv(BtinvNB), first_part)[0]
     # return 1/(BtinvNB[0,0])*first_part
@@ -347,7 +352,7 @@ def solve_generalized_wiener_filter_term(param_dict, s_cML, red_cov_matrix, Btin
     right_member = (s_cML/BtinvNB[0,0]).ravel()
 
     # Computation of the left side member of the CG
-    first_term_left = lambda x : maps_x_reduced_matrix_generalized_sqrt_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), np.linalg.pinv(red_cov_matrix), lmin=lmin, n_iter=n_iter)
+    first_term_left = lambda x : maps_x_reduced_matrix_generalized_sqrt_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), np.linalg.pinv(red_cov_matrix), lmin=lmin, n_iter=n_iter).ravel()
     
     ## Second left member : (E^t (B^t N^{-1} B)^{-1}
     def second_term_left(x, number_component=param_dict['number_components']):
