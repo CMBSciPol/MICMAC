@@ -9,81 +9,7 @@ from .mixingmatrix import *
 from .noisecovar import *
 
 
-def get_sampling_eta(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, map_random_x=[], map_random_y=[], initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
-    """ Solve sampling step 1 : sampling eta
-        Solve CG for eta term with formulation : (B^t N^{-1} B)^{1/2} eta = C_approx^(1/2) x + (B^t N^{-1} B)^{-1} B^T N^{-1/2} y
-
-        Parameters
-        ----------
-        param_dict : dictionnary containing the following fields : nside, nstokes, lmax, number_frequencies
-        
-        red_cov_approx_matrix : correction covariance matrice (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        BtinvNB : matrices of noise combined with mixing matrices corresponding to (B^t N^{-1} B)^{-1}, dimension [component, component]
-        # BtinvN_sqrt : matrices of noise combined with mixing matrices corresponding to B^T N^{-1/2}, dimension [component, frequencies]
-
-        map_random_x : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
-        map_random_y : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
-        
-        lmin : minimum multipole to be considered, default 0
-        
-        n_iter : number of iterations for harmonic computations, default 8
-
-        limit_iter_cg : maximum number of iterations for the CG, default 1000
-        tolerance : CG tolerance, default 10**(-12)
-
-        initial_guess : initial guess for the CG, default [] (which is a covnention for its initialization to 0)
-
-        Returns
-        -------
-        eta maps [nstokes, npix]
-    """
-
-    assert red_cov_approx_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
-
-
-    # Creation of the random maps if they are not given
-    if len(map_random_x) == 0:
-        print("Recalculating x !")
-        map_random_x = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
-    if len(map_random_y) == 0:
-        print("Recalculating y !")
-        map_random_y = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["number_frequencies"],param_dict["nstokes"],12*param_dict["nside"]**2))
-
-    # Computation of the right hand side member of the CG
-    red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix(red_cov_approx_matrix)
-
-    # First right member : C_approx^{-1/2} x
-    right_member_1 = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_random_x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_cov_approx_matrix_sqrt, lmin=lmin, n_iter=n_iter)
-
-    # # Second right member : E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2}
-    right_member_2 = np.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_y)[0] # Selecting CMB component of the random variable
-
-    right_member = (right_member_1 + right_member_2).ravel()
-
-    # ## Left hand side term : (E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2} eta
-    # func_left_term = lambda x : np.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, x.reshape((param_dict["number_frequencies"],param_dict["nstokes"],12*param_dict["nside"]**2)))[0].ravel()
-    ## Left hand side term : (E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2} eta
-    # func_left_term = lambda x : np.einsum('kc,csp->ksp', np.sqrt(BtinvNB), x.reshape((param_dict["number_components"],param_dict["nstokes"],12*param_dict["nside"]**2)))[0].ravel()
-
-    def func_left_term(x, number_component=param_dict['number_components']):
-        cg_variable = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
-        x_all_components = np.zeros((number_component, cg_variable.shape[0], cg_variable.shape[1]))
-        x_all_components[0,...] = cg_variable
-        return np.einsum('kc,csp->ksp', scipy.linalg.sqrtm(BtinvNB), x_all_components)[0].ravel()
-        # return np.einsum('kc,csp->ksp', np.sqrt(BtinvNB), x_all_components)[0].ravel()
-    
-
-
-    eta_maps, number_iterations, exit_code = generalized_cg_from_func(initial_guess.ravel(), func_left_term, right_member, limit_iter_cg=limit_iter_cg, tolerance=tolerance)
-    print("CG-Python eta sampling finished in ", number_iterations, "iterations !!")    
-
-    if exit_code != 0:
-        print("CG didn't converge with generalized_CG for eta sampling ! Exitcode :", exit_code, flush=True)
-
-    return eta_maps.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
-    # return eta_maps.reshape((param_dict["number_frequencies"], param_dict["nstokes"],12*param_dict["nside"]**2))
-
-def get_sampling_eta_prime(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, map_random_x=[], map_random_y=[], initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
+def get_sampling_eta_prime(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, map_random_x=[], map_random_y=[], initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12), suppress_low_modes=True):
     """ Solve sampling step 1 : sampling eta'
         Solve CG for eta term with formulation : eta' = C_approx^(1/2) x + (B^t N^{-1} B)^{-1} B^T N^{-1/2} y
 
@@ -132,9 +58,15 @@ def get_sampling_eta_prime(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sq
     # # Second right member : E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2}
     second_member = np.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_y)[0] # Selecting CMB component of the random variable
 
-    return first_member + second_member
+    map_solution = first_member + second_member
+    if suppress_low_modes:
+        covariance_unity = np.zeros((param_dict['lmax']+1,param_dict["nstokes"],param_dict["nstokes"]))
+        covariance_unity[lmin:,...] = np.eye(param_dict["nstokes"])
+        map_solution = maps_x_reduced_matrix_generalized_sqrt_sqrt(np.copy(map_solution), covariance_unity, lmin=0, n_iter=n_iter)
 
-def get_sampling_eta(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, map_random_x=np.empty(0), map_random_y=np.empty(0), initial_guess=np.empty(0), lmin=0, n_iter=8):
+    return map_solution
+
+def get_sampling_eta(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, map_random_x=np.empty(0), map_random_y=np.empty(0), initial_guess=np.empty(0), lmin=0, n_iter=8, suppress_low_modes=True):
     """ Solve sampling step 1 : sampling eta'
         Solve CG for eta term with formulation : eta' = C_approx^(1/2) x + (B^t N^{-1} B)^{-1} B^T N^{-1/2} y
 
@@ -164,7 +96,7 @@ def get_sampling_eta(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, ma
     """
 
     # assert red_cov_approx_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
-    eta_prime = get_sampling_eta_prime(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, map_random_x=map_random_x, map_random_y=map_random_y, initial_guess=np.copy(initial_guess), lmin=lmin, n_iter=n_iter)
+    eta_prime = get_sampling_eta_prime(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, map_random_x=map_random_x, map_random_y=map_random_y, initial_guess=np.copy(initial_guess), lmin=lmin, n_iter=n_iter, suppress_low_modes=suppress_low_modes)
     
     # eta_prime_extended_frequencies = np.repeat(eta_prime, param_dict['number_frequencies']).reshape((param_dict['number_frequencies'],param_dict['nstokes'],12*param_dict['nside']**2),order='F')
 
@@ -183,7 +115,7 @@ def get_sampling_eta(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, ma
     # return 1/(BtinvNB[0,0])*first_part
     return first_part
 
-def get_sampling_eta_v2(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, map_random_x=[], map_random_y=[], initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
+def get_sampling_eta_v2(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, map_random_x=[], map_random_y=[], initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12), suppress_low_modes=True):
     """ Solve sampling step 1 : sampling eta
         Solve CG for eta term with formulation : eta = C_approx^(1/2) (E (B^t N^{-1} B)^{-1} E^t)^{-1} C_approx^(1/2) x + y
 
@@ -214,7 +146,6 @@ def get_sampling_eta_v2(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt,
 
     assert red_cov_approx_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
 
-
     # Creation of the random maps if they are not given
     if len(map_random_x) == 0:
         print("Recalculating x !")
@@ -231,7 +162,15 @@ def get_sampling_eta_v2(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt,
     first_member_2 = first_member_1/(BtinvNB[0,0])
     first_member = maps_x_reduced_matrix_generalized_sqrt_sqrt(first_member_2.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_cov_approx_matrix_sqrt, lmin=lmin, n_iter=n_iter)
 
-    return first_member + map_random_x
+    map_solution = first_member + map_random_x
+
+    if suppress_low_modes:
+        covariance_unity = np.zeros((param_dict['lmax']+1,param_dict["nstokes"],param_dict["nstokes"]))
+        covariance_unity[lmin:,...] = np.eye(param_dict["nstokes"])
+        map_solution = maps_x_reduced_matrix_generalized_sqrt_sqrt(np.copy(map_solution), covariance_unity, lmin=0, n_iter=n_iter)
+
+    return map_solution
+
 
 def get_fluctuating_term_maps(param_dict, red_cov_matrix, BtinvNB, BtinvN_sqrt, map_random_realization_xi=[], map_random_realization_chi=[], initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
     """ 
