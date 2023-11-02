@@ -115,7 +115,7 @@ def get_sampling_eta(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, ma
     # return 1/(BtinvNB[0,0])*first_part
     return first_part
 
-def get_sampling_eta_v2(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, map_random_x=[], map_random_y=[], initial_guess=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12), suppress_low_modes=True):
+def get_sampling_eta_v2(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, map_random_x=[], map_random_y=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12), suppress_low_modes=True):
     """ Solve sampling step 1 : sampling eta
         Solve CG for eta term with formulation : eta = C_approx^(1/2) (E (B^t N^{-1} B)^{-1} E^t)^{-1} C_approx^(1/2) x + y
 

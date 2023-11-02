@@ -70,7 +70,7 @@ def get_Wd(invN, B, d, jax_use=False):
     invBtinvNB = get_inv_BtinvNB(invN, B, jax_use)
 
     if jax_use:
-        return jnp.einsum("cf,fh,hg,fsp->csp", invBtinvNB, invN, B, d)
+        return jnp.einsum("cg,hg,hf,fsp->csp", invBtinvNB, invN, B, d)
 
     return np.einsum("cg,hg,hf,fsp->csp", invBtinvNB, B, invN, d)
 

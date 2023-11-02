@@ -84,7 +84,7 @@ class MixingMatrix():
         return B_mat
 
 # @partial(jax.jit, static_argnames=['number_components', 'number_frequencies'])
-def create_mixing_matrix_jax(params_mixing_matrix, number_components, number_frequencies, pos_special_freqs=[-1,0]):
+def create_mixing_matrix_jax(params_mixing_matrix, number_components, number_frequencies, pos_special_freqs=[0,-1]):
     # number_frequencies = params_mixing_matrix.shape[0] + 2
     # number_components = params_mixing_matrix.shape[1] + 1
 
