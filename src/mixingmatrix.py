@@ -105,6 +105,7 @@ def create_mixing_matrix_jax(params_mixing_matrix, number_components, number_fre
 
     all_indexes_bool = all_indexes_bool.at[jnp.array(pos_special_freqs)].set(False)
     
-    new_mixing_matrix = new_mixing_matrix.at[1:-1,1:].set(jnp.array(params_mixing_matrix.reshape((number_frequencies-2,number_components-1),order='F')))
+    # TODO: put special frequencies not hardcoded
+    new_mixing_matrix = new_mixing_matrix.at[1:-1,1:].set(jnp.array(params_mixing_matrix.reshape((number_frequencies-number_components+1,number_components-1),order='F')))
     # new_mixing_matrix = new_mixing_matrix.at[all_indexes_bool,1:].set(jnp.array(params_mixing_matrix.reshape((number_frequencies-2,number_components-1),order='F')))
     return new_mixing_matrix
