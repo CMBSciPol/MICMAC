@@ -19,8 +19,8 @@ instrument = get_instrument(instr_name)
 # get input freq maps
 np.random.seed(noise_seed)
 freq_maps = get_observation(instrument, model, nside=NSIDE, noise=noise)[:, 1:, :]   # keep only Q and U
-print(freq_maps.shape)
+print("Shape for input frequency maps :", freq_maps.shape)
 
 # get input cmb
 input_cmb_maps = get_observation(instrument, cmb_model, nside=NSIDE, noise=False)[:, 1:, :]   # keep only Q and U
-print(input_cmb_maps.shape)
+print("Shape for input cmb maps :", input_cmb_maps.shape)

@@ -1,6 +1,7 @@
 import os, sys, time
 import numpy as np
 import healpy as hp
+import scipy.stats
 import emcee
 from .tools import *
 from .algorithm_toolbox import *
@@ -403,6 +404,67 @@ def get_inverse_wishart_sampling_from_c_ells(sigma_ell, q_prior=0, l_min=0, opti
         sampling_Wishart[ell] = np.dot(sample_gaussian.T,sample_gaussian)
     # sampling_Wishart[max(lmin,2):,...] = np.einsum('lkj,lkm->ljm',sample_gaussian,sample_gaussian)
     return np.linalg.pinv(sampling_Wishart)
+
+
+def get_inverse_gamma_sampling_only_BB_from_c_ells(sigma_ell, q_prior=0, l_min=0, option_ell_2=2):
+    """ Solve sampling step 3 : inverse Wishart distribution with S_c
+        Compute a matrix sample following an inverse Wishart distribution. The 3 steps follow Gupta & Nagar (2000) :
+            1. Sample n = 2*ell - p + 2*q_prior independent Gaussian vectors with covariance (sigma_ell)^{-1}
+            2. Compute their outer product to form a matrix of dimension n_stokes*n_stokes ; which gives us a sample following the Wishart distribution
+            3. Invert this matrix to obtain the final result : a matrix sample following an inverse Wishart distribution
+
+        Also assumes the monopole and dipole to be 0
+
+        Parameters
+        ----------
+        sigma_ell : initial power spectrum which will define the parameter matrix of the inverse Wishart distribution ; must be of dimension [number_correlations, lmax+1]
+        
+        q_prior : choice of prior for the distribution : 0 means uniform prior ; 1 means Jeffrey prior
+        
+        lmin : minimum multipole to be considered, default 0
+
+        option_ell_2 : option to choose how to sample ell=2, which is not defined by inverse Wishart distribution if nstokes=3 ; ignored if lmin>2 and/or nstokes<3
+                       case 1 : sample ell=2 with Jeffrey prior (only for ell=2)
+                       case 2 : sample ell=2 by sampling separately the TE and B blocks respectively, assumes TB and EB to be 0
+
+        Returns
+        -------
+        Matrices following an inverse Wishart distribution, of dimensions [lmin:lmax, nstokes, nstokes]
+    """
+
+    if len(sigma_ell.shape) == 1:
+        nstokes == 1
+        lmax = len(sigma_ell) - 1
+    elif sigma_ell.shape[0] == 6:
+        nstokes = 3
+        lmax = sigma_ell.shape[1] - 1
+    elif sigma_ell.shape[0] == 3:
+        nstokes = 2
+        lmax = sigma_ell.shape[1] - 1
+
+    for i in range(nstokes):
+        sigma_ell[i] *= 2*np.arange(lmax+1) + 1
+
+    lmin = l_min
+
+    invert_parameter_Wishart = np.linalg.pinv(get_reduced_matrix_from_c_ell(sigma_ell))
+
+    assert invert_parameter_Wishart.shape[0] == lmax + 1 #- lmin
+    # sampling_Wishart = np.zeros_like(invert_parameter_Wishart)
+    
+
+
+    # for ell in range(max(lmin,2),lmax+1):
+    #     sample_gaussian = np.random.multivariate_normal(np.zeros(nstokes), invert_parameter_Wishart[ell], size=(2*ell - nstokes + 2*q_prior))
+    #     sampling_Wishart[ell] = np.dot(sample_gaussian.T,sample_gaussian)
+    # # sampling_Wishart[max(lmin,2):,...] = np.einsum('lkj,lkm->ljm',sample_gaussian,sample_gaussian)
+    # return np.linalg.pinv(sampling_Wishart)
+    sampling_Gamma = np.zeros_like(invert_parameter_Wishart)
+    all_betas = invert_parameter_Wishart[lmin:,1,1]/2
+    all_alphas = (2*np.arange(lmin,lmax+1) + 1 - 2*nstokes)/2
+    sampling_Gamma[lmin:,1,1] = scipy.stats.invgamma.rvs(all_alphas, size=(lmax+1-lmin))*all_betas
+    return sampling_Gamma
+    
 
 def get_inverse_operators_harm_pixel(param_dict, right_member, operator_harmonic, operator_pixel, initial_guess=[], lmin=2, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12), with_prints=False):
     """ Solve the CG given by :
