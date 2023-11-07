@@ -460,92 +460,101 @@ def solve_generalized_wiener_filter_term_JAX(number_frequencies, number_componen
 
 
 
-def get_inverse_wishart_sampling_from_c_ells_JAX(sigma_ell_argument, jax_key_PNRG=jax.random.PRNGKey(100), q_prior=0, l_min=0, option_ell_2=2):
-    """ Solve sampling step 3 : inverse Wishart distribution with S_c
-        Compute a matrix sample following an inverse Wishart distribution. The 3 steps follow Gupta & Nagar (2000) :
-            1. Sample n = 2*ell - p + 2*q_prior independent Gaussian vectors with covariance (sigma_ell)^{-1}
-            2. Compute their outer product to form a matrix of dimension n_stokes*n_stokes ; which gives us a sample following the Wishart distribution
-            3. Invert this matrix to obtain the final result : a matrix sample following an inverse Wishart distribution
+# def get_inverse_wishart_sampling_from_c_ells_JAX(sigma_ell_argument, jax_key_PNRG=jax.random.PRNGKey(100), q_prior=0, l_min=0, option_ell_2=2):
+#     """ Solve sampling step 3 : inverse Wishart distribution with S_c
+#         Compute a matrix sample following an inverse Wishart distribution. The 3 steps follow Gupta & Nagar (2000) :
+#             1. Sample n = 2*ell - p + 2*q_prior independent Gaussian vectors with covariance (sigma_ell)^{-1}
+#             2. Compute their outer product to form a matrix of dimension n_stokes*n_stokes ; which gives us a sample following the Wishart distribution
+#             3. Invert this matrix to obtain the final result : a matrix sample following an inverse Wishart distribution
 
-        Also assumes the monopole and dipole to be 0
+#         Also assumes the monopole and dipole to be 0
 
-        Parameters
-        ----------
-        sigma_ell : initial power spectrum which will define the parameter matrix of the inverse Wishart distribution ; must be of dimension [number_correlations, lmax+1]
+#         Parameters
+#         ----------
+#         sigma_ell : initial power spectrum which will define the parameter matrix of the inverse Wishart distribution ; must be of dimension [number_correlations, lmax+1]
         
-        q_prior : choice of prior for the distribution : 0 means uniform prior ; 1 means Jeffrey prior
+#         q_prior : choice of prior for the distribution : 0 means uniform prior ; 1 means Jeffrey prior
         
-        lmin : minimum multipole to be considered, default 0
+#         lmin : minimum multipole to be considered, default 0
 
-        option_ell_2 : option to choose how to sample ell=2, which is not defined by inverse Wishart distribution if nstokes=3 ; ignored if lmin>2 and/or nstokes<3
-                       case 1 : sample ell=2 with Jeffrey prior (only for ell=2)
-                       case 2 : sample ell=2 by sampling separately the TE and B blocks respectively, assumes TB and EB to be 0
+#         option_ell_2 : option to choose how to sample ell=2, which is not defined by inverse Wishart distribution if nstokes=3 ; ignored if lmin>2 and/or nstokes<3
+#                        case 1 : sample ell=2 with Jeffrey prior (only for ell=2)
+#                        case 2 : sample ell=2 by sampling separately the TE and B blocks respectively, assumes TB and EB to be 0
 
-        Returns
-        -------
-        Matrices following an inverse Wishart distribution, of dimensions [lmin:lmax, nstokes, nstokes]
-    """
+#         Returns
+#         -------
+#         Matrices following an inverse Wishart distribution, of dimensions [lmin:lmax, nstokes, nstokes]
+#     """
 
-    sigma_ell = jnp.copy(sigma_ell_argument)
+#     sigma_ell = jnp.copy(sigma_ell_argument)
 
-    if len(sigma_ell.shape) == 1:
-        nstokes == 1
-        lmax = len(sigma_ell) - 1
-    elif sigma_ell.shape[0] == 6:
-        nstokes = 3
-        lmax = sigma_ell.shape[1] - 1
-    elif sigma_ell.shape[0] == 3:
-        nstokes = 2
-        lmax = sigma_ell.shape[1] - 1
+#     if len(sigma_ell.shape) == 1:
+#         nstokes == 1
+#         lmax = len(sigma_ell) - 1
+#     elif sigma_ell.shape[0] == 6:
+#         nstokes = 3
+#         lmax = sigma_ell.shape[1] - 1
+#     elif sigma_ell.shape[0] == 3:
+#         nstokes = 2
+#         lmax = sigma_ell.shape[1] - 1
 
-    for i in range(nstokes):
-        sigma_ell[i] *= 2*jnp.arange(lmax+1) + 1
+#     for i in range(nstokes):
+#         sigma_ell[i] *= 2*jnp.arange(lmax+1) + 1
 
-    lmin = l_min
+#     lmin = l_min
 
-    invert_parameter_Wishart = jnp.linalg.pinv(get_reduced_matrix_from_c_ell_jax(sigma_ell))
+#     invert_parameter_Wishart = jnp.linalg.pinv(get_reduced_matrix_from_c_ell_jax(sigma_ell))
 
-    # assert invert_parameter_Wishart.shape[0] == lmax + 1 #- lmin
-    sampling_Wishart = jnp.zeros_like(invert_parameter_Wishart)
+#     # assert invert_parameter_Wishart.shape[0] == lmax + 1 #- lmin
+#     sampling_Wishart = jnp.zeros_like(invert_parameter_Wishart)
 
-    # assert (option_ell_2 == 0) or (option_ell_2 == 1) or (option_ell_2 == 2)
-    # Option sampling without caring about inverse Wishart not defined
-    ell_2 = 2
-    if l_min <= 2 and (2*ell_2 + 1 - 2*nstokes + 2*q_prior <= 0):
-        # 2*ell_2 + 1 - 2*nstokes + 2*q_prior <= 0) correspond to the definition condition of the inverse Wishart distribution
+#     # assert (option_ell_2 == 0) or (option_ell_2 == 1) or (option_ell_2 == 2)
+#     # Option sampling without caring about inverse Wishart not defined
+#     ell_2 = 2
+#     if l_min <= 2 and (2*ell_2 + 1 - 2*nstokes + 2*q_prior <= 0):
+#         # 2*ell_2 + 1 - 2*nstokes + 2*q_prior <= 0) correspond to the definition condition of the inverse Wishart distribution
 
-        # Option sampling with Jeffrey prior
-        if option_ell_2 == 0:
-            Jeffrey_prior = 1
-            print("~~Applying Jeffry prior for ell=2 !", flush=True)
-            mean = jnp.zeros(nstokes)
-            # sample_gaussian = np.random.multivariate_normal(mean, invert_parameter_Wishart[ell_2], size=(2*ell_2 - nstokes + 2*Jeffrey_prior))
-            sample_gaussian = jax.random.multivariate_normal(jax_key_PNRG, mean, invert_parameter_Wishart[ell_2], shape=[2*ell_2 - nstokes + 2*Jeffrey_prior])
-            sampling_Wishart[ell_2] = jnp.einsum('ij,ik->jk', sample_gaussian,sample_gaussian)
+#         # Option sampling with Jeffrey prior
+#         if option_ell_2 == 0:
+#             Jeffrey_prior = 1
+#             print("~~Applying Jeffry prior for ell=2 !", flush=True)
+#             mean = jnp.zeros(nstokes)
+#             # sample_gaussian = np.random.multivariate_normal(mean, invert_parameter_Wishart[ell_2], size=(2*ell_2 - nstokes + 2*Jeffrey_prior))
+#             sample_gaussian = jax.random.multivariate_normal(jax_key_PNRG, mean, invert_parameter_Wishart[ell_2], shape=[2*ell_2 - nstokes + 2*Jeffrey_prior])
+#             sampling_Wishart[ell_2] = jnp.einsum('ij,ik->jk', sample_gaussian,sample_gaussian)
 
-        # Option sampling separately TE and B
-        elif option_ell_2 == 1:
-            print("~~Sampling separately TE and B for ell=2 !", flush=True)
-            invert_parameter_Wishart_2 = jnp.zeros((nstokes,nstokes))
-            reduced_matrix_2 = get_reduced_matrix_from_c_ell_jax(sigma_ell)[ell_2]
-            invert_parameter_Wishart_2[:nstokes-1, :nstokes-1] = jnp.linalg.pinv(reduced_matrix_2[:nstokes-1,:nstokes-1])
-            invert_parameter_Wishart_2[nstokes-1, nstokes-1] = 1/reduced_matrix_2[nstokes-1,nstokes-1]
-            # sample_gaussian_TE = np.random.multivariate_normal(np.zeros(nstokes-1), invert_parameter_Wishart_2[:nstokes-1, :nstokes-1], size=(2*ell_2 - (nstokes-1)))
-            # sample_gaussian_B = np.random.normal(loc=0, scale=invert_parameter_Wishart_2[nstokes-1, nstokes-1], size=(2*ell_2 - 1))
-            sample_gaussian_TE = jax.random.multivariate_normal(jax_key_PNRG+1, jnp.zeros(nstokes-1), invert_parameter_Wishart_2[:nstokes-1, :nstokes-1], shape=[2*ell_2 - (nstokes-1)])
-            sample_gaussian_B = jax.random.normal(jax_key_PNRG+2, shape=(2*ell_2 - 1))*invert_parameter_Wishart_2[nstokes-1, nstokes-1]
-            sampling_Wishart[ell_2][:nstokes-1,:nstokes-1] = jnp.einsum('ij,ik->jk', sample_gaussian_TE,sample_gaussian_TE)
-            sampling_Wishart[ell_2][nstokes-1,nstokes-1] = jnp.einsum('i,i', sample_gaussian_B.T,sample_gaussian_B)
+#         # Option sampling separately TE and B
+#         elif option_ell_2 == 1:
+#             print("~~Sampling separately TE and B for ell=2 !", flush=True)
+#             invert_parameter_Wishart_2 = jnp.zeros((nstokes,nstokes))
+#             reduced_matrix_2 = get_reduced_matrix_from_c_ell_jax(sigma_ell)[ell_2]
+#             invert_parameter_Wishart_2[:nstokes-1, :nstokes-1] = jnp.linalg.pinv(reduced_matrix_2[:nstokes-1,:nstokes-1])
+#             invert_parameter_Wishart_2[nstokes-1, nstokes-1] = 1/reduced_matrix_2[nstokes-1,nstokes-1]
+#             # sample_gaussian_TE = np.random.multivariate_normal(np.zeros(nstokes-1), invert_parameter_Wishart_2[:nstokes-1, :nstokes-1], size=(2*ell_2 - (nstokes-1)))
+#             # sample_gaussian_B = np.random.normal(loc=0, scale=invert_parameter_Wishart_2[nstokes-1, nstokes-1], size=(2*ell_2 - 1))
+#             sample_gaussian_TE = jax.random.multivariate_normal(jax_key_PNRG+1, jnp.zeros(nstokes-1), invert_parameter_Wishart_2[:nstokes-1, :nstokes-1], shape=[2*ell_2 - (nstokes-1)])
+#             sample_gaussian_B = jax.random.normal(jax_key_PNRG+2, shape=(2*ell_2 - 1))*invert_parameter_Wishart_2[nstokes-1, nstokes-1]
+#             sampling_Wishart[ell_2][:nstokes-1,:nstokes-1] = jnp.einsum('ij,ik->jk', sample_gaussian_TE,sample_gaussian_TE)
+#             sampling_Wishart[ell_2][nstokes-1,nstokes-1] = jnp.einsum('i,i', sample_gaussian_B.T,sample_gaussian_B)
 
-        lmin = 3
+#         lmin = 3
 
-    for ell in range(max(lmin,2),lmax+1):
-        # sample_gaussian = np.random.multivariate_normal(jnp.zeros(nstokes), invert_parameter_Wishart[ell], size=(2*ell - nstokes + 2*q_prior))
-        sample_gaussian = jax.random.multivariate_normal(jax_key_PNRG+3+ell, jnp.zeros(nstokes), invert_parameter_Wishart[ell], shape=[2*ell  - nstokes + 2*q_prior])
-        sampling_Wishart[ell] = jnp.einsum('ij,ik->jk', sample_gaussian,sample_gaussian)
-    # sampling_Wishart[max(lmin,2):,...] = np.einsum('lkj,lkm->ljm',sample_gaussian,sample_gaussian)
-    return jnp.linalg.pinv(sampling_Wishart)
+#     for ell in range(max(lmin,2),lmax+1):
+#         # sample_gaussian = np.random.multivariate_normal(jnp.zeros(nstokes), invert_parameter_Wishart[ell], size=(2*ell - nstokes + 2*q_prior))
+#         sample_gaussian = jax.random.multivariate_normal(jax_key_PNRG+3+ell, jnp.zeros(nstokes), invert_parameter_Wishart[ell], shape=[2*ell  - nstokes + 2*q_prior])
+#         sampling_Wishart[ell] = jnp.einsum('ij,ik->jk', sample_gaussian,sample_gaussian)
+#     # sampling_Wishart[max(lmin,2):,...] = np.einsum('lkj,lkm->ljm',sample_gaussian,sample_gaussian)
+#     return jnp.linalg.pinv(sampling_Wishart)
 
+def get_conditional_proba_C_from_r(r_param, **model_kwargs):
+    red_sigma_ell = model_kwargs['red_sigma_ell']
+
+    # red_cov_matrix_sampled = model_kwargs['red_cov_matrix_sampled']
+    red_cov_matrix_sampled = r_param * model_kwargs['theoretical_red_cov_r1_tensor'] + model_kwargs['theoretical_red_cov_r0_total']
+
+    sum_dets = ( (2*jnp.arange(model_kwargs['lmin'], model_kwargs['lmax']+1) +1) * jnp.log(jnp.linalg.det(red_cov_matrix_sampled)) ).sum()
+    
+    return -( jnp.einsum('lij,lji->l', red_sigma_ell, jnp.linalg.pinv(red_cov_matrix_sampled)).sum() + sum_dets)/2
 
 # # @partial(jax.jit, static_argnames=['number_components', 'nstokes', 'nside', 'right_member', 'operator_harmonic', 'operator_pixel', 'lmin', 'n_iter', 'limit_iter_cg', 'tolerance', 'with_prints'])
 # def get_inverse_operators_harm_pixel_JAX(number_components, nstokes, nside, right_member, operator_harmonic, operator_pixel, initial_guess=[], lmin=2, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12), with_prints=False):
@@ -806,11 +815,16 @@ def new_get_conditional_proba_full_likelihood_JAX_from_params(new_params_mixing_
     log_proba_perturbation_likelihood = get_conditional_proba_perturbation_likelihood_JAX(jnp.copy(new_mixing_matrix), model_kwargs['modified_sample_eta_maps'], model_kwargs['freq_inverse_noise'], model_kwargs['red_cov_approx_matrix'], param_dict['nstokes'], param_dict['nside'], fullsky_ver=fullsky_ver, slow_ver=slow_ver, lmin=model_kwargs['lmin'], n_iter=model_kwargs['n_iter'], limit_iter_cg=model_kwargs['limit_iter_cg'], tolerance=model_kwargs['tolerance'], with_prints=model_kwargs['with_prints'])
     return log_proba_spectral_likelihood + log_proba_perturbation_likelihood
 
-def get_sample_B_f(mcmc_kernel, full_initial_guess, random_PRNGKey=random.PRNGKey(100), **model_kwargs):
+# def get_sample_B_f(mcmc_kernel, full_initial_guess, random_PRNGKey=random.PRNGKey(100), **model_kwargs):
     
-    # mcmc.run(random.PRNGKey(0), init_params=full_initial_guess, pos_special_freqs=jnp.array(mixing_matrix_obj.pos_special_freqs), full_data_without_CMB=jnp.array(full_data_without_CMB), modified_sample_eta_maps=jnp.array(modified_sample_eta_maps_v2), freq_inverse_noise=jnp.array(freq_inverse_noise), red_cov_approx_matrix=jnp.array(red_cov_approx_matrix), param_dict=param_dict, lmin=lmin, n_iter=n_iter, limit_iter_cg=limit_iter_cg, tolerance=tolerance_CG, with_prints=with_prints)
-    mcmc_kernel.run(random_PRNGKey, init_params=full_initial_guess, **model_kwargs)
+#     # mcmc.run(random.PRNGKey(0), init_params=full_initial_guess, pos_special_freqs=jnp.array(mixing_matrix_obj.pos_special_freqs), full_data_without_CMB=jnp.array(full_data_without_CMB), modified_sample_eta_maps=jnp.array(modified_sample_eta_maps_v2), freq_inverse_noise=jnp.array(freq_inverse_noise), red_cov_approx_matrix=jnp.array(red_cov_approx_matrix), param_dict=param_dict, lmin=lmin, n_iter=n_iter, limit_iter_cg=limit_iter_cg, tolerance=tolerance_CG, with_prints=with_prints)
+#     mcmc_kernel.run(random_PRNGKey, init_params=full_initial_guess, **model_kwargs)
     
-    mcmc_kernel.print_summary()
+#     mcmc_kernel.print_summary()
 
+#     return mcmc_kernel.get_samples(group_by_chain=True)
+
+def get_sample_parameter(mcmc_kernel, full_initial_guess, random_PRNGKey=random.PRNGKey(100), **model_kwargs):
+    mcmc_kernel.run(random_PRNGKey, init_params=full_initial_guess, **model_kwargs)    
+    mcmc_kernel.print_summary()
     return mcmc_kernel.get_samples(group_by_chain=True)
