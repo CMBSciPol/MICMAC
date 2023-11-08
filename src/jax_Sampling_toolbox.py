@@ -816,12 +816,9 @@ def new_get_conditional_proba_full_likelihood_JAX_from_params(new_params_mixing_
     return log_proba_spectral_likelihood + log_proba_perturbation_likelihood
 
 # def get_sample_B_f(mcmc_kernel, full_initial_guess, random_PRNGKey=random.PRNGKey(100), **model_kwargs):
-    
 #     # mcmc.run(random.PRNGKey(0), init_params=full_initial_guess, pos_special_freqs=jnp.array(mixing_matrix_obj.pos_special_freqs), full_data_without_CMB=jnp.array(full_data_without_CMB), modified_sample_eta_maps=jnp.array(modified_sample_eta_maps_v2), freq_inverse_noise=jnp.array(freq_inverse_noise), red_cov_approx_matrix=jnp.array(red_cov_approx_matrix), param_dict=param_dict, lmin=lmin, n_iter=n_iter, limit_iter_cg=limit_iter_cg, tolerance=tolerance_CG, with_prints=with_prints)
 #     mcmc_kernel.run(random_PRNGKey, init_params=full_initial_guess, **model_kwargs)
-    
 #     mcmc_kernel.print_summary()
-
 #     return mcmc_kernel.get_samples(group_by_chain=True)
 
 def get_sample_parameter(mcmc_kernel, full_initial_guess, random_PRNGKey=random.PRNGKey(100), **model_kwargs):
