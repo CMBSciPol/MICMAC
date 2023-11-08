@@ -24,7 +24,8 @@ file_ver = 'full_Gchain_onlyB_SO_noise_v2a' # 1 Fisher start from params
 file_ver = 'full_Gchain_onlyB_SO_noise_v2b' # 5 Fisher start from params + forcing c_ell_Wishart to be 0
 file_ver = 'full_Gchain_onlyB_SO_noise_v2c' # 10 Fisher start from params + sampling directly inverse Gamma
 file_ver = 'full_Gchain_onlyB_SO_noise_v2d' # 10 Fisher start from params + sampling from inverse Wishart
-file_ver = 'full_Gchain_onlyB_SO_noise_v3a' # 10 Fisher start from params + sampling for r instead of C ; r=0.01
+file_ver = 'full_Gchain_onlyB_SO_noise_v3a' # 10 Fisher start from params + sampling for r instead of C ; r=0.001, start r=0.1
+file_ver = 'full_Gchain_onlyB_SO_noise_v3b' # 10 Fisher start from params + sampling for r instead of C ; r=0.001, start=10**(-8)
 only_select_Bmodes = True
 
 r_true = 0.001
@@ -111,6 +112,8 @@ if only_select_Bmodes:
     theoretical_red_cov_r0_total = np.einsum('lkj,ljm->lkm', red_cov_select_Bmodes, theoretical_red_cov_r0_total)
     theoretical_red_cov_r1_tensor[:,:,0] = 0
     theoretical_red_cov_r0_total[:,:,0] = 0
+    theoretical_red_cov_r1_tensor[:,0,0] = 10**(-30)
+    theoretical_red_cov_r0_total[:,0,0] = 10**(-30)
 
 true_cmb_specra = micmac.get_c_ells_from_red_covariance_matrix(theoretical_red_cov_r0_total + r_true*theoretical_red_cov_r1_tensor)
 true_cmb_specra_extended = np.zeros((6,lmax+1-lmin))
@@ -229,7 +232,7 @@ all_params_mixing_matrix_samples = np.zeros((number_iterations_sampling+1, numbe
 c_ell_sampled = np.copy(c_ells_input)
 all_cell_samples[0,...] = c_ell_sampled
 all_params_mixing_matrix_samples[0,...] = mixing_matrix_obj.params
-all_r_samples[0,...] = 10**(-1)
+all_r_samples[0,...] = 10**(-8)
 
 
 wiener_filter_term = np.zeros((nstokes,npix))
