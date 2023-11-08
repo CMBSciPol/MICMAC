@@ -11,7 +11,7 @@ def generalized_cg_from_func(initial_guess, func_left_term, right_term, limit_it
     # print("Test PCG - 0b", flush=True)
 
     if np.linalg.norm(new_residual,ord=2) < tolerance * np.linalg.norm(right_term,ord=2):
-        return new_residual
+        return new_residual, 0, 0
     
     vector_p = np.copy(new_residual)
     k = 0

@@ -822,6 +822,10 @@ def new_get_conditional_proba_full_likelihood_JAX_from_params(new_params_mixing_
 #     return mcmc_kernel.get_samples(group_by_chain=True)
 
 def get_sample_parameter(mcmc_kernel, full_initial_guess, random_PRNGKey=random.PRNGKey(100), **model_kwargs):
+    """ The mcmc_kernel provided must be provided with a log_proba function which aims at be maximised !!! Not minimised
+
+        One must then provide it a log L function, not a -2 log L
+    """
     mcmc_kernel.run(random_PRNGKey, init_params=full_initial_guess, **model_kwargs)    
     mcmc_kernel.print_summary()
     return mcmc_kernel.get_samples(group_by_chain=True)
