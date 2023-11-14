@@ -14,3 +14,4 @@ Then, you may call this package using `import micmac`
 * emcee
 * cmbdb (https://github.com/dpole/cmbdb/tree/master)
 * fgbuster (only fgbuster.observation_helpers to get the input frequency maps in the tutorials, the src code is completely independent from fgbuster)
+* chex

@@ -65,23 +65,10 @@ def get_sqrt_reduced_matrix_from_matrix_jax(red_matrix, tolerance=10**(-15)):
     reduced_sqrtm = jnp.zeros_like(red_matrix)
 
     for ell in range(red_matrix.shape[0]):
-        # if np.any(np.iscomplex(scipy.linalg.sqrtm(red_matrix[ell,:,:]))):
-        #     print("COMPLEX ELEMENT IN SQRT RED MATRIX FOR ELL = {} !!!".format(ell), flush=True)
-        # reduced_sqrtm[ell,:,:] = scipy.linalg.sqrtm(red_matrix[ell,:,:])
         eigvals, eigvect = jnp.linalg.eigh(red_matrix[ell,:,:])
 
-        try:
-            inv_eigvect = jnp.linalg.pinv(eigvect)
-        except:
-            raise Exception("Error for ell=",ell, "eigvals", eigvals, "eigvect", eigvect, "red_matrix", red_matrix[ell,:,:])
-
-        # boolean_test = jnp.logical_not(jnp.logical_and(jnp.all(eigvals>0),jnp.all(jnp.abs(eigvals[eigvals<0] > tolerance))))
-        # boolean_test = not(jnp.all(eigvals>0) and jnp.all(jnp.abs(eigvals[eigvals<0] > tolerance)))
-        # print("Test bool:", boolean_test, flush=True)
-        # if boolean_test:
-        #     raise Exception("Covariance matrix not consistent with a negative eigval for ell=",ell, "eigvals", eigvals, "eigvect", eigvect, "red_matrix", red_matrix[ell,:,:])
-
-        # reduced_sqrtm[ell] = jnp.einsum('jk,km,m,mn->jn', eigvect, jnp.eye(nstokes), jnp.sqrt(np.abs(eigvals)), inv_eigvect)
+        inv_eigvect = jnp.array(jnp.linalg.pinv(eigvect),dtype=jnp.float64)
+        
         reduced_sqrtm = reduced_sqrtm.at[ell].set(jnp.einsum('jk,km,m,mn->jn', eigvect, jnp.eye(nstokes), jnp.sqrt(jnp.abs(eigvals)), inv_eigvect))
     return reduced_sqrtm
 
@@ -97,7 +84,7 @@ def get_MCMC_batch_error(sample_single_chain, batch_size):
 
 
 # @partial(jax.jit, static_argnums=(1,2,3,4))
-def maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(maps_TQU_input, red_matrix_sqrt, nside, lmin=0, n_iter=8):
+def maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(maps_TQU_input, red_matrix_sqrt, nside, lmin, n_iter=8):
     lmax = red_matrix_sqrt.shape[0] - 1 + lmin
     nstokes = red_matrix_sqrt.shape[1]
 

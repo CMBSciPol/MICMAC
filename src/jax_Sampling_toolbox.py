@@ -6,6 +6,7 @@ from jax import random, dtypes
 import jax.numpy as jnp
 import jax.scipy as jsp
 import jax_healpy as jhp
+import chex as chx
 from functools import partial
 import numpyro
 import numpyro.distributions as dist
@@ -156,6 +157,68 @@ def get_sampling_eta_JAX(number_frequencies, nstokes, nside, red_cov_approx_matr
     return first_part
     # return jnp.einsum('kc,csp', jnp.linalg.pinv(BtinvNB), first_part)[0]
 
+def get_sampling_eta_JAX_v2(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, map_random_x=[], map_random_y=[], lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12), suppress_low_modes=True):
+    """ Solve sampling step 1 : sampling eta
+        Solve CG for eta term with formulation : eta = C_approx^(1/2) (E (B^t N^{-1} B)^{-1} E^t)^{-1} C_approx^(1/2) x + y
+
+        Parameters
+        ----------
+        param_dict : dictionnary containing the following fields : nside, nstokes, lmax, number_frequencies
+        
+        red_cov_approx_matrix : correction covariance matrice (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+        BtinvNB : matrices of noise combined with mixing matrices corresponding to (B^t N^{-1} B)^{-1}, dimension [component, component]
+        # BtinvN_sqrt : matrices of noise combined with mixing matrices corresponding to B^T N^{-1/2}, dimension [component, frequencies]
+
+        map_random_x : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
+        map_random_y : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
+        
+        lmin : minimum multipole to be considered, default 0
+        
+        n_iter : number of iterations for harmonic computations, default 8
+
+        limit_iter_cg : maximum number of iterations for the CG, default 1000
+        tolerance : CG tolerance, default 10**(-12)
+
+        initial_guess : initial guess for the CG, default [] (which is a covnention for its initialization to 0)
+
+        Returns
+        -------
+        eta maps [nstokes, npix]
+    """
+
+    # assert red_cov_approx_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
+    chx.assert_axis_dimension(red_cov_approx_matrix, 0, lmax + 1 - lmin)
+
+    # Creation of the random maps if they are not given
+    if jnp.size(map_random_x) == 0:
+        print("Recalculating x !")
+        map_random_x = np.random.normal(loc=0, scale=1/jhp.nside2resol(nside), size=(number_frequencies,nstokes,12*nside**2))
+        # map_random_x = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
+    if jnp.size(map_random_y) == 0:
+        print("Recalculating y !")
+        map_random_y = np.random.normal(loc=0, scale=1/jhp.nside2resol(nside), size=(nstokes,12*nside**2))
+
+    # Computation of the right hand side member of the CG
+    red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix)
+
+    # First right member : C_approx^(1/2) (E (B^t N^{-1} B)^{-1} E^t)^{-1} C_approx^(1/2) x    
+    # first_member = map_random_x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))/(BtinvNB[0,0])
+    first_member = np.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_x)[0]/BtinvNB[0,0] # Selecting CMB component of the random variable
+
+    if suppress_low_modes:
+        # covariance_unity = np.zeros((param_dict['lmax']+1,param_dict["nstokes"],param_dict["nstokes"]))
+        # covariance_unity[lmin:,...] = np.eye(param_dict["nstokes"])
+        # map_solution = maps_x_reduced_matrix_generalized_sqrt_sqrt(np.copy(map_solution), covariance_unity, lmin=0, n_iter=n_iter)
+        covariance_unity = np.zeros((param_dict['lmax']+1,param_dict["nstokes"],param_dict["nstokes"]))
+        covariance_unity[lmin:,...] = np.eye(param_dict["nstokes"])
+        first_member = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(np.copy(first_member), covariance_unity, nside=nside, lmin=0, n_iter=n_iter)
+
+    second_member = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(map_random_y, np.linalg.pinv(red_cov_approx_matrix_sqrt), nside=nside, lmin=lmin, n_iter=n_iter)
+    
+    map_solution_0 = first_member + second_member
+    map_solution = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(map_solution_0.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_cov_approx_matrix_sqrt, nside=nside, lmin=lmin, n_iter=n_iter)
+
+    return map_solution
 
 # def get_fluctuating_term_maps_JAX(param_dict, red_cov_matrix, BtinvNB, BtinvN_sqrt, map_random_realization_xi=jnp.empty(0), map_random_realization_chi=jnp.empty(0), jax_key_PNRG=jax.random.PRNGKey(10), initial_guess=jnp.empty(0), lmin=0, n_iter=8, limit_iter_cg=1000, tolerance=10**(-12)):
 #     """ 

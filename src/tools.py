@@ -11,7 +11,7 @@ def get_reduced_matrix_from_c_ell(c_ells_input):
     c_ells_array = np.copy(c_ells_input)
     number_correlations = c_ells_array.shape[0]
     assert number_correlations == 1 or number_correlations == 3 or number_correlations == 6
-    lmax = c_ells_array.shape[1]
+    lmax_p1 = c_ells_array.shape[1]
     if number_correlations == 1:
         nstokes = 1
     elif number_correlations == 3:
@@ -23,12 +23,12 @@ def get_reduced_matrix_from_c_ell(c_ells_input):
         nstokes = 3
         if number_correlations != 6:
             for i in range(6 - number_correlations):
-                c_ells_array = np.vstack((c_ells_array, np.zeros(lmax)))
+                c_ells_array = np.vstack((c_ells_array, np.zeros(lmax_p1)))
             number_correlations = 6
     else :
         raise Exception("C_ells must be given as TT for temperature only ; EE, BB, EB for polarization only ; TT, EE, BB, TE, (TB, EB) for both temperature and polarization")
 
-    reduced_matrix = np.zeros((lmax,nstokes,nstokes))
+    reduced_matrix = np.zeros((lmax_p1,nstokes,nstokes))
 
     for i in range(nstokes):
         reduced_matrix[:,i,i] =  c_ells_array[i,:]
@@ -163,7 +163,7 @@ def get_cell_from_map(pixel_maps, lmax, n_iter=8):
     return c_ells_Wishart
 
 
-def maps_x_reduced_matrix_generalized_sqrt_sqrt(maps_TQU_input, red_matrix_sqrt, lmin=0, n_iter=8):
+def maps_x_reduced_matrix_generalized_sqrt_sqrt(maps_TQU_input, red_matrix_sqrt, lmin, n_iter=8):
     # if lmax == -1:
     lmax = red_matrix_sqrt.shape[0] - 1 + lmin
     nstokes = red_matrix_sqrt.shape[1]
@@ -200,43 +200,43 @@ def maps_x_reduced_matrix_generalized_sqrt_sqrt(maps_TQU_input, red_matrix_sqrt,
         return maps_output[3-nstokes:,...]
     return maps_output
 
-def maps_x_reduced_matrix_generalized_sqrt(maps_TQU_input, red_matrix, lmin=0, n_iter=0):
-    # if lmax == -1:
-    lmax = red_matrix.shape[0] - 1 + lmin
-    nstokes = red_matrix.shape[1]
-    all_params = int(np.where(nstokes > 1, 3, 1))
+# def maps_x_reduced_matrix_generalized_sqrt(maps_TQU_input, red_matrix, lmin=0, n_iter=0):
+#     # if lmax == -1:
+#     lmax = red_matrix.shape[0] - 1 + lmin
+#     nstokes = red_matrix.shape[1]
+#     all_params = int(np.where(nstokes > 1, 3, 1))
 
-    if len(maps_TQU_input.shape) == 1:
-        nside = int(np.sqrt(len(maps_TQU_input)/12))
-    else:
-        nside = int(np.sqrt(len(maps_TQU_input[0])/12))
+#     if len(maps_TQU_input.shape) == 1:
+#         nside = int(np.sqrt(len(maps_TQU_input)/12))
+#     else:
+#         nside = int(np.sqrt(len(maps_TQU_input[0])/12))
     
-    # red_sqrt_decomp = np.zeros_like(red_matrix)
-    red_sqrt_decomp = np.zeros((lmax+1,all_params,all_params))
-    if nstokes != 1:
-        red_sqrt_decomp[lmin:,3-nstokes:,3-nstokes:] = get_sqrt_reduced_matrix_from_matrix(red_matrix)
-        # red_cholesky_decomp = get_cholesky_reduced_matrix_from_matrix(red_matrix, lmin=lmin)
-    else:
-        red_sqrt_decomp[lmin:,...] = get_sqrt_reduced_matrix_from_matrix(red_matrix)
-        # red_cholesky_decomp = get_cholesky_reduced_matrix_from_matrix(red_matrix, lmin=lmin)
+#     # red_sqrt_decomp = np.zeros_like(red_matrix)
+#     red_sqrt_decomp = np.zeros((lmax+1,all_params,all_params))
+#     if nstokes != 1:
+#         red_sqrt_decomp[lmin:,3-nstokes:,3-nstokes:] = get_sqrt_reduced_matrix_from_matrix(red_matrix)
+#         # red_cholesky_decomp = get_cholesky_reduced_matrix_from_matrix(red_matrix, lmin=lmin)
+#     else:
+#         red_sqrt_decomp[lmin:,...] = get_sqrt_reduced_matrix_from_matrix(red_matrix)
+#         # red_cholesky_decomp = get_cholesky_reduced_matrix_from_matrix(red_matrix, lmin=lmin)
 
-    if maps_TQU_input.shape[0] == 2:
-        maps_TQU = np.vstack((np.zeros_like(maps_TQU_input[0]),maps_TQU_input))
-    else:
-        maps_TQU = np.copy(maps_TQU_input)
+#     if maps_TQU_input.shape[0] == 2:
+#         maps_TQU = np.vstack((np.zeros_like(maps_TQU_input[0]),maps_TQU_input))
+#     else:
+#         maps_TQU = np.copy(maps_TQU_input)
 
-    alms_input = hp.map2alm(maps_TQU, lmax=lmax, iter=n_iter)
-    # alms_input = hp.map2alm(maps_TQU, lmax=lmax, iter=n_iter)
-    alms_output = np.zeros_like(alms_input)
+#     alms_input = hp.map2alm(maps_TQU, lmax=lmax, iter=n_iter)
+#     # alms_input = hp.map2alm(maps_TQU, lmax=lmax, iter=n_iter)
+#     alms_output = np.zeros_like(alms_input)
 
-    for i in range(all_params):
-        alms_j = np.zeros_like(alms_input[i])
-        for j in range(all_params):
-            alms_j += hp.almxfl(alms_input[j], red_sqrt_decomp[:,i,j], inplace=False)
-        alms_output[i] = np.copy(alms_j)
-    maps_output = hp.alm2map(alms_output, nside, lmax=lmax)
-    if nstokes != 1:
-        return maps_output[3-nstokes:,...]
-    return maps_output
-    # return hp.alm2map(alms_output, nside, lmax=lmax)
+#     for i in range(all_params):
+#         alms_j = np.zeros_like(alms_input[i])
+#         for j in range(all_params):
+#             alms_j += hp.almxfl(alms_input[j], red_sqrt_decomp[:,i,j], inplace=False)
+#         alms_output[i] = np.copy(alms_j)
+#     maps_output = hp.alm2map(alms_output, nside, lmax=lmax)
+#     if nstokes != 1:
+#         return maps_output[3-nstokes:,...]
+#     return maps_output
+#     # return hp.alm2map(alms_output, nside, lmax=lmax)
 

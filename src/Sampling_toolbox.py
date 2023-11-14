@@ -150,7 +150,8 @@ def get_sampling_eta_v2(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt,
     # Creation of the random maps if they are not given
     if len(map_random_x) == 0:
         print("Recalculating x !")
-        map_random_x = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
+        map_random_x = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["number_frequencies"],param_dict["nstokes"],12*param_dict["nside"]**2))
+        # map_random_x = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
     if len(map_random_y) == 0:
         print("Recalculating y !")
         map_random_y = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
@@ -158,17 +159,22 @@ def get_sampling_eta_v2(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt,
     # Computation of the right hand side member of the CG
     red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix(red_cov_approx_matrix)
 
-    # First right member : C_approx^(1/2) (E (B^t N^{-1} B)^{-1} E^t)^{-1} C_approx^(1/2) x
-    first_member_1 = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_random_x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_cov_approx_matrix_sqrt, lmin=lmin, n_iter=n_iter)
-    first_member_2 = first_member_1/(BtinvNB[0,0])
-    first_member = maps_x_reduced_matrix_generalized_sqrt_sqrt(first_member_2.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_cov_approx_matrix_sqrt, lmin=lmin, n_iter=n_iter)
-
-    map_solution = first_member + map_random_x
+    # First right member : C_approx^(1/2) (E (B^t N^{-1} B)^{-1} E^t)^{-1} C_approx^(1/2) x    
+    # first_member = map_random_x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))/(BtinvNB[0,0])
+    first_member = np.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_x)[0]/BtinvNB[0,0] # Selecting CMB component of the random variable
 
     if suppress_low_modes:
+        # covariance_unity = np.zeros((param_dict['lmax']+1,param_dict["nstokes"],param_dict["nstokes"]))
+        # covariance_unity[lmin:,...] = np.eye(param_dict["nstokes"])
+        # map_solution = maps_x_reduced_matrix_generalized_sqrt_sqrt(np.copy(map_solution), covariance_unity, lmin=0, n_iter=n_iter)
         covariance_unity = np.zeros((param_dict['lmax']+1,param_dict["nstokes"],param_dict["nstokes"]))
         covariance_unity[lmin:,...] = np.eye(param_dict["nstokes"])
-        map_solution = maps_x_reduced_matrix_generalized_sqrt_sqrt(np.copy(map_solution), covariance_unity, lmin=0, n_iter=n_iter)
+        first_member = maps_x_reduced_matrix_generalized_sqrt_sqrt(np.copy(first_member), covariance_unity, lmin=0, n_iter=n_iter)
+
+    second_member = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_random_y, np.linalg.pinv(red_cov_approx_matrix_sqrt), lmin=lmin, n_iter=n_iter)
+    
+    map_solution_0 = first_member + second_member
+    map_solution = maps_x_reduced_matrix_generalized_sqrt_sqrt(map_solution_0.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_cov_approx_matrix_sqrt, lmin=lmin, n_iter=n_iter)
 
     return map_solution
 
