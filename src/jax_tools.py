@@ -13,7 +13,7 @@ def get_reduced_matrix_from_c_ell_jax(c_ells_input):
     """
     c_ells_array = jnp.copy(c_ells_input)
     number_correlations = c_ells_array.shape[0]
-    assert number_correlations == 1 or number_correlations == 3 or number_correlations == 6
+    # assert number_correlations == 1 or number_correlations == 3 or number_correlations == 6
     lmax = c_ells_array.shape[1]
     if number_correlations == 1:
         nstokes = 1
@@ -34,13 +34,15 @@ def get_reduced_matrix_from_c_ell_jax(c_ells_input):
     reduced_matrix = jnp.zeros((lmax,nstokes,nstokes))
 
     for i in range(nstokes):
-        reduced_matrix[:,i,i] =  c_ells_array[i,:]
+        # reduced_matrix[:,i,i] =  c_ells_array[i,:]
+        reduced_matrix = reduced_matrix.at[:,i,i].set(c_ells_array[i,:])
     
     # for j in range(number_correlations-nstokes):
     if number_correlations > 1:
-        reduced_matrix[:,0,1] =  c_ells_array[nstokes,:]
-        reduced_matrix[:,1,0] =  c_ells_array[nstokes,:]
-
+        # reduced_matrix[:,0,1] =  c_ells_array[nstokes,:]
+        # reduced_matrix[:,1,0] =  c_ells_array[nstokes,:]
+        reduced_matrix = reduced_matrix.at[:,0,1].set(c_ells_array[nstokes,:])
+        reduced_matrix = reduced_matrix.at[:,1,0].set(c_ells_array[nstokes,:])
     if number_correlations == 6:
         # reduced_matrix[:,0,2] =  c_ells_array[4,:]
         # reduced_matrix[:,2,0] =  c_ells_array[4,:]
@@ -48,13 +50,45 @@ def get_reduced_matrix_from_c_ell_jax(c_ells_input):
         # reduced_matrix[:,1,2] =  c_ells_array[5,:]
         # reduced_matrix[:,2,1] =  c_ells_array[5,:]
 
-        reduced_matrix[:,0,2] =  c_ells_array[5,:]
-        reduced_matrix[:,2,0] =  c_ells_array[5,:]
+        # reduced_matrix[:,0,2] =  c_ells_array[5,:]
+        # reduced_matrix[:,2,0] =  c_ells_array[5,:]
 
-        reduced_matrix[:,1,2] =  c_ells_array[4,:]
-        reduced_matrix[:,2,1] =  c_ells_array[4,:]
+        # reduced_matrix[:,1,2] =  c_ells_array[4,:]
+        # reduced_matrix[:,2,1] =  c_ells_array[4,:]
+
+        reduced_matrix = reduced_matrix.at[:,0,2].set(c_ells_array[5,:])
+        reduced_matrix = reduced_matrix.at[:,2,0].set(c_ells_array[5,:])
+
+        reduced_matrix = reduced_matrix.at[:,1,2].set(c_ells_array[4,:])
+        reduced_matrix = reduced_matrix.at[:,2,1].set(c_ells_array[4,:])
 
     return reduced_matrix
+
+def get_c_ells_from_red_covariance_matrix_JAX(red_cov_mat, nstokes=0):
+    """ Retrieve c_ell from red_cov_mat, which depending of nstokes will give :
+            TT
+            EE, BB, EB
+            TT, EE, BB, TE, EB, TB
+    """
+    
+    lmax = red_cov_mat.shape[0]
+    if nstokes==0:
+        nstokes = red_cov_mat.shape[1]
+
+    number_correl = jnp.int32(jnp.ceil(nstokes**2/2) + jnp.floor(nstokes/2))
+    # number_correl = jnp.array(jnp.ceil(nstokes**2/2) + jnp.floor(nstokes/2),int)
+    c_ells = jnp.zeros((number_correl, lmax))
+
+    for i in range(nstokes):
+        c_ells[i,:] = red_cov_mat[:,i,i]
+    if nstokes > 1:
+        c_ells[nstokes,:] = red_cov_mat[:,0,1]
+        if nstokes == 3:
+            # c_ells[nstokes+1,:] = red_cov_mat[:,0,2]
+            # c_ells[nstokes+2,:] = red_cov_mat[:,1,2]
+            c_ells[nstokes+2,:] = red_cov_mat[:,0,2]
+            c_ells[nstokes+1,:] = red_cov_mat[:,1,2]
+    return c_ells
 
 def get_sqrt_reduced_matrix_from_matrix_jax(red_matrix, tolerance=10**(-15)):
     """ Return L square root matrix
@@ -68,10 +102,42 @@ def get_sqrt_reduced_matrix_from_matrix_jax(red_matrix, tolerance=10**(-15)):
         eigvals, eigvect = jnp.linalg.eigh(red_matrix[ell,:,:])
 
         inv_eigvect = jnp.array(jnp.linalg.pinv(eigvect),dtype=jnp.float64)
-        
+
         reduced_sqrtm = reduced_sqrtm.at[ell].set(jnp.einsum('jk,km,m,mn->jn', eigvect, jnp.eye(nstokes), jnp.sqrt(jnp.abs(eigvals)), inv_eigvect))
     return reduced_sqrtm
 
+def get_cell_from_map_jax(pixel_maps, lmax, n_iter=8):
+    def wrapper_anafast(maps_, lmax=lmax, n_iter=n_iter):
+        return hp.anafast(maps_, lmax=lmax, iter=n_iter)
+        # return np.array([alm_T, alm_E, alm_B])
+    
+    @partial(jax.jit, static_argnums=1)
+    def pure_call_anafast(maps_, lmax):
+        # if jnp.size(maps_TQU_input.shape) == 1:
+        #     nside = jnp.int64(np.sqrt(jnp.size(maps_TQU_input)/12))
+        # else:
+        #     nside = jnp.int64(np.sqrt(jnp.size(maps_TQU_input[0])/12))
+        shape_output = (6,lmax+1)
+        return jax.pure_callback(wrapper_anafast, jax.ShapeDtypeStruct(shape_output, np.float64), maps_)
+    
+    if jnp.size(pixel_maps.shape) == 1:
+        nstokes = 1
+    else:
+        nstokes = pixel_maps.shape[0]
+    
+    if nstokes == 2:
+        pixel_maps_for_Wishart = jnp.vstack((jnp.zeros_like(pixel_maps[0]), pixel_maps))
+            # print("Test 5 :", pixel_maps_for_Wishart.shape, pixel_maps_for_Wishart[0].mean(), pixel_maps_for_Wishart[1].mean(), pixel_maps_for_Wishart[2].mean())
+    else:
+        pixel_maps_for_Wishart = jnp.copy(pixel_maps)
+
+    # c_ells_Wishart = hp.anafast(pixel_maps_for_Wishart, lmax=lmax, iter=n_iter)
+    c_ells_Wishart = pure_call_anafast(pixel_maps_for_Wishart, lmax=lmax)
+
+    if nstokes == 2:
+        polar_indexes = jnp.array([1,2,4])
+        c_ells_Wishart = c_ells_Wishart[polar_indexes]
+    return c_ells_Wishart
 
 def get_MCMC_batch_error(sample_single_chain, batch_size):
     # number_iterations = np.size(sample_single_chain, axis=0)

@@ -41,11 +41,26 @@ class MixingMatrix():
         return
     
 
-    def get_B_fgs(self):
+    def get_B_fgs(self, jax_use=False):
         """
         fgs part of the mixing matrix.
         """
         ncomp_fgs = self.ncomp - 1
+        if jax_use:
+            B_fgs = jnp.zeros((self.nfreq, ncomp_fgs))
+            # insert all the ones given by the pos_special_freqs
+            for c in range(ncomp_fgs):
+                # B_fgs[self.pos_special_freqs[c]][c] = 1
+                B_fgs = B_fgs.at[self.pos_special_freqs[c],c].set(1)
+            # insert all the parameters values
+            f = 0 
+            for i in range(self.nfreq):
+                if i not in self.pos_special_freqs:
+                    # B_fgs[i, :] = self.params[f, :]
+                    B_fgs = B_fgs.at[i, :].set(self.params[f, :])
+                    f += 1
+            return B_fgs
+
         if ncomp_fgs != 0:
             assert self.params.shape == ((self.nfreq - ncomp_fgs),ncomp_fgs)
             assert len(self.pos_special_freqs) == ncomp_fgs
@@ -64,21 +79,27 @@ class MixingMatrix():
         return B_fgs
 
 
-    def get_B_cmb(self):
+    def get_B_cmb(self, jax_use=False):
         """
         CMB column of the mixing matrix.
         """
+        if jax_use:
+            B_cmb = jnp.ones((self.nfreq))
+            return B_cmb[:, np.newaxis]
+
         B_cmb = np.ones((self.nfreq))
         B_cmb = B_cmb[:, np.newaxis]
         
         return B_cmb
 
 
-    def get_B(self):
+    def get_B(self, jax_use=False):
         """
         Full mixing matrix, (nfreq*ncomp).
         cmb is given as the first component.
         """
+        if jax_use:
+            return jnp.concatenate((self.get_B_cmb(jax_use=jax_use), self.get_B_fgs(jax_use=jax_use)), axis=1)
         B_mat = np.concatenate((self.get_B_cmb(), self.get_B_fgs()), axis=1)
         
         return B_mat

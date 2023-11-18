@@ -312,7 +312,7 @@ class MICMAC_Sampler(object):
 
         if not(self.sample_eta_B_f):
             print("Not sampling for eta and B_f, only for s_c and the covariance !", flush=True)
-        if not(self.sample_r_Metropolis):
+        if self.sample_r_Metropolis:
             print("Sample for r instead of C !", flush=True)
         else:
             print("Sample for C with inverse Wishart !", flush=True)

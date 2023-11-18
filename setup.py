@@ -1,11 +1,12 @@
 from distutils.core import setup
 
 setup(name='micmac',
-      version='0.7',
+      version='0.8',
       description='Minimally Informed CMB MAp Constructor (MICMAC) for CMB polarization data',
       author='',
       author_email='',
       url='https://github.com/CMBSciPol/MICMAC',
+      keywords='component separation CMB sampling jax python',
       packages = ['micmac'],
       package_dir = {'micmac': 'src'},
       zip_safe = False,
