@@ -1,6 +1,7 @@
 import numpy as np
 import jax
 import jax.numpy as jnp
+import chex as chx
 from functools import partial
 
 # Note: the mixing matrix is supposed to be the same 
@@ -31,10 +32,14 @@ class MixingMatrix():
         self.pos_special_freqs = pos_special_freqs
 
 
-    def update_params(self, new_params):
+    def update_params(self, new_params, jax_use=False):
         """
         Update values of the params in the mixing matrix.
         """
+        if jax_use:
+            chx.assert_shape(new_params,(self.nfreq-self.ncomp+1, self.ncomp-1))
+            self.params = new_params
+            return
         assert np.shape(new_params) == (self.nfreq-self.ncomp+1, self.ncomp-1)
         self.params = new_params
 

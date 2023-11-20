@@ -18,6 +18,14 @@ def get_noise_covar(depth_p, nside):
 
     return invN
 
+def get_Cl_noise(depth_p, A, lmax):
+    bl = np.ones((len(depth_p), lmax+1))
+
+    nl = (bl / np.radians(depth_p/60.)[:, np.newaxis])**2
+    AtNA = np.einsum('fi, fl, fj -> lij', A, nl, A)
+    inv_AtNA = np.linalg.inv(AtNA)
+    return inv_AtNA.swapaxes(-3, -1)
+
 
 def get_BtinvN(invN, B, jax_use=False):
     """

@@ -37,6 +37,6 @@ number_steps_sampler_B_f = 100 # Maximum number of steps for the Metropolis-Hast
 number_steps_sampler_r = 100
 
 # [Sampling_parameters]
-number_iterations_sampling = 20 # Maximum number of iterations for the sampling
+number_iterations_sampling = 1000 # Maximum number of iterations for the sampling
 number_iterations_done = 0 # Number of iterations already accomplished, in case the chain is resuming from a previous run
 seed = 0

@@ -20,9 +20,12 @@ config.update("jax_enable_x64", True)
 file_ver = 'full_v8_Gchain_SO_noise_v5a' # Mini-test long run 5 iterations with chain-in-code -- 10 Fisher start from params + sampling for r + C_approx only lensing ; minimal number of E-modes put to 0 artificially ; r=0.001, start=10**(-8)
 file_ver = 'full_v8_Gchain_SO_noise_v5b' # test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
 # file_ver = 'full_v8_Gchain_SO_noise_v5c' # with fori_loop + test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
-reduction_noise_ratio = 1
+reduction_noise = 1
 file_ver = 'full_v8_Gchain_SO_noise_v5d' # reduced noise by 10 + test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
-reduction_noise_ratio = 10
+file_ver = 'full_v8_Gchain_SO_noise_v5db' # -> 1000 iterations ; reduced noise by 10 + test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
+reduction_noise = 10
+file_ver = 'full_v8_Gchain_SO_noise_v5dc' # -> 1000 iterations +  test_full_chain_v1b ; reduced noise by 100 + test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
+reduction_noise = 100
 
 sys.path.append(os.path.dirname(os.path.abspath('')))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath('')))+'/tutorials/')
@@ -50,6 +53,7 @@ directory_save_file = working_directory_path + 'save_directory/'
 directory_toml_file = working_directory_path + 'toml_params/'
 
 path_toml_file = directory_toml_file + 'test_full_chain_v1a.toml'
+path_toml_file = directory_toml_file + 'test_full_chain_v1b.toml'
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
@@ -70,7 +74,7 @@ instr_name = dictionary_parameters['instrument_name'] #'SO_SAT'
 # get instrument from public database
 instrument = get_instrument(instr_name)
 
-instrument['depth_p'] /= reduction_noise_ratio
+instrument['depth_p'] /= reduction_noise
 # get input freq maps
 np.random.seed(noise_seed)
 # freq_maps = get_observation(instrument, model, nside=NSIDE, noise=noise)[:, 1:, :]   # keep only Q and U

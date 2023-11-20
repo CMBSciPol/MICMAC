@@ -15,3 +15,7 @@ Then, you may call this package using `import micmac`
 * cmbdb (https://github.com/dpole/cmbdb/tree/master)
 * fgbuster (only fgbuster.observation_helpers to get the input frequency maps in the tutorials, the src code is completely independent from fgbuster)
 * chex
+
+# Notes
+
+* DO NOT USE THIS PACKAGE ON LOGIN NODES ON HPC !!! (do not perform any computation on login-node in general, but this package in particular might use all the login nodes resources available)
