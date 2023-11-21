@@ -26,6 +26,14 @@ def get_Cl_noise(depth_p, A, lmax):
     inv_AtNA = np.linalg.inv(AtNA)
     return inv_AtNA.swapaxes(-3, -1)
 
+def get_Cl_noise_from_invBtinvNB(invBtinvNB, nstokes, nside, lmax):
+    """
+        Return cl noise from invBtinvNB if invBtinvNB is not multi-resolution
+    """
+    number_correlations = int(jnp.ceil(nstokes**2/2) + jnp.floor(nstokes/2))
+    full_spectra = jnp.zeros((number_correlations,lmax+1))
+    full_spectra = full_spectra.at[:nstokes,:].set(invBtinvNB*hp.nside2resol(nside)**2)
+    return full_spectra
 
 def get_BtinvN(invN, B, jax_use=False):
     """

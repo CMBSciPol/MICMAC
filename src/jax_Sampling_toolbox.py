@@ -114,6 +114,7 @@ class Sampling_functions(object):
         return jnp.size(self.frequency_array)
 
     # @partial(jax.jit,static_argnames=['suppress_low_modes'])
+    
     def get_sampling_eta_v2(self, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, jax_key_PNRG, map_random_x=jnp.empty(0), map_random_y=jnp.empty(0), suppress_low_modes=True):
         """ Solve sampling step 1 : sampling eta
             Solve CG for eta term with formulation : eta = C_approx^(-1/2) ( (E (B^t N^{-1} B)^{-1} B^t N^{-1/2}   x + C_approx^(1/2) y )
@@ -144,42 +145,45 @@ class Sampling_functions(object):
         """
 
         # assert red_cov_approx_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
-        chx.assert_axis_dimension(red_cov_approx_matrix, 0, self.lmax + 1 - self.lmin)
+        # chx.assert_axis_dimension(red_cov_approx_matrix, 0, lmax + 1 - lmin)
 
         # Creation of the random maps if they are not given
         if jnp.size(map_random_x) == 0:
             print("Recalculating x !")
-            # map_random_x = np.random.normal(loc=0, scale=1/jhp.nside2resol(self.nside), size=(self.number_frequencies,self.nstokes,self.npix))
+            # map_random_x = np.random.normal(loc=0, scale=1/jhp.nside2resol(nside), size=(number_frequencies,nstokes,npix))
             # map_random_x = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
-            map_random_x = jax.random.normal(jax_key_PNRG, shape=(self.number_frequencies,self.nstokes,self.npix))/jhp.nside2resol(self.nside)
+            map_random_x = jax.random.normal(jax_key_PNRG, shape=(self.number_frequencies,self.nstokes,self.npix))#/jhp.nside2resol(nside)
         if jnp.size(map_random_y) == 0:
             print("Recalculating y !")
-            # map_random_y = np.random.normal(loc=0, scale=1/jhp.nside2resol(self.nside), size=(self.nstokes,self.npix))
+            # map_random_y = np.random.normal(loc=0, scale=1/jhp.nside2resol(nside), size=(nstokes,npix))
             map_random_y = jax.random.normal(jax_key_PNRG, shape=(self.nstokes,self.npix))/jhp.nside2resol(self.nside)
 
         # Computation of the right hand side member of the CG
         red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix)
-
+        # red_cov_approx_matrix_sqrt_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix))
+        
         # First right member : C_approx^(1/2) (E (B^t N^{-1} B)^{-1} E^t)^{-1} C_approx^(1/2) x    
         # first_member = map_random_x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))/(BtinvNB[0,0])
-        first_member = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_x)[0]/BtinvNB[0,0] # Selecting CMB component of the random variable
+        # first_member = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_x)[0]/BtinvNB[0,0] # Selecting CMB component of the random variable
+        first_member = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_x)[0]/BtinvNB[0,0]/hp.nside2resol(self.nside)**2 # Selecting CMB component of the random variable
 
         if suppress_low_modes:
             covariance_unity = jnp.zeros((self.lmax+1-self.lmin,self.nstokes,self.nstokes))
-            # covariance_unity = covariance_unity.at[self.lmin:,...].set(jnp.eye(self.nstokes))
+            # covariance_unity = covariance_unity.at[lmin:,...].set(jnp.eye(nstokes))
             covariance_unity = covariance_unity.at[:,...].set(jnp.eye(self.nstokes))
             first_member = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(jnp.copy(first_member), covariance_unity, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
 
         second_member = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(map_random_y, jnp.linalg.pinv(red_cov_approx_matrix_sqrt), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
+        # second_member = micmac.maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(map_random_y, jnp.linalg.pinv(red_cov_approx_matrix_sqrt_sqrt), nside=nside, lmin=lmin, n_iter=n_iter)
         
         map_solution_0 = first_member + second_member
+        # map_solution_0 = second_member
+        # return map_solution_0
         map_solution = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(map_solution_0.reshape((self.nstokes,self.npix)), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
 
         # if suppress_low_modes:
-        #     map_solution = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(jnp.copy(map_solution), covariance_unity, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
-
+        #     map_solution = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(jnp.copy(map_solution), covariance_unity, nside=nside, lmin=lmin, n_iter=n_iter)
         return map_solution
-    
 
     def get_fluctuating_term_maps(self, red_cov_matrix, BtinvNB, BtinvN_sqrt, jax_key_PNRG, map_random_realization_xi=jnp.empty(0), map_random_realization_chi=jnp.empty(0), initial_guess=jnp.empty(0)):
         """ 
@@ -222,7 +226,7 @@ class Sampling_functions(object):
         if jnp.size(map_random_realization_chi) == 0:
             print("Recalculating chi !")
             # map_random_realization_chi = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["number_frequencies"],param_dict["nstokes"],12*param_dict["nside"]**2))
-            map_random_realization_chi = jax.random.normal(jax_key_PNRG, shape=(self.number_frequencies,self.nstokes,self.npix))/jhp.nside2resol(self.nside)
+            map_random_realization_chi = jax.random.normal(jax_key_PNRG, shape=(self.number_frequencies,self.nstokes,self.npix))#/jhp.nside2resol(self.nside)
 
         # Computation of the right side member of the CG
         red_inv_cov_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_inverse_cov_matrix)
@@ -231,10 +235,11 @@ class Sampling_functions(object):
         right_member_1 = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(map_random_realization_xi, red_inv_cov_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
 
         ## Left hand side term : (E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2} \chi
-        right_member_2 = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_realization_chi)[0]/BtinvNB[0,0] # Selecting CMB component of the random variable
+        # right_member_2 = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_realization_chi)[0]/BtinvNB[0,0] # Selecting CMB component of the random variable
+        right_member_2 = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_realization_chi)[0]/BtinvNB[0,0]/jhp.nside2resol(self.nside)**2 # Selecting CMB component of the random variable
 
         right_member = (right_member_1 + right_member_2).ravel()
-        
+
         # Computation of the left side member of the CG
         
         # First left member : C^{-1} 
@@ -242,7 +247,7 @@ class Sampling_functions(object):
         
         ## Second left member : (E^t (B^t N^{-1} B) E)
         def second_term_left(x, number_component=self.number_components):
-            return x/BtinvNB[0,0]
+            return x/BtinvNB[0,0]/jhp.nside2resol(self.nside)**2
 
         func_left_term = lambda x : first_term_left(x).ravel() + second_term_left(x).ravel()
         # Initial guess for the CG
@@ -297,19 +302,20 @@ class Sampling_functions(object):
         
 
         # Computation of the right side member of the CG
-        s_cML_extended = jnp.zeros((self.number_components, s_cML.shape[0], s_cML.shape[1]))
-        s_cML_extended = s_cML_extended.at[0,...].set(s_cML)
+        # s_cML_extended = jnp.zeros((self.number_components, s_cML.shape[0], s_cML.shape[1]))
+        # s_cML_extended = s_cML_extended.at[0,...].set(s_cML)
         # s_cML_extended[0,...] = s_cML
     
         # right_member = np.einsum('kc,csp->ksp', np.linalg.pinv(BtinvNB), s_cML_extended)[0].ravel() # Selecting CMB component of the
-        right_member = (s_cML/BtinvNB[0,0]).ravel()
+        # right_member = (s_cML/BtinvNB[0,0]/jhp.nside2resol(self.nside)**2).ravel()
+        right_member = (s_cML/BtinvNB[0,0]/jhp.nside2resol(self.nside)**2).ravel()
 
         # Computation of the left side member of the CG
         first_term_left = lambda x : maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(x.reshape((self.nstokes,self.npix)), jnp.linalg.pinv(red_cov_matrix), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
         
         ## Second left member : (E^t (B^t N^{-1} B)^{-1} E)^{-1} x
         def second_term_left(x, number_component=self.number_components):
-            return x/BtinvNB[0,0]
+            return x/BtinvNB[0,0]/jhp.nside2resol(self.nside)**2
 
         func_left_term = lambda x : first_term_left(x).ravel() + second_term_left(x).ravel()
 
@@ -427,21 +433,6 @@ class Sampling_functions(object):
         sum_dets = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(jnp.linalg.det(red_cov_matrix_sampled)) ).sum()
         
         return -( jnp.einsum('lij,lji->l', red_sigma_ell, jnp.linalg.pinv(red_cov_matrix_sampled)).sum() + sum_dets)/2
-    
-    def get_slow_conditional_proba_C_from_r(self, r_param, map_s_c, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total):
-        # red_sigma_ell = model_kwargs['red_sigma_ell']
-
-        # red_cov_matrix_sampled = model_kwargs['red_cov_matrix_sampled']
-        # red_cov_matrix_sampled = r_param * model_kwargs['theoretical_red_cov_r1_tensor'] + model_kwargs['theoretical_red_cov_r0_total']
-        red_cov_matrix_sampled = r_param * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
-
-        inv_C_s_c = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(map_s_c, jnp.linalg.pinv(red_cov_matrix_sampled), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
-
-        # sum_dets = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(jnp.linalg.det(red_cov_matrix_sampled)) ).sum()
-
-        sum_dets = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(jnp.linalg.det(red_cov_matrix_sampled)) ).sum()
-        
-        return -( jnp.einsum('sp,sp', map_s_c, inv_C_s_c) + sum_dets)/2
 
     # @partial(jax.jit)
     def get_conditional_proba_spectral_likelihood_JAX(self, complete_mixing_matrix, full_data_without_CMB):
@@ -475,14 +466,13 @@ class Sampling_functions(object):
 
             The associated conditional probability is given by : 
         """
-
         new_BtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, complete_mixing_matrix, jax_use=True)
         new_BtinvN_sqrt = get_BtinvN(jnp.array(jsp.linalg.sqrtm(self.freq_inverse_noise), dtype=jnp.float64), complete_mixing_matrix, jax_use=True)
 
         N_c_sqrt = jnp.einsum('ck,kf->cf', new_BtinvNB, new_BtinvN_sqrt)[0,...]
         modified_sample_eta_maps_2 = jnp.einsum('f,fsp->sp', N_c_sqrt, modified_sample_eta_maps)
 
-        effective_harmonic_operator = jnp.linalg.pinv(jnp.eye(self.nstokes)*new_BtinvNB[0,0] + red_cov_approx_matrix)
+        effective_harmonic_operator = jnp.linalg.pinv(jnp.eye(self.nstokes)*new_BtinvNB[0,0]*jhp.nside2resol(self.nside)**2 + red_cov_approx_matrix)
         central_term_eta_maps = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(modified_sample_eta_maps_2, effective_harmonic_operator, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
         
         second_term_complete = jnp.einsum('sk,sk', modified_sample_eta_maps_2, central_term_eta_maps)
@@ -566,7 +556,6 @@ class Sampling_functions(object):
             The associated conditional probability is given by : 
             - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
         """
-
         new_BtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, complete_mixing_matrix, jax_use=True)
 
         red_cov_approx_matrix_msqrt = jnp.linalg.pinv(get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix))
@@ -578,12 +567,13 @@ class Sampling_functions(object):
         # modified_sample_eta_maps_2 = maps_x_reduced_matrix_generalized_sqrt_sqrt(modified_sample_eta_maps, red_cov_approx_matrix_msqrt, lmin=lmin, n_iter=n_iter)
 
         # effective_harmonic_operator = jnp.einsum('lij,ljk,lkm->lim', red_cov_approx_matrix_msqrt, jnp.linalg.pinv(jnp.eye(nstokes)/new_BtinvNB[0,0] + jnp.linalg.pinv(red_cov_approx_matrix)), red_cov_approx_matrix_msqrt)
-        effective_harmonic_operator = jnp.linalg.pinv(jnp.einsum('lij,ljk,lkm->lim', red_cov_approx_matrix_sqrt, jnp.eye(self.nstokes)/new_BtinvNB[0,0] + jnp.linalg.pinv(red_cov_approx_matrix), red_cov_approx_matrix_sqrt))
+        effective_harmonic_operator = jnp.linalg.pinv(jnp.einsum('lij,ljk,lkm->lim', red_cov_approx_matrix_sqrt, jnp.eye(self.nstokes)/(new_BtinvNB[0,0]*jhp.nside2resol(self.nside)**2) + jnp.linalg.pinv(red_cov_approx_matrix), red_cov_approx_matrix_sqrt))
         # effective_harmonic_operator = jnp.linalg.pinv(new_BtinvNB[0,0] + red_cov_approx_matrix)
         central_term_eta_maps = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(modified_sample_eta_maps_2.reshape((self.nstokes,self.npix)), effective_harmonic_operator, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
         # And finally \eta^t (C_approx^{1/2] (C_approx^{-1} + (E^t (B^t N^{-1} B)^{-1} E)^{-1} )^{-1} C_approx^{1/2] \eta
         second_term_complete = jnp.einsum('sk,sk', modified_sample_eta_maps_2, central_term_eta_maps.reshape(self.nstokes,self.npix))
         return -(-0 + second_term_complete)/2.
+
 
     def get_conditional_proba_perturbation_likelihood_JAX(self, complete_mixing_matrix, modified_sample_eta_maps, red_cov_approx_matrix, fullsky_ver=False, slow_ver=True, with_prints=False):
         if fullsky_ver:
@@ -609,7 +599,7 @@ class Sampling_functions(object):
         log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(jnp.copy(new_mixing_matrix), jnp.array(model_kwargs['full_data_without_CMB']))
         log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX(jnp.copy(new_mixing_matrix), model_kwargs['modified_sample_eta_maps'], model_kwargs['red_cov_approx_matrix'], fullsky_ver=fullsky_ver, slow_ver=slow_ver, with_prints=model_kwargs['with_prints'])
         return log_proba_spectral_likelihood + log_proba_perturbation_likelihood
-        
+
     def get_conditional_proba_mixing_matrix_v2_JAX(self, new_params_mixing_matrix, full_data_without_CMB, modified_sample_eta_maps, red_cov_approx_matrix):
         params_mixing_matrix = jnp.copy(new_params_mixing_matrix)
 
