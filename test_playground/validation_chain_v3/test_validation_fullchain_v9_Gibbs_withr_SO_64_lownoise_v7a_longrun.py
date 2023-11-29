@@ -17,8 +17,9 @@ import micmac as micmac
 from jax import config
 config.update("jax_enable_x64", True)
 
-file_ver = 'full_v9_Gchain_SO_noise_v7a' # -> 10 iterations +  test_full_chain_v1a ; reduced noise by 100 + test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
-file_ver = 'full_v9_Gchain_SO_noise_v7b' # -> 1000 iterations +  test_full_chain_v1b ; reduced noise by 100 + test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
+file_ver = 'full_v9_Gchain_SO_noise_v7a' # -> 10 iterations +  test_full_chain_v1a ; test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
+file_ver = 'full_v9_Gchain_SO_noise_v7b' # -> 1000 iterations +  test_full_chain_v1b ; test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
+file_ver = 'full_v9_Gchain_SO_noise_v7c' # -> 1000 iterations +  test_full_chain_v1b ; test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
 reduction_noise = 1
 
 sys.path.append(os.path.dirname(os.path.abspath('')))
