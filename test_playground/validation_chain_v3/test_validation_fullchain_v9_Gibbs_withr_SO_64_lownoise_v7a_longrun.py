@@ -91,7 +91,7 @@ step_size_B_f[MICMAC_obj.number_frequencies-len_pos_special_freqs:] = minimum_st
 MICMAC_obj.step_size_B_f = step_size_B_f
 
 
-input_freq_maps, theoretical_red_cov_r0_total, theoretical_red_cov_r1_tensor = MICMAC_obj.generate_input_freq_maps_from_fgs(freq_maps_fgs, return_only_freq_maps=False)
+input_freq_maps, input_cmb_maps, theoretical_red_cov_r0_total, theoretical_red_cov_r1_tensor = MICMAC_obj.generate_input_freq_maps_from_fgs(freq_maps_fgs, return_only_freq_maps=False)
 
 # Re-Defining the data if needed
 indices_polar = np.array([1,2,4])
@@ -156,6 +156,10 @@ all_params_mixing_matrix_samples = MICMAC_obj.all_params_mixing_matrix_samples
 initial_freq_maps_path = directory_save_file+file_ver+'_initial_data.npy'
 print("FINAL SAVE - #### params_mixing_matrix :", initial_freq_maps_path, flush=True)
 np.save(initial_freq_maps_path, input_freq_maps)
+
+initial_cmb_maps_path = directory_save_file+file_ver+'_initial_cmb_data.npy'
+print("FINAL SAVE - #### params_mixing_matrix :", initial_cmb_maps_path, flush=True)
+np.save(initial_cmb_maps_path, input_cmb_maps)
 
 all_eta_maps_path = directory_save_file+file_ver+'_all_eta_maps.npy'
 print("FINAL SAVE - #### params_mixing_matrix :", all_eta_maps_path, flush=True)

@@ -1,7 +1,7 @@
 from distutils.core import setup
 
 setup(name='micmac',
-      version='0.9',
+      version='0.9.1',
       description='Minimally Informed CMB MAp Constructor (MICMAC) for CMB polarization data',
       author='',
       author_email='',

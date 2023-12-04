@@ -178,7 +178,7 @@ def maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(maps_TQU_input, r
     def wrapper_map2alm(maps_, lmax=lmax, n_iter=n_iter, nside=nside):
         alm_T, alm_E, alm_B = hp.map2alm(maps_.reshape((3, 12*nside**2)), lmax=lmax, iter=n_iter)
         return np.array([alm_T, alm_E, alm_B])
-    
+
     def wrapper_almxfl(alm_, matrix_ell):
         return hp.almxfl(alm_, matrix_ell, inplace=False)
     
@@ -226,3 +226,12 @@ def maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(maps_TQU_input, r
     if nstokes != 1:
         return maps_output[3-nstokes:,...]
     return maps_output
+
+def get_empirical_covariance_JAX(samples):
+    """ Compute empirical covariance from samples
+    """
+    number_samples = jnp.size(samples, axis=0)
+
+    mean_samples = jnp.mean(samples, axis=0)
+
+    return (jnp.einsum('ti,tj->tij',samples,samples).sum(axis=0) - number_samples*jnp.einsum('i,j->ij',mean_samples,mean_samples))/(number_samples-1)

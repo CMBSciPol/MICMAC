@@ -19,8 +19,10 @@ config.update("jax_enable_x64", True)
 
 file_ver = 'full_v9_Gchain_SO_noise_v7a' # -> 10 iterations +  test_full_chain_v1a ; test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
 file_ver = 'full_v9_Gchain_SO_noise_v7b' # -> 1000 iterations +  test_full_chain_v1b ; test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
-file_ver = 'full_v9_Gchain_SO_noise_v7c' # -> 1000 iterations +  test_full_chain_v1b ; test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
-file_ver = 'full_v9_biased_Gchain_SO_noise_v8a' # -> 1000 iterations +  test_full_chain_v1b ; test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
+file_ver = 'full_v9_Gchain_SO_noise_v7c_alt' # -> 1000 iterations +  test_full_chain_v1b ; test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
+file_ver = 'full_v9_Gchain_SO_noise_v7d_alt' # -> 1000 iterations + gap=5 +  test_full_chain_v1b ; test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
+file_ver = 'full_v91_Gchain_SO_64_v9a' # -> 3000 iterations + gap=10 + test_full_chain_v1c + initial_guess_r = 1e-3 ; test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
+file_ver = 'full_v91_Gchain_SO_64_v9b' # -> 4000 iterations + gap=4 + test_full_chain_v1c + initial_guess_r = 1e-3 ; test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
 reduction_noise = 1
 
 sys.path.append(os.path.dirname(os.path.abspath('')))
@@ -47,9 +49,9 @@ working_directory_path = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MI
 directory_save_file = working_directory_path + 'save_directory/'
 directory_toml_file = working_directory_path + 'toml_params/'
 
-# path_toml_file = directory_toml_file + 'test_full_chain_v1a.toml'
-# path_toml_file = directory_toml_file + 'test_full_chain_v1b.toml'
-path_toml_file = directory_toml_file + 'test_biased_full_chain_v1a.toml'
+path_toml_file = directory_toml_file + 'test_full_chain_v1a.toml'
+path_toml_file = directory_toml_file + 'test_full_chain_v1b.toml'
+path_toml_file = directory_toml_file + 'test_full_chain_v1c.toml'
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
@@ -81,17 +83,18 @@ MICMAC_obj.freq_inverse_noise = micmac.get_noise_covar(instrument['depth_p'], MI
 
 
 
-Fisher_matrix = np.loadtxt(path_Fisher)
-minimum_std_Fisher = scipy.linalg.sqrtm(np.linalg.inv(Fisher_matrix))
-minimum_std_Fisher_diag = np.diag(minimum_std_Fisher)
+# Fisher_matrix = np.loadtxt(path_Fisher)
+# minimum_std_Fisher = scipy.linalg.sqrtm(np.linalg.inv(Fisher_matrix))
+# minimum_std_Fisher_diag = np.diag(minimum_std_Fisher)
 
-len_pos_special_freqs = len(MICMAC_obj.pos_special_freqs)
-step_size_B_f = np.zeros(((MICMAC_obj.number_frequencies-len_pos_special_freqs)*2))
-step_size_B_f[:MICMAC_obj.number_frequencies-len_pos_special_freqs] = minimum_std_Fisher_diag[:MICMAC_obj.number_frequencies-len_pos_special_freqs]
-step_size_B_f[MICMAC_obj.number_frequencies-len_pos_special_freqs:] = minimum_std_Fisher_diag[MICMAC_obj.number_frequencies-len_pos_special_freqs:2*(MICMAC_obj.number_frequencies-len_pos_special_freqs)]
+# len_pos_special_freqs = len(MICMAC_obj.pos_special_freqs)
+# step_size_B_f = np.zeros(((MICMAC_obj.number_frequencies-len_pos_special_freqs)*2))
+# step_size_B_f[:MICMAC_obj.number_frequencies-len_pos_special_freqs] = minimum_std_Fisher_diag[:MICMAC_obj.number_frequencies-len_pos_special_freqs]
+# step_size_B_f[MICMAC_obj.number_frequencies-len_pos_special_freqs:] = minimum_std_Fisher_diag[MICMAC_obj.number_frequencies-len_pos_special_freqs:2*(MICMAC_obj.number_frequencies-len_pos_special_freqs)]
 
-MICMAC_obj.step_size_B_f = step_size_B_f
-
+# MICMAC_obj.step_size_B_f = step_size_B_f
+if jnp.size(MICMAC_obj.step_size_B_f) == 1:
+    MICMAC_obj.step_size_B_f = MICMAC_obj.step_size_B_f*jnp.ones((MICMAC_obj.number_frequencies-len(MICMAC_obj.pos_special_freqs))*2)
 
 input_freq_maps, input_cmb_maps, theoretical_red_cov_r0_total, theoretical_red_cov_r1_tensor = MICMAC_obj.generate_input_freq_maps_from_fgs(freq_maps_fgs, return_only_freq_maps=False)
 
@@ -120,15 +123,20 @@ initial_fluctuation_maps = np.zeros((MICMAC_obj.nstokes, MICMAC_obj.npix))
 CMB_c_ell = np.zeros_like(c_ell_approx)
 CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + MICMAC_obj.r_true*theoretical_r1_tensor)
 
-gap = 10
+len_pos_special_freqs = len(MICMAC_obj.pos_special_freqs)
+step_size_B_f = MICMAC_obj.step_size_B_f*jnp.ones((MICMAC_obj.number_frequencies-len_pos_special_freqs)*2)
+# gap = 10
+# gap = 5
+# gap = 4
 gap = 2
-gap = 0
+# gap = 0
 init_params_mixing_matrix = exact_params_mixing_matrix.ravel(order='F') + gap*np.random.uniform(low=-step_size_B_f,high=step_size_B_f, size=((MICMAC_obj.number_frequencies-len_pos_special_freqs)*2))
 
 print(f'Exact param matrix : {exact_params_mixing_matrix}')
 print(f'Initial param matrix : {init_params_mixing_matrix}')
 
-initial_guess_r=10**(-2)
+# initial_guess_r=10**(-2)
+initial_guess_r=10**(-3)
 
 time_start_sampling = time.time()
 MICMAC_obj.perform_sampling(input_freq_maps, c_ell_approx, CMB_c_ell, init_params_mixing_matrix, 

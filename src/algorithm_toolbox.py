@@ -1,6 +1,7 @@
 import os, sys, time
 import numpy as np
 import scipy.linalg
+import jax.numpy as jnp
 
 def generalized_cg_from_func(initial_guess, func_left_term, right_term, limit_iter_cg=100, tolerance=10**(-12)):
     """ Generalized CG from a function
