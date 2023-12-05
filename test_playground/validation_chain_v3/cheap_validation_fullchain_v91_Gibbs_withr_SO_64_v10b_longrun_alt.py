@@ -132,9 +132,10 @@ step_size_B_f = MICMAC_obj.step_size_B_f*jnp.ones((MICMAC_obj.number_frequencies
 # gap = 5
 # gap = 4
 # gap = 2
-gap = 1
+# gap = 1
 # gap = 0
-init_params_mixing_matrix = exact_params_mixing_matrix.ravel(order='F') + gap*np.random.uniform(low=-step_size_B_f,high=step_size_B_f, size=((MICMAC_obj.number_frequencies-len_pos_special_freqs)*2))
+# init_params_mixing_matrix = exact_params_mixing_matrix.ravel(order='F') + gap*np.random.uniform(low=-step_size_B_f,high=step_size_B_f, size=((MICMAC_obj.number_frequencies-len_pos_special_freqs)*2))
+init_params_mixing_matrix = exact_params_mixing_matrix.ravel(order='F')*np.random.uniform(low=.9,high=1.1, size=((MICMAC_obj.number_frequencies-len_pos_special_freqs)*2))
 
 print(f'Exact param matrix : {exact_params_mixing_matrix}')
 print(f'Initial param matrix : {init_params_mixing_matrix}')

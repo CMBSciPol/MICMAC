@@ -31,17 +31,18 @@ class MICMAC_Sampler(Sampling_functions):
                  frequency_array, freq_inverse_noise, pos_special_freqs=[0,-1], 
                  number_components=3, lmin=2,
                  n_iter=8, limit_iter_cg=2000, tolerance_CG=10**(-12),
+                 num_sample_AM = 1000, epsilon_cov = 10**(-20), scale_param = 2.38**2,
 
-                 cheap_save=True,
+                 cheap_save=True, very_cheap_save=False,
                  biased_version=False,
                  r_true=0, only_select_Bmodes=False, no_Emodes_CMB=False, 
                  sample_eta_B_f=True, harmonic_correction=False,
                  sample_r_Metropolis=True, sample_C_inv_Wishart=False,
                  n_walkers_Metropolis=1, step_size_B_f=10**(-4), step_size_r=10**(-4),
                  fullsky_ver=True, slow_ver=False,
-                 number_steps_sampler_B_f=100, number_steps_sampler_r=100,
+
                  progress_bar=False,
-                 number_iterations_sampling=30, number_iterations_done=0, seed=0,
+                 number_iterations_sampling=100, number_iterations_done=0, seed=0,
                  disable_chex=True):
         """ Non parametric likelihood sampling object
         """
@@ -72,10 +73,14 @@ class MICMAC_Sampler(Sampling_functions):
 
         # Metropolis-Hastings parameters
         self.n_walkers_Metropolis = int(n_walkers_Metropolis) # Number of walkers for the MCMC to sample the mixing matrix or r
-        self.step_size_B_f = step_size_B_f
+        # self.step_size_B_f = step_size_B_f
+        self.covariance_step_size_B_f = jnp.diag((jnp.ravel(step_size_B_f,order='F')**2)*jnp.ones((self.number_frequencies-len(pos_special_freqs))*(self.number_correlations-1)))
         self.step_size_r = step_size_r
-        self.number_steps_sampler_B_f = int(number_steps_sampler_B_f) # Maximum number of steps for the Metropolis-Hasting to sample the mixing matrix
-        self.number_steps_sampler_r = int(number_steps_sampler_r)
+        # self.number_steps_sampler_B_f = int(number_steps_sampler_B_f) # Maximum number of steps for the Metropolis-Hasting to sample the mixing matrix
+        # self.number_steps_sampler_r = int(number_steps_sampler_r)
+        self.num_sample_AM = num_sample_AM
+        self.epsilon_cov = epsilon_cov
+        self.scale_param = scale_param
 
         # Sampling parameters
         self.number_iterations_sampling = int(number_iterations_sampling) # Maximum number of iterations for the sampling
@@ -250,24 +255,19 @@ class MICMAC_Sampler(Sampling_functions):
         # if self.sample_eta_B_f:
         if not(self.cheap_save):
             self.all_samples_eta = self.update_variable(self.all_samples_eta, all_samples[0])
-        self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, all_samples[5])
-        # else:
-        #     indice_s_c = -1
-
-        self.all_samples_wiener_filter_maps = self.update_variable(self.all_samples_wiener_filter_maps, all_samples[indice_s_c])
-        self.all_samples_fluctuation_maps = self.update_variable(self.all_samples_fluctuation_maps, all_samples[indice_s_c+1])
+            if all_samples[indice_s_c+2].shape[1] == self.lmax+1-self.lmin:
+                all_samples_CMB_c_ell = jnp.array([get_c_ells_from_red_covariance_matrix(all_samples[indice_s_c+2][iteration]) for iteration in range(self.number_iterations_sampling-self.number_iterations_done)])
+            else:
+                all_samples_CMB_c_ell = all_samples[indice_s_c+2]
+            self.all_samples_CMB_c_ell = self.update_variable(self.all_samples_CMB_c_ell, all_samples_CMB_c_ell)
+        
+        if not(self.very_cheap_save):
+            self.all_samples_wiener_filter_maps = self.update_variable(self.all_samples_wiener_filter_maps, all_samples[indice_s_c])
+            self.all_samples_fluctuation_maps = self.update_variable(self.all_samples_fluctuation_maps, all_samples[indice_s_c+1])
         # self.all_samples_s_c = self.update_variable(self.all_samples_s_c, all_samples[indice_s_c]+all_samples[indice_s_c+1])
 
-        if all_samples[indice_s_c+2].shape[1] == self.lmax+1-self.lmin:
-            all_samples_CMB_c_ell = jnp.array([get_c_ells_from_red_covariance_matrix(all_samples[indice_s_c+2][iteration]) for iteration in range(self.number_iterations_sampling-self.number_iterations_done)])
-        else:
-            all_samples_CMB_c_ell = all_samples[indice_s_c+2]
-        self.all_samples_CMB_c_ell = self.update_variable(self.all_samples_CMB_c_ell, all_samples_CMB_c_ell)
         self.all_samples_r = self.update_variable(self.all_samples_r, all_samples[indice_s_c+3])
-        # if self.sample_r_Metropolis:
-        #     self.all_samples_r = self.update_variable(self.all_samples_r, all_samples[indice_s_c+2])
-        # else:
-        #     self.all_samples_CMB_c_ell = self.update_variable(self.all_samples_CMB_c_ell, all_samples[indice_s_c+2])
+        self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, all_samples[5])
 
     def update_one_sample(self, one_sample):
         indice_s_c = 1
@@ -291,6 +291,31 @@ class MICMAC_Sampler(Sampling_functions):
         #     self.all_samples_r = self.update_variable(self.all_samples_r, all_samples[indice_s_c+2])
         # else:
         #     self.all_samples_CMB_c_ell = self.update_variable(self.all_samples_CMB_c_ell, all_samples[indice_s_c+2])
+
+    def get_new_covariance_1d(self, iteration, all_samples):
+        """ Give new covariance matrix from the samples of a 1d variable
+            assuming after iteration the samples are put to 0
+        """
+        dimension_sample = 1
+        mean_samples = all_samples.sum(axis=0)/(iteration+1)
+
+        empirical_covariance = (jnp.einsum('t,t',all_samples,all_samples)
+                                - (iteration+1)*(mean_samples**2))/(iteration)
+
+        return (self.scale_param/dimension_sample)*(empirical_covariance + self.epsilon_cov*jnp.eye(dimension_sample))
+    
+
+    def get_new_covariance_nd(self, iteration, all_samples):
+        """ Give new covariance matrix from the samples of a nd variable
+            assuming after iteration the samples are put to 0
+        """
+        dimension_sample = all_samples.shape[-1]
+        mean_samples = all_samples.sum(axis=0)/(iteration+1)
+
+        empirical_covariance = (jnp.einsum('ti,tj->tij',all_samples,all_samples).sum(axis=0) 
+                                - (iteration+1)*jnp.einsum('i,j->ij',mean_samples,mean_samples))/(iteration)
+
+        return (self.scale_param/dimension_sample)*(empirical_covariance + self.epsilon_cov*jnp.eye(dimension_sample))
 
     # def parameter_estimate !!!!
     # TO DO !!!!!!!!!!!!!!!!!
@@ -451,11 +476,7 @@ class MICMAC_Sampler(Sampling_functions):
             jitted_func_to_use = jitted_get_conditional_proba_mixing_matrix_v2_JAX
 
         dimension_param_B_f = (self.number_frequencies-len_pos_special_freqs)*(self.number_correlations-1)
-        num_sample_AM = 1000
-        # num_sample_AM = 10000
-        epsilon_cov = 10**(-20)
-        # scale_param = 2.4**2
-        scale_param = 2.38**2
+
 
         _all_r_samples = jnp.zeros(actual_number_of_iterations+1)
         _all_B_f_samples = jnp.zeros((actual_number_of_iterations+1, dimension_param_B_f))
@@ -557,11 +578,12 @@ class MICMAC_Sampler(Sampling_functions):
                 # else:
                 #     step_size_r = jnp.sqrt(scale_param*(jnp.var(_all_r_samples[:iteration+1]) + epsilon_cov))
 
-                mean_r_samples = _all_r_samples.sum()/(iteration+1)
-                # variance_r_samples = ((_all_r_samples - mean_r_samples)**2).sum()/(iteration+1)
-                variance_r_samples = ((_all_r_samples - mean_r_samples)**2).sum()/iteration
-                adaptative_step_size = jnp.sqrt(scale_param*(variance_r_samples + epsilon_cov))
-                step_size_r = jnp.where(iteration<num_sample_AM,  self.step_size_r, adaptative_step_size)
+                # mean_r_samples = _all_r_samples.sum()/(iteration+1)
+                # # variance_r_samples = ((_all_r_samples - mean_r_samples)**2).sum()/(iteration+1)
+                # variance_r_samples = ((_all_r_samples - mean_r_samples)**2).sum()/iteration
+                # adaptative_step_size = jnp.sqrt(self.scale_param*(variance_r_samples + self.epsilon_cov))
+                # step_size_r = jnp.where(iteration<self.num_sample_AM,  self.step_size_r, adaptative_step_size)
+                step_size_r = jnp.where(iteration<self.num_sample_AM,  self.step_size_r, jnp.sqrt(self.get_new_covariance_1d(iteration, _all_r_samples)))
 
                 new_subPRNGKey, new_subPRNGKey_2 = random.split(new_subPRNGKey)
 
@@ -622,15 +644,22 @@ class MICMAC_Sampler(Sampling_functions):
                 #                                  jnp.zeros((dimension_param_B_f,dimension_param_B_f)), 
                 #                                  get_empirical_covariance_JAX(_all_B_f_samples[:iteration].reshape((iteration,(self.number_frequencies-len_pos_special_freqs)*2),order='F')))
                 
-                mean_samples = _all_B_f_samples.sum(axis=0)/(iteration+1)
 
-                empirical_covariance = (jnp.einsum('ti,tj->tij',_all_B_f_samples,_all_B_f_samples).sum(axis=0) 
-                                        - (iteration+1)*jnp.einsum('i,j->ij',mean_samples,mean_samples))/(iteration)
 
-                covariance_matrix_B_f_AM = scale_param*(empirical_covariance + epsilon_cov*jnp.eye(dimension_param_B_f))
-                covariance_matrix_B_f = jnp.where(iteration < num_sample_AM, 
-                                                  jnp.diag(self.step_size_B_f.ravel(order='F')**2), 
-                                                  covariance_matrix_B_f_AM)
+                # mean_samples = _all_B_f_samples.sum(axis=0)/(iteration+1)
+
+                # empirical_covariance = (jnp.einsum('ti,tj->tij',_all_B_f_samples,_all_B_f_samples).sum(axis=0) 
+                #                         - (iteration+1)*jnp.einsum('i,j->ij',mean_samples,mean_samples))/(iteration)
+
+                # covariance_matrix_B_f_AM = (self.scale_param/dimension_param_B_f)*(empirical_covariance + self.epsilon_cov*jnp.eye(dimension_param_B_f))
+                
+                # covariance_matrix_B_f = jnp.where(iteration < self.num_sample_AM, 
+                #                                   jnp.diag(self.step_size_B_f.ravel(order='F')**2),
+                #                                   self.get_new_covariance(iteration, _all_B_f_samples))
+                covariance_matrix_B_f = jnp.where(iteration < self.num_sample_AM, 
+                                                  self.covariance_step_size_B_f,
+                                                  self.get_new_covariance(iteration, _all_B_f_samples))
+                
                 time_start_sampling_Bf = time.time()
                 
                 # params_mixing_matrix_sample = multivariate_Metropolis_Hasting_step(random_PRNGKey=new_subPRNGKey_3, old_sample=params_mixing_matrix_sample, 
