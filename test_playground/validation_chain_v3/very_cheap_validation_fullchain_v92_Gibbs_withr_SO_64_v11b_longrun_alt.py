@@ -25,16 +25,13 @@ file_ver = 'full_v91_Gchain_SO_64_v9a' # -> 3000 iterations + gap=10 + test_full
 file_ver = 'full_v91_Gchain_SO_64_v9b' # -> 4000 iterations + gap=4 + test_full_chain_v1c + initial_guess_r = 1e-3 ; test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
 file_ver = 'full_v91_Gchain_SO_64_v10a' # -> 1000 iterations + gap=4 + test_full_chain_v1d + initial_guess_r = 1e-3 ; test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
 file_ver = 'full_v91_Gchain_SO_64_v9c' # -> 4000 iterations + gap=4 + test_full_chain_v1c + initial_guess_r = 1e-2 ; test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
-file_ver = 'full_v91_Gchain_SO_64_v9d' # -> 10000 iterations + 10% error + test_full_chain_v1c + initial_guess_r = 1e-2 ; test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
-file_ver = 'full_v91_Gchain_SO_64_v9e' # -> 2000 iterations + 10% error + test_full_chain_v1c + initial_guess_r = 1e-7 ; test_full_chain_v1a + C_approx only lensing ; start_r=10**(-2) + exact values B_f
-file_ver = 'full_v91_Gchain_SO_64_v9f' # -> 8000 iterations + 10% error + test_full_chain_v1c + initial_guess_r = 1e-8 ; C_approx only lensing
-file_ver = 'full_v91_Gchain_SO_64_v9g' # -> 5000 iterations + 10% error + test_full_chain_v1eb + initial_guess_r = 1e-8 ; C_approx only lensing
-file_ver = 'full_v91_Gchain_SO_64_v9h' # -> 2000 iterations + 10% error + test_full_chain_v1f + initial_guess_r = 1e-8 ; C_approx only lensing
-file_ver = 'full_v91_Gchain_SO_64_v9i' # -> 2000 iterations + 10% error + test_full_chain_v1f + step-size_r=1e^-3 + initial_guess_r = 1e-8 ; C_approx only lensing
-file_ver = 'full_v91_Gchain_SO_64_v9j' # -> 5000 iterations + 10% error + test_full_chain_v1f + step-size_r=1e^-3 + initial_guess_r = 1e-8 ; C_approx only lensing
-file_ver = 'full_v91_Gchain_SO_64_v11c' # -> 4000 iterations + 10% error + test_full_chain_v1g + step-size_r=1e^-3 + initial_guess_r = 1e-8 ; C_approx only lensing
-file_ver = 'full_v91_Gchain_SO_64_v11d' # -> 3000 iterations + 10% error + test_full_chain_v1gb + step-size_r=1e^-3 + initial_guess_r = 1e-8 ; C_approx only lensing
-file_ver = 'full_v91_Gchain_SO_64_v11e' # -> BIASED!!! - 2000 iterations + 10% error + test_full_chain_v1gd + step-size_r=1e^-3 + initial_guess_r = 1e-8 ; C_approx only lensing
+file_ver = 'full_v91_Gchain_SO_64_v9d' # -> 10000 iterations + 10% error + test_full_chain_v1c + initial_guess_r = 1e-2 ; C_approx only lensing
+file_ver = 'full_v91_Gchain_SO_64_v10c' # -> 10000 iterations + 10% error + test_full_chain_v1d + initial_guess_r = 1e-2 ; C_approx only lensing
+file_ver = 'full_v91_Gchain_SO_64_v10d' # -> 2000 iterations + 10% error + test_full_chain_v1d + initial_guess_r = 1e-7 ; C_approx only lensing
+file_ver = 'full_v91_Gchain_SO_64_v10e' # -> 5000 iterations + 10% error + test_full_chain_v1d + initial_guess_r = 1e-8 ; C_approx only lensing
+file_ver = 'full_v91_Gchain_SO_64_v10f' # -> 4000 iterations + 10% error + step-size_r 1e^-6 + test_full_chain_v1e + non-automated step-size + initial_guess_r = 1e-8 ; C_approx only lensing
+file_ver = 'full_v91_Gchain_SO_64_v10g' # -> 4000 iterations + 10% error + step-size_r 1e^-4 + test_full_chain_v1e + non-automated step-size + initial_guess_r = 1e-8 ; C_approx only lensing
+file_ver = 'full_v91_Gchain_SO_64_v11b' # -> 1500 iterations + 1% error + step-size_r 1e^-4 + test_full_chain_v1ec + non-automated step-size + initial_guess_r = 1e-8 ; C_approx only lensing
 reduction_noise = 1
 
 sys.path.append(os.path.dirname(os.path.abspath('')))
@@ -64,12 +61,9 @@ directory_toml_file = working_directory_path + 'toml_params/'
 path_toml_file = directory_toml_file + 'test_full_chain_v1a.toml'
 path_toml_file = directory_toml_file + 'test_full_chain_v1b.toml'
 path_toml_file = directory_toml_file + 'test_full_chain_v1c.toml'
-# path_toml_file = directory_toml_file + 'test_full_chain_v1d.toml'
-path_toml_file = directory_toml_file + 'test_full_chain_v1eb.toml'
-path_toml_file = directory_toml_file + 'test_full_chain_v1f.toml'
-path_toml_file = directory_toml_file + 'test_full_chain_v1g.toml'
-path_toml_file = directory_toml_file + 'test_full_chain_v1gb.toml'
-path_toml_file = directory_toml_file + 'test_full_chain_v1gd.toml'
+path_toml_file = directory_toml_file + 'test_full_chain_v1d.toml'
+path_toml_file = directory_toml_file + 'test_full_chain_v1e.toml'
+path_toml_file = directory_toml_file + 'test_full_chain_v1ec.toml'
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
@@ -125,7 +119,6 @@ step_size_B_f[:,1] = alternative_dust_step_size[1:col_dim_B_f+1]/100
 
 MICMAC_obj.covariance_step_size_B_f = jnp.diag(step_size_B_f.ravel(order='F')**2)
 
-
 input_freq_maps, input_cmb_maps, theoretical_red_cov_r0_total, theoretical_red_cov_r1_tensor = MICMAC_obj.generate_input_freq_maps_from_fgs(freq_maps_fgs, return_only_freq_maps=False)
 
 # Re-Defining the data if needed
@@ -151,7 +144,16 @@ initial_wiener_filter_term = np.zeros((MICMAC_obj.nstokes, MICMAC_obj.npix))
 initial_fluctuation_maps = np.zeros((MICMAC_obj.nstokes, MICMAC_obj.npix))
 
 len_pos_special_freqs = len(MICMAC_obj.pos_special_freqs)
-init_params_mixing_matrix = exact_params_mixing_matrix.ravel(order='F')*np.random.uniform(low=.9,high=1.1, size=((MICMAC_obj.number_frequencies-len_pos_special_freqs)*2))
+# step_size_B_f = MICMAC_obj.step_size_B_f*jnp.ones((MICMAC_obj.number_frequencies-len_pos_special_freqs)*2)
+# gap = 10
+# gap = 5
+# gap = 4
+# gap = 2
+# gap = 1
+# gap = 0
+# init_params_mixing_matrix = exact_params_mixing_matrix.ravel(order='F') + gap*np.random.uniform(low=-step_size_B_f,high=step_size_B_f, size=((MICMAC_obj.number_frequencies-len_pos_special_freqs)*2))
+# init_params_mixing_matrix = exact_params_mixing_matrix.ravel(order='F')*np.random.uniform(low=.9,high=1.1, size=((MICMAC_obj.number_frequencies-len_pos_special_freqs)*2))
+init_params_mixing_matrix = exact_params_mixing_matrix.ravel(order='F')*np.random.uniform(low=.99,high=1.01, size=((MICMAC_obj.number_frequencies-len_pos_special_freqs)*2))
 
 print(f'Exact param matrix : {exact_params_mixing_matrix}')
 print(f'Initial param matrix : {init_params_mixing_matrix}')
@@ -179,11 +181,14 @@ if not(MICMAC_obj.cheap_save):
     all_eta  = MICMAC_obj.all_samples_eta
     all_s_c_WF_maps = MICMAC_obj.all_samples_wiener_filter_maps
     all_s_c_fluct_maps = MICMAC_obj.all_samples_fluctuation_maps
-    all_cell_samples = MICMAC_obj.all_samples_CMB_c_ell
 elif not(MICMAC_obj.very_cheap_save):
     all_s_c = MICMAC_obj.all_samples_s_c
 
-all_r_samples = MICMAC_obj.all_samples_r
+if MICMAC_obj.sample_C_inv_Wishart:
+    all_cell_samples = MICMAC_obj.all_samples_CMB_c_ell
+if MICMAC_obj.sample_r_Metropolis:
+    all_r_samples = MICMAC_obj.all_samples_r
+
 all_params_mixing_matrix_samples = MICMAC_obj.all_params_mixing_matrix_samples
 
 # directory_save_file = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/validation_chain_v2/save_directory/'
@@ -215,17 +220,19 @@ if not(MICMAC_obj.cheap_save):
     print("FINAL SAVE - #### params_mixing_matrix :", all_s_c_fluct_maps_path, flush=True)
     np.save(all_s_c_fluct_maps_path, all_s_c_fluct_maps)
 
-    all_cell_samples_path = directory_save_file+file_ver+'_all_cell_samples.npy'
-    print("FINAL SAVE - #### params_mixing_matrix :", all_cell_samples_path, flush=True)
-    np.save(all_cell_samples_path, all_cell_samples)
 elif not(MICMAC_obj.very_cheap_save):
     all_s_c_path = directory_save_file+file_ver+'_all_s_c.npy'
     print("FINAL SAVE - #### params_mixing_matrix :", all_s_c_path, flush=True)
     np.save(all_s_c_path, all_s_c)
 
-all_r_samples_path = directory_save_file+file_ver+'_all_r_samples.npy'
-print("FINAL SAVE - #### params_mixing_matrix :", all_r_samples_path, flush=True)
-np.save(all_r_samples_path, all_r_samples)
+if MICMAC_obj.sample_C_inv_Wishart:
+    all_cell_samples_path = directory_save_file+file_ver+'_all_cell_samples.npy'
+    print("FINAL SAVE - #### params_mixing_matrix :", all_cell_samples_path, flush=True)
+    np.save(all_cell_samples_path, all_cell_samples)
+if MICMAC_obj.sample_r_Metropolis:
+    all_r_samples_path = directory_save_file+file_ver+'_all_r_samples.npy'
+    print("FINAL SAVE - #### params_mixing_matrix :", all_r_samples_path, flush=True)
+    np.save(all_r_samples_path, all_r_samples)
 
 all_params_mixing_matrix_samples_path = directory_save_file+file_ver+'_all_params_mixing_matrix_samples.npy'
 print("FINAL SAVE - #### params_mixing_matrix :", all_params_mixing_matrix_samples_path, flush=True)

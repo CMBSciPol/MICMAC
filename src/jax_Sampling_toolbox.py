@@ -1,10 +1,11 @@
 import os, sys, time
-import numpy as np
+# import numpy as np
 # import healpy as hp
 from collections import namedtuple
 from jax import random, dtypes
 import jax.numpy as jnp
 import jax.scipy as jsp
+import jax.lax as jlax
 import jax_healpy as jhp
 import chex as chx
 from functools import partial
@@ -85,6 +86,30 @@ def single_Metropolis_Hasting_step_positive_constraint(random_PRNGKey, old_sampl
         u_proposal = jnp.where(u_proposal < 0, jnp.ravel(old_sample,order='F'), u_proposal)
 
         accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(u_proposal, **model_kwargs))
+        new_sample = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, u_proposal, jnp.ravel(old_sample,order='F'))
+
+        return new_sample.reshape(old_sample.shape,order='F')
+
+def get_log_pdf_lognormal(x, mean, scale):
+    return -(jnp.log(x) - mean)**2/(2*scale**2) - jnp.log(x*scale*jnp.sqrt(2*jnp.pi))
+
+
+def single_lognormal_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_size, log_proba, **model_kwargs):
+        rng_key, key_proposal, key_accept = random.split(random_PRNGKey, 3)
+
+        goal_mean = jnp.ravel(old_sample,order='F')
+        goal_step_size = step_size
+
+        mean_lognormal = 2*jnp.log(goal_mean) - 0.5*jnp.log(goal_step_size**2 + goal_mean**2)
+        std_lognormal = jnp.sqrt(jnp.log(1 + goal_step_size**2/goal_mean**2))
+        u_proposal = dist.LogNormal(loc=mean_lognormal, scale=std_lognormal).sample(key_proposal)
+
+        proposal_mean_lognormal = 2*jnp.log(u_proposal) - 0.5*jnp.log(goal_step_size**2 + u_proposal**2)
+        proposal_std_lognormal = jnp.sqrt(jnp.log(1 + goal_step_size**2/u_proposal**2))
+
+        diff_lognormal = get_log_pdf_lognormal(u_proposal, mean_lognormal, std_lognormal) - get_log_pdf_lognormal(jnp.ravel(old_sample,order='F'), proposal_mean_lognormal, proposal_std_lognormal)
+
+        accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(u_proposal, **model_kwargs)) - diff_lognormal
         new_sample = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, u_proposal, jnp.ravel(old_sample,order='F'))
 
         return new_sample.reshape(old_sample.shape,order='F')
@@ -357,8 +382,11 @@ class Sampling_functions(object):
         return wiener_filter_term.reshape((self.nstokes, self.npix))
 
 
-    def get_inverse_wishart_sampling_from_c_ells(self, sigma_ell, q_prior=0, option_ell_2=2, tol=1e-10):
-        """ Solve sampling step 3 : inverse Wishart distribution with S_c
+    def get_inverse_wishart_sampling_from_c_ells(self, sigma_ell, PRNGKey, q_prior=0, option_ell_2=2, tol=1e-10):
+        """ Solve sampling step 3 : inverse Wishart distribution with C
+
+            sigma_ell should not be multiplied by 2*ell+1, it is done in the function
+
             Compute a matrix sample following an inverse Wishart distribution. The 3 steps follow Gupta & Nagar (2000) :
                 1. Sample n = 2*ell - p + 2*q_prior independent Gaussian vectors with covariance (sigma_ell)^{-1}
                 2. Compute their outer product to form a matrix of dimension n_stokes*n_stokes ; which gives us a sample following the Wishart distribution
@@ -382,7 +410,7 @@ class Sampling_functions(object):
             -------
             Matrices following an inverse Wishart distribution, of dimensions [lmin:lmax, nstokes, nstokes]
         """
-        print("C sampling from Inverse Wishart does not have a 'JAX' version yet", flush=True)
+        # print("C sampling from Inverse Wishart does not have a 'JAX' version yet", flush=True)
         # raise NotImplemented
 
         # nstokes = jnp.where(jnp.size(sigma_ell.shape)==1, 1, 0)
@@ -404,8 +432,7 @@ class Sampling_functions(object):
         #     sigma_ell[i] *= 2*np.arange(lmax+1) + 1
         c_ells_Wishart_modified = jnp.copy(sigma_ell)*(2*jnp.arange(self.lmax+1) + 1)
         invert_parameter_Wishart = jnp.linalg.pinv(get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_modified))
-        invert_parameter_Wishart_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(invert_parameter_Wishart)
-        
+
         lmin = self.lmin
 
         # assert invert_parameter_Wishart.shape[0] == lmax + 1 #- lmin
@@ -417,7 +444,7 @@ class Sampling_functions(object):
 
         # Option sampling without caring about inverse Wishart not defined
         ell_2 = 2
-        # PRNGKey, rng_key_lmin_2 = random.split(PRNGKey)
+        PRNGKey, rng_key_lmin_2 = random.split(PRNGKey)
         if self.lmin <= 2 and (2*ell_2 + 1 - 2*self.nstokes + 2*q_prior <= 0):
             
             # 2*ell_2 + 1 - 2*nstokes + 2*q_prior <= 0) correspond to the definition condition of the inverse Wishart distribution
@@ -437,7 +464,7 @@ class Sampling_functions(object):
                 # sample_gaussian = np.random.multivariate_normal(mean, invert_parameter_Wishart[ell_2], size=(2*ell_2 - nstokes + 2*Jeffrey_prior))
                 # sampling_Wishart[ell_2] = np.dot(sample_gaussian.T,sample_gaussian)
 
-                sample_gaussian = random.multivariate_normal(jnp.zeros(self.nstokes), invert_parameter_Wishart[ell_2], size=(2*ell_2 - self.nstokes + 2*Jeffrey_prior), check_valid='warn', tol=tol)
+                sample_gaussian = random.multivariate_normal(rng_key_lmin_2, jnp.zeros(self.nstokes), invert_parameter_Wishart[ell_2], shape=(2*ell_2 - self.nstokes + 2*Jeffrey_prior), check_valid='warn', tol=tol)
                 sampling_Wishart = sampling_Wishart.at[ell_2].set(jnp.einsum('lk,lm->km',sample_gaussian,sample_gaussian))
             # Option sampling separately TE and B
             elif option_ell_2 == 1:
@@ -450,21 +477,41 @@ class Sampling_functions(object):
 
                 eigvals, eigvect = jnp.linalg.eigh(invert_parameter_Wishart_2)
                 inv_eigvect = jnp.array(jnp.linalg.pinv(eigvect),dtype=jnp.float64)
-                invert_parameter_Wishart_2_sqrt = jnp.einsum('jk,km,m,mn->jn', eigvect, jnp.eye(self.nstokes), jnp.sqrt(jnp.abs(eigvals)), inv_eigvect)
                 
-                sample_gaussian_TE = random.multivariate_normal(np.zeros(self.nstokes-1), invert_parameter_Wishart_2[:self.nstokes-1,:self.nstokes-1], size=(2*ell_2 - (self.nstokes-1)))
-                sample_gaussian_B = random.normal(loc=0, scale=invert_parameter_Wishart_2[self.nstokes-1,self.nstokes-1], size=(2*ell_2 - 1))
+                sample_gaussian_TE = random.multivariate_normal(rng_key_lmin_2, jnp.zeros(self.nstokes-1), invert_parameter_Wishart_2[:self.nstokes-1,:self.nstokes-1], size=(2*ell_2 - (self.nstokes-1)))
+                sample_gaussian_B = jnp.sqrt(invert_parameter_Wishart_2[self.nstokes-1,self.nstokes-1])*random.normal(rng_key_lmin_2, shape=(2*ell_2 - 1))
 
                 sampling_Wishart = sampling_Wishart.at[ell_2,:self.nstokes-1,:self.nstokes-1].set(jnp.einsum('lk,lm->km',sample_gaussian_TE,sample_gaussian_TE))
                 sampling_Wishart = sampling_Wishart.at[ell_2,self.nstokes-1,self.nstokes-1].set(jnp.einsum('li,li->i',sample_gaussian_B,sample_gaussian_B))
 
             lmin = 3
 
-        for ell in range(max(lmin,2),self.lmax+1):
-            sample_gaussian = jnp.random.multivariate_normal(np.zeros(self.nstokes), invert_parameter_Wishart[ell], size=(2*ell - self.nstokes + 2*q_prior))
-            sampling_Wishart[ell] = np.dot(sample_gaussian.T,sample_gaussian)
+        def get_sampling_Wishart(carry, ell):
+            ell_PNRGKey = carry
+            ell_PNRGKey, new_ell_PRNGKey = random.split(ell_PNRGKey)
+
+            # sample_gaussian = random.multivariate_normal(new_ell_PRNGKey, jnp.zeros(self.nstokes), invert_parameter_Wishart[ell], shape=(2*ell - self.nstokes + 2*q_prior,))
+            sample_gaussian = random.multivariate_normal(new_ell_PRNGKey, jnp.zeros(self.nstokes), invert_parameter_Wishart[ell], shape=(2*(self.lmax+1) - self.nstokes + 2*q_prior,))
+
+            weighting = jnp.where(ell >= (jnp.arange(2*(self.lmax+1)-self.nstokes+2*q_prior)+self.nstokes - 2*q_prior)/2, 1, 0)
+
+            sample_to_return = jnp.einsum('lk,l,lm->km',sample_gaussian,weighting,sample_gaussian)
+            new_carry = new_ell_PRNGKey
+            return new_carry, sample_to_return
+        
+        rng_key_lmin_2, PRNGKey_scan  = random.split(rng_key_lmin_2)
+
+        new_PRNGKey, sampling_Wishart_scan = jax.lax.scan(get_sampling_Wishart, (PRNGKey_scan), jnp.arange(lmin,self.lmax+1), unroll=True)
+        sampling_Wishart = sampling_Wishart.at[lmin:].set(sampling_Wishart_scan)
+
+        # for ell in range(max(lmin,2),self.lmax+1):
+        #     sample_gaussian = jnp.random.multivariate_normal(np.zeros(self.nstokes), invert_parameter_Wishart[ell], size=(2*ell - self.nstokes + 2*q_prior))
+        #     sampling_Wishart[ell] = np.dot(sample_gaussian.T,sample_gaussian)
         # sampling_Wishart[max(lmin,2):,...] = np.einsum('lkj,lkm->ljm',sample_gaussian,sample_gaussian)
-        return np.linalg.pinv(sampling_Wishart)
+        return new_PRNGKey, jnp.linalg.pinv(sampling_Wishart)
+
+    def get_substep_sampling_C(self):
+        return
 
     def get_conditional_proba_C_from_r(self, r_param, red_sigma_ell, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total):
         # red_sigma_ell = model_kwargs['red_sigma_ell']
@@ -537,7 +584,6 @@ class Sampling_functions(object):
         # new_BtinvN_sqrt = micmac.get_BtinvN(jnp.array(jsp.linalg.sqrtm(freq_inverse_noise), dtype=jnp.float64), complete_mixing_matrix, jax_use=True)
 
         # N_c_sqrt = jnp.einsum('ck,kf->cf', new_BtinvNB, new_BtinvN_sqrt)[0,:]
-        # modified_sample_eta_maps_2 = np.copy(modified_sample_eta_maps)
         red_cov_approx_matrix_msqrt = jnp.linalg.pinv(get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix))
         modified_sample_eta_maps_2 = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(modified_sample_eta_maps, red_cov_approx_matrix_msqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
 
@@ -588,10 +634,6 @@ class Sampling_functions(object):
     #                                                 jnp.linalg.pinv(red_cov_approx_matrix) + jnp.linalg.pinv(red_cl_noise_harm_CMB),
     #                                                 red_cov_approx_matrix_sqrt))
 
-    #     # red_correction_term_2 = jnp.einsum('lkm,lmn,lno->lko',red_cl_noise_harm_sqrt, 
-    #     #                                             np.linalg.pinv(red_cov_approx_matrix + red_cl_noise_harm_CMB),
-    #     #                                             red_cl_noise_harm_sqrt)
-
     #     log_det_correction = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(jnp.linalg.det(red_correction_term)) ).sum()
     #     # log_det_correction_2 = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(jnp.linalg.det(red_correction_term_2)) ).sum()
     #     # print('Log det :', log_det_correction, flush=True)
@@ -624,7 +666,7 @@ class Sampling_functions(object):
                                                     red_cl_noise_harm_sqrt)
 
         # red_correction_term_2 = jnp.einsum('lkm,lmn,lno->lko',red_cl_noise_harm_sqrt, 
-        #                                             np.linalg.pinv(red_cov_approx_matrix + red_cl_noise_harm_CMB),
+        #                                             jnp.linalg.pinv(red_cov_approx_matrix + red_cl_noise_harm_CMB),
         #                                             red_cl_noise_harm_sqrt)
 
         log_det_correction = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(jnp.linalg.det(red_correction_term)) ).sum()
@@ -634,7 +676,19 @@ class Sampling_functions(object):
 
         return -log_det_correction/2.
 
+    def get_conditional_proba_mixing_matrix_v2_slow_JAX_test(self, new_params_mixing_matrix, full_data_without_CMB, modified_sample_eta_maps, red_cov_approx_matrix):
+        params_mixing_matrix = jnp.copy(new_params_mixing_matrix)
 
+        # new_mixing_matrix = create_mixing_matrix_jax(params_mixing_matrix, self.number_components, self.number_frequencies, pos_special_freqs=self.pos_special_freqs)
+        self._fake_mixing_matrix.update_params(params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+        new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+        
+        log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
+        # log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_alt(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
+
+        log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_slow(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
+
+        return log_proba_spectral_likelihood + log_proba_perturbation_likelihood*jhp.nside2resol(self.nside)**2
     
     def get_conditional_proba_mixing_matrix_v2_slow_JAX_alt(self, new_params_mixing_matrix, full_data_without_CMB, modified_sample_eta_maps, red_cov_approx_matrix):
         params_mixing_matrix = jnp.copy(new_params_mixing_matrix)
@@ -661,6 +715,23 @@ class Sampling_functions(object):
         # log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_alt_harm(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
         # log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_alt_harm_wrestling(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
         log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_alt(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
+        
+        # log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_slow(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
+        log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v1_harm(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
+        # log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_c_fast(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
+        return log_proba_spectral_likelihood + log_proba_perturbation_likelihood
+
+    def test_get_conditional_proba_mixing_matrix_v1_slow_JAX_alt_harm(self, new_params_mixing_matrix, full_data_without_CMB, modified_sample_eta_maps, red_cov_approx_matrix):
+        params_mixing_matrix = jnp.copy(new_params_mixing_matrix)
+
+        # new_mixing_matrix = create_mixing_matrix_jax(params_mixing_matrix, self.number_components, self.number_frequencies, pos_special_freqs=self.pos_special_freqs)
+        self._fake_mixing_matrix.update_params(params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+        new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+        
+        log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
+        # log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_alt_harm(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
+        # log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_alt_harm_wrestling(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
+        # log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_alt(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
         
         # log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_slow(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
         log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v1_harm(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
