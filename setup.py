@@ -1,14 +1,15 @@
-from distutils.core import setup
+from setuptools import setup, find_packages
 
 setup(name='micmac',
-      version='0.9.2',
+      version='0.9.4',
       description='Minimally Informed CMB MAp Constructor (MICMAC) for CMB polarization data',
       author='',
       author_email='',
       url='https://github.com/CMBSciPol/MICMAC',
       keywords='component separation CMB sampling jax python',
-      packages = ['micmac'],
-      package_dir = {'micmac': 'src'},
+      packages = find_packages(exclude=['test_playground.']),
+      package_dir = {'micmac': 'micmac'},
+      package_data= {'': ['*.toml']},
       zip_safe = False,
       entry_points = {
         'console_scripts': [

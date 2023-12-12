@@ -525,7 +525,7 @@ class Sampling_functions(object):
         return -( jnp.einsum('lij,lji->l', red_sigma_ell, jnp.linalg.pinv(red_cov_matrix_sampled)).sum() + sum_dets)/2
 
     # @partial(jax.jit)
-    def get_conditional_proba_spectral_likelihood_JAX(self, complete_mixing_matrix, full_data_without_CMB, suppress_low_modes=False):
+    def get_conditional_proba_spectral_likelihood_JAX(self, complete_mixing_matrix, full_data_without_CMB, suppress_low_modes=True):
         """ Get conditional probability of spectral likelihood by sampling it using emcee
 
             The associated conditional probability is given by : 
@@ -549,7 +549,7 @@ class Sampling_functions(object):
         first_term_complete = jnp.einsum('psc,cm,msp', full_data_without_CMB_with_noise.T, BtinvNB_fg, full_data_without_CMB_with_noise)
         return -(-first_term_complete + 0)/2.
 
-    def get_conditional_proba_spectral_likelihood_JAX_alt(self, complete_mixing_matrix, full_data_without_CMB, suppress_low_modes=False):
+    def get_conditional_proba_spectral_likelihood_JAX_unpix(self, complete_mixing_matrix, full_data_without_CMB, suppress_low_modes=True):
         """ Get conditional probability of spectral likelihood by sampling it using emcee
 
             The associated conditional probability is given by : 
@@ -574,13 +574,13 @@ class Sampling_functions(object):
         return -(-first_term_complete + 0)/2.
 
     # @partial(jax.jit, static_argnames=['with_prints'])
-    def get_conditional_proba_perturbation_likelihood_JAX_v2_slow(self, complete_mixing_matrix, modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False):
+    def get_conditional_proba_perturbation_likelihood_JAX_v2_slow_unpix(self, complete_mixing_matrix, modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False):
         """ Get conditional probability of perturbation likelihood by sampling it using numpyro
 
             The associated conditional probability is given by : 
         """
 
-        new_BtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, complete_mixing_matrix, jax_use=True)
+        new_BtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, complete_mixing_matrix, jax_use=True)*jhp.nside2resol(self.nside)**2
         # new_BtinvN_sqrt = micmac.get_BtinvN(jnp.array(jsp.linalg.sqrtm(freq_inverse_noise), dtype=jnp.float64), complete_mixing_matrix, jax_use=True)
 
         # N_c_sqrt = jnp.einsum('ck,kf->cf', new_BtinvNB, new_BtinvN_sqrt)[0,:]
@@ -588,7 +588,7 @@ class Sampling_functions(object):
         modified_sample_eta_maps_2 = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(modified_sample_eta_maps, red_cov_approx_matrix_msqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
 
         operator_harmonic = jnp.linalg.pinv(red_cov_approx_matrix)
-        operator_pixel = 1/new_BtinvNB[0,0]/jhp.nside2resol(self.nside)**2
+        operator_pixel = 1/new_BtinvNB[0,0]
         # operator_harmonic = red_cov_approx_matrix
         # operator_pixel = new_BtinvNB[0,0]
         first_term_left = lambda x : maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(x.reshape((self.nstokes,self.npix)), operator_harmonic, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
@@ -648,7 +648,6 @@ class Sampling_functions(object):
         """
 
         new_BtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, complete_mixing_matrix, jax_use=True)
-
         _cl_noise_harm = new_BtinvNB[0,0]*jhp.nside2resol(self.nside)**2
 
         # cl_noise_harm_CMB = jnp.zeros((self.number_correlations, self.lmax+1-self.lmin))
@@ -676,21 +675,7 @@ class Sampling_functions(object):
 
         return -log_det_correction/2.
 
-    def get_conditional_proba_mixing_matrix_v2_slow_JAX_test(self, new_params_mixing_matrix, full_data_without_CMB, modified_sample_eta_maps, red_cov_approx_matrix):
-        params_mixing_matrix = jnp.copy(new_params_mixing_matrix)
-
-        # new_mixing_matrix = create_mixing_matrix_jax(params_mixing_matrix, self.number_components, self.number_frequencies, pos_special_freqs=self.pos_special_freqs)
-        self._fake_mixing_matrix.update_params(params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
-        new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
-        
-        log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
-        # log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_alt(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
-
-        log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_slow(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
-
-        return log_proba_spectral_likelihood + log_proba_perturbation_likelihood*jhp.nside2resol(self.nside)**2
-    
-    def get_conditional_proba_mixing_matrix_v2_slow_JAX_alt(self, new_params_mixing_matrix, full_data_without_CMB, modified_sample_eta_maps, red_cov_approx_matrix):
+    def get_conditional_proba_mixing_matrix_v2_slow_JAX_unpix(self, new_params_mixing_matrix, full_data_without_CMB, modified_sample_eta_maps, red_cov_approx_matrix):
         params_mixing_matrix = jnp.copy(new_params_mixing_matrix)
 
         # new_mixing_matrix = create_mixing_matrix_jax(params_mixing_matrix, self.number_components, self.number_frequencies, pos_special_freqs=self.pos_special_freqs)
@@ -698,13 +683,13 @@ class Sampling_functions(object):
         new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
         
         # log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
-        log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_alt(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
+        log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_unpix(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
 
-        log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_slow(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
+        log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_slow_unpix(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
 
-        return log_proba_spectral_likelihood + log_proba_perturbation_likelihood
+        return (log_proba_spectral_likelihood + log_proba_perturbation_likelihood)*jhp.nside2resol(self.nside)**2
 
-    def get_conditional_proba_mixing_matrix_v1_slow_JAX_alt_harm(self, new_params_mixing_matrix, full_data_without_CMB, modified_sample_eta_maps, red_cov_approx_matrix):
+    def get_conditional_proba_mixing_matrix_v1_slow_JAX_unpix_harm(self, new_params_mixing_matrix, full_data_without_CMB, modified_sample_eta_maps, red_cov_approx_matrix):
         params_mixing_matrix = jnp.copy(new_params_mixing_matrix)
 
         # new_mixing_matrix = create_mixing_matrix_jax(params_mixing_matrix, self.number_components, self.number_frequencies, pos_special_freqs=self.pos_special_freqs)
@@ -712,31 +697,14 @@ class Sampling_functions(object):
         new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
         
         # log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
-        # log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_alt_harm(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
-        # log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_alt_harm_wrestling(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
-        log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_alt(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
+        # log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_unpix_harm(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
+        # log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_unpix_harm_wrestling(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
+        log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_unpix(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
         
-        # log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_slow(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
+        # log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_slow_unpix(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
         log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v1_harm(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
         # log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_c_fast(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
-        return log_proba_spectral_likelihood + log_proba_perturbation_likelihood
-
-    def test_get_conditional_proba_mixing_matrix_v1_slow_JAX_alt_harm(self, new_params_mixing_matrix, full_data_without_CMB, modified_sample_eta_maps, red_cov_approx_matrix):
-        params_mixing_matrix = jnp.copy(new_params_mixing_matrix)
-
-        # new_mixing_matrix = create_mixing_matrix_jax(params_mixing_matrix, self.number_components, self.number_frequencies, pos_special_freqs=self.pos_special_freqs)
-        self._fake_mixing_matrix.update_params(params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
-        new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
-        
-        log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
-        # log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_alt_harm(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
-        # log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_alt_harm_wrestling(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
-        # log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_alt(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
-        
-        # log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_slow(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
-        log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v1_harm(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
-        # log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_c_fast(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
-        return log_proba_spectral_likelihood + log_proba_perturbation_likelihood
+        return log_proba_spectral_likelihood*jhp.nside2resol(self.nside)**2 + log_proba_perturbation_likelihood
 
 
     def get_biased_conditional_proba_mixing_matrix_v2_slow_JAX(self, new_params_mixing_matrix, full_data_without_CMB, modified_sample_eta_maps, red_cov_approx_matrix):
@@ -748,10 +716,10 @@ class Sampling_functions(object):
         
         log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
 
-        # log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_slow(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
+        # log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_slow_unpix(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
         return log_proba_spectral_likelihood #+ log_proba_perturbation_likelihood
 
-    # def get_biased_conditional_proba_mixing_matrix_v2_slow_JAX_alt(self, new_params_mixing_matrix, full_data_without_CMB, modified_sample_eta_maps, red_cov_approx_matrix):
+    # def get_biased_conditional_proba_mixing_matrix_v2_slow_JAX_unpix(self, new_params_mixing_matrix, full_data_without_CMB, modified_sample_eta_maps, red_cov_approx_matrix):
     #     params_mixing_matrix = jnp.copy(new_params_mixing_matrix)
 
     #     # new_mixing_matrix = create_mixing_matrix_jax(params_mixing_matrix, self.number_components, self.number_frequencies, pos_special_freqs=self.pos_special_freqs)
@@ -759,12 +727,12 @@ class Sampling_functions(object):
     #     new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
 
     #     # log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
-    #     log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_alt(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
+    #     log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_unpix(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
 
-    #     # log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_slow(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
+    #     # log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_slow_unpix(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
     #     return log_proba_spectral_likelihood #+ log_proba_perturbation_likelihood
     
-    # def get_biased_conditional_proba_mixing_matrix_v1_slow_JAX_alt(self, new_params_mixing_matrix, full_data_without_CMB, modified_sample_eta_maps, red_cov_approx_matrix):
+    # def get_biased_conditional_proba_mixing_matrix_v1_slow_JAX_unpix(self, new_params_mixing_matrix, full_data_without_CMB, modified_sample_eta_maps, red_cov_approx_matrix):
     #     params_mixing_matrix = jnp.copy(new_params_mixing_matrix)
 
     #     # new_mixing_matrix = create_mixing_matrix_jax(params_mixing_matrix, self.number_components, self.number_frequencies, pos_special_freqs=self.pos_special_freqs)
@@ -772,9 +740,9 @@ class Sampling_functions(object):
     #     new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
 
     #     # log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
-    #     log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_alt_harm_wrestling(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
+    #     log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_unpix_harm_wrestling(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
 
-    #     # log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_slow(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
+    #     # log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_slow_unpix(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
     #     return log_proba_spectral_likelihood #+ log_proba_perturbation_likelihood
 
 
