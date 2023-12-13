@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 import jax
 import jax.numpy as jnp
 import chex as chx
@@ -108,6 +109,36 @@ class MixingMatrix():
         B_mat = np.concatenate((self.get_B_cmb(), self.get_B_fgs()), axis=1)
         
         return B_mat
+    
+
+    def get_params_dB(self):
+        """
+        Derivative of the part of the Mixing Matrix w params
+        """
+        params_dBi = np.zeros_like(self.params)
+        params_dB = []
+        for i in params_dBi:
+            for j in params_dBi[0]:
+                params_dBi_copy = copy.deepcopy(params_dBi)
+                params_dBi_copy[i,j] = 1
+                params_dB.append(params_dBi_copy)
+            
+        return params_dB
+
+
+    def get_B_dBi(self, ):
+
+        return
+    
+
+    def get_B_db(self):
+        """
+        List of derivatives of the Mixing Matrix,
+        wrt each parameter
+        """
+        
+        return
+
 
 # @partial(jax.jit, static_argnames=['number_components', 'number_frequencies'])
 def create_mixing_matrix_jax(params_mixing_matrix, number_components, number_frequencies, pos_special_freqs=[0,-1]):
