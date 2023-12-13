@@ -111,14 +111,18 @@ class MixingMatrix():
         return B_mat
     
 
-    def get_params_dB(self):
+    def get_params_db(self):
         """
-        Derivative of the part of the Mixing Matrix w params
+        Derivatives of the part of the Mixing Matrix w params
+        (wrt to each entry of first comp and then each entry of second comp)
+        Note: w/o pixel dimension
         """
-        params_dBi = np.zeros_like(self.params)
+        nrows = self.nfreq-self.ncomp+1
+        ncols = self.ncomp-1
+        params_dBi = np.zeros((nrows, ncols))
         params_dB = []
-        for i in params_dBi:
-            for j in params_dBi[0]:
+        for j in range(ncols):
+            for i in range(nrows):
                 params_dBi_copy = copy.deepcopy(params_dBi)
                 params_dBi_copy[i,j] = 1
                 params_dB.append(params_dBi_copy)
@@ -126,18 +130,23 @@ class MixingMatrix():
         return params_dB
 
 
-    def get_B_dBi(self, ):
-
-        return
-    
-
     def get_B_db(self):
         """
-        List of derivatives of the Mixing Matrix,
-        wrt each parameter
+        List of derivatives of the Mixing Matrix
+        (wrt to each entry of first comp and then each entry of second comp)
+        Note: w/o pixel dimension
         """
+        params_db = self.get_params_db()
+        B_db = []
+        for B_db_i in params_db:
+            # add the zeros of special positions
+            for i in self.pos_special_freqs:
+                B_db_i = np.insert(B_db_i, i, np.zeros(self.ncomp-1), axis=0)
+            # add the zeros of CMB
+            B_db_i = np.column_stack((np.zeros(self.nfreq), B_db_i))
+            B_db.append(B_db_i)
         
-        return
+        return B_db
 
 
 # @partial(jax.jit, static_argnames=['number_components', 'number_frequencies'])
