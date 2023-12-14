@@ -34,6 +34,12 @@ def get_Cl_noise_JAX(depth_p, A, lmax):
     inv_AtNA = jnp.linalg.inv(AtNA)
     return inv_AtNA.swapaxes(-3, -1)
 
+def get_true_Cl_noise(depth_p, lmax):
+    bl = jnp.ones((jnp.size(depth_p), lmax+1))
+
+    nl = (bl / jnp.radians(depth_p/60.)[:, jnp.newaxis])**2
+    return jnp.einsum('fk,kl->fkl', jnp.eye(jnp.size(depth_p)), nl)
+
 def get_Cl_noise_from_invBtinvNB(invBtinvNB, nstokes, nside, lmax):
     """
         Return cl noise from invBtinvNB if invBtinvNB is not multi-resolution

@@ -249,18 +249,3 @@ def get_empirical_covariance_JAX(samples):
     mean_samples = jnp.mean(samples, axis=0)
 
     return (jnp.einsum('ti,tj->tij',samples,samples).sum(axis=0) - number_samples*jnp.einsum('i,j->ij',mean_samples,mean_samples))/(number_samples-1)
-
-def get_band_limited_maps(input_map, nside, lmax, lmin=2, n_iter=8):
-    """ Get band limited maps from input maps
-        between lmin and lmax
-    """
-    nstokes = input_map.shape[0]
-    
-
-    covariance_unity = jnp.zeros((lmax+1-lmin,nstokes,nstokes))
-    covariance_unity = covariance_unity.at[:,...].set(jnp.eye(nstokes))
-    
-    def func_map(i):
-        return maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(jnp.copy(input_map[i]), covariance_unity, nside=nside, lmin=lmin, n_iter=n_iter)
-
-    return jax.vmap(func_map, in_axes=0)(jnp.arange(nstokes))

@@ -161,6 +161,16 @@ class Sampling_functions(object):
     def number_frequencies(self):
         return jnp.size(self.frequency_array)
 
+    def get_band_limited_maps(self, input_map):
+        """ Get band limited maps from input maps
+            between lmin and lmax
+        """
+
+        covariance_unity = jnp.zeros((self.lmax+1-self.lmin,self.nstokes,self.nstokes))
+        covariance_unity = covariance_unity.at[:,...].set(jnp.eye(self.nstokes))
+
+        return maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(jnp.copy(input_map), covariance_unity, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
+
     # @partial(jax.jit,static_argnames=['suppress_low_modes'])
     
     def get_sampling_eta_v2(self, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, jax_key_PNRG, map_random_x=jnp.empty(0), map_random_y=jnp.empty(0), suppress_low_modes=True):
@@ -231,6 +241,79 @@ class Sampling_functions(object):
 
         # if suppress_low_modes:
         #     map_solution = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(jnp.copy(map_solution), covariance_unity, nside=nside, lmin=lmin, n_iter=n_iter)
+        return map_solution
+
+    def get_sampling_eta_v1(self, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, jax_key_PNRG, map_random_x=jnp.empty(0), map_random_y=jnp.empty(0), suppress_low_modes=True):
+        """ Solve sampling step 1 : sampling eta
+            Solve CG for eta term with formulation : eta = N_c^(-1/2) ( (E (B^t N^{-1} B)^{-1} B^t N^{-1/2} x + C_approx^(1/2) y )
+
+            Parameters
+            ----------
+            param_dict : dictionnary containing the following fields : nside, nstokes, lmax, number_frequencies
+            
+            red_cov_approx_matrix : correction covariance matrice (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+            BtinvNB : matrices of noise combined with mixing matrices corresponding to (B^t N^{-1} B)^{-1}, dimension [component, component]
+            # BtinvN_sqrt : matrices of noise combined with mixing matrices corresponding to B^T N^{-1/2}, dimension [component, frequencies]
+
+            map_random_x : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
+            map_random_y : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
+            
+            lmin : minimum multipole to be considered, default 0
+            
+            n_iter : number of iterations for harmonic computations, default 8
+
+            limit_iter_cg : maximum number of iterations for the CG, default 1000
+            tolerance : CG tolerance, default 10**(-12)
+
+            initial_guess : initial guess for the CG, default [] (which is a covnention for its initialization to 0)
+
+            Returns
+            -------
+            eta maps [nstokes, npix]
+        """
+
+        # assert red_cov_approx_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
+        # chx.assert_axis_dimension(red_cov_approx_matrix, 0, lmax + 1 - lmin)
+
+        # Creation of the random maps if they are not given
+        if jnp.size(map_random_x) == 0:
+            print("Recalculating x !")
+            # map_random_x = np.random.normal(loc=0, scale=1/jhp.nside2resol(nside), size=(number_frequencies,nstokes,npix))
+            # map_random_x = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
+            map_random_x = jax.random.normal(jax_key_PNRG, shape=(self.number_frequencies,self.nstokes,self.npix))#/jhp.nside2resol(nside)
+        if jnp.size(map_random_y) == 0:
+            print("Recalculating y !")
+            # map_random_y = np.random.normal(loc=0, scale=1/jhp.nside2resol(nside), size=(nstokes,npix))
+            map_random_y = jax.random.normal(jax_key_PNRG, shape=(self.nstokes,self.npix))/jhp.nside2resol(self.nside)
+
+        # Computation of the right hand side member of the CG
+        red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix)
+        # red_cov_approx_matrix_sqrt_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix))
+
+        # First right member : C_approx^(1/2) (E (B^t N^{-1} B)^{-1} E^t)^{-1} C_approx^(1/2) x    
+        # first_member = map_random_x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))/(BtinvNB[0,0])
+        # first_member = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_x)[0]/BtinvNB[0,0] # Selecting CMB component of the random variable
+        first_member = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_x)[0] # Selecting CMB component of the random variable
+
+        # if suppress_low_modes:
+        #     # covariance_unity = jnp.zeros((self.lmax+1-self.lmin,self.nstokes,self.nstokes))
+        #     # # covariance_unity = covariance_unity.at[lmin:,...].set(jnp.eye(nstokes))
+        #     # covariance_unity = covariance_unity.at[:,...].set(jnp.eye(self.nstokes))
+        #     # first_member = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(jnp.copy(first_member), covariance_unity, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
+        #     first_member = self.get_band_limited_maps(first_member)
+
+        second_member = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(map_random_y, red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
+        # second_member = micmac.maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(map_random_y, jnp.linalg.pinv(red_cov_approx_matrix_sqrt_sqrt), nside=nside, lmin=lmin, n_iter=n_iter)
+
+        map_solution_0 = first_member + second_member
+        # map_solution_0 = second_member
+        # return map_solution_0
+        # map_solution = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(map_solution_0.reshape((self.nstokes,self.npix)), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
+        map_solution = jnp.einsum('cf,c,sp->fsp', BtinvN_sqrt, BtinvNB[:,0], map_solution_0)/BtinvNB[0,0]/jhp.nside2resol(self.nside)**2
+
+        if suppress_low_modes:
+            map_solution = self.get_band_limited_maps(map_solution)
+
         return map_solution
 
     def get_fluctuating_term_maps(self, red_cov_matrix, BtinvNB, BtinvN_sqrt, jax_key_PNRG, map_random_realization_xi=jnp.empty(0), map_random_realization_chi=jnp.empty(0), initial_guess=jnp.empty(0)):
@@ -540,11 +623,17 @@ class Sampling_functions(object):
 
         full_data_without_CMB_with_noise = jnp.einsum('cf,fsp->csp', BtinvN_fg, full_data_without_CMB)
         if suppress_low_modes:
-            covariance_unity = jnp.zeros((self.lmax+1-self.lmin,self.nstokes,self.nstokes))
-            # covariance_unity = covariance_unity.at[lmin:,...].set(jnp.eye(nstokes))
-            covariance_unity = covariance_unity.at[:,...].set(jnp.eye(self.nstokes))
-            for i in range(self.number_components-1):
-                full_data_without_CMB_with_noise = full_data_without_CMB_with_noise.at[i].set(maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(jnp.copy(full_data_without_CMB_with_noise[i]), covariance_unity, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter))
+            # covariance_unity = jnp.zeros((self.lmax+1-self.lmin,self.nstokes,self.nstokes))
+            # # covariance_unity = covariance_unity.at[lmin:,...].set(jnp.eye(nstokes))
+            # covariance_unity = covariance_unity.at[:,...].set(jnp.eye(self.nstokes))
+            # for i in range(self.number_components-1):
+            #     full_data_without_CMB_with_noise = full_data_without_CMB_with_noise.at[i].set(maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(jnp.copy(full_data_without_CMB_with_noise[i]), covariance_unity, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter))
+            def fmap(index):
+                return self.get_band_limited_maps(full_data_without_CMB_with_noise[index])
+                
+            full_data_without_CMB_with_noise = jax.vmap(fmap)(jnp.arange(self.number_components-1))
+
+            
 
         first_term_complete = jnp.einsum('psc,cm,msp', full_data_without_CMB_with_noise.T, BtinvNB_fg, full_data_without_CMB_with_noise)
         return -(-first_term_complete + 0)/2.
@@ -564,11 +653,15 @@ class Sampling_functions(object):
 
         full_data_without_CMB_with_noise = jnp.einsum('cf,fsp->csp', BtinvN_fg, full_data_without_CMB)
         if suppress_low_modes:
-            covariance_unity = jnp.zeros((self.lmax+1-self.lmin,self.nstokes,self.nstokes))
-            # covariance_unity = covariance_unity.at[lmin:,...].set(jnp.eye(nstokes))
-            covariance_unity = covariance_unity.at[:,...].set(jnp.eye(self.nstokes))
-            for i in range(self.number_components-1):
-                full_data_without_CMB_with_noise = full_data_without_CMB_with_noise.at[i].set(maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(jnp.copy(full_data_without_CMB_with_noise[i]), covariance_unity, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter))
+            # covariance_unity = jnp.zeros((self.lmax+1-self.lmin,self.nstokes,self.nstokes))
+            # # covariance_unity = covariance_unity.at[lmin:,...].set(jnp.eye(nstokes))
+            # covariance_unity = covariance_unity.at[:,...].set(jnp.eye(self.nstokes))
+            # for i in range(self.number_components-1):
+            #     full_data_without_CMB_with_noise = full_data_without_CMB_with_noise.at[i].set(maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(jnp.copy(full_data_without_CMB_with_noise[i]), covariance_unity, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter))
+            def fmap(index):
+                return self.get_band_limited_maps(full_data_without_CMB_with_noise[index])
+
+            full_data_without_CMB_with_noise = jax.vmap(fmap)(jnp.arange(self.number_components-1))
 
         first_term_complete = jnp.einsum('psc,cm,msp', full_data_without_CMB_with_noise.T, BtinvNB_fg, full_data_without_CMB_with_noise)
         return -(-first_term_complete + 0)/2.
@@ -745,6 +838,31 @@ class Sampling_functions(object):
     #     # log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_slow_unpix(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
     #     return log_proba_spectral_likelihood #+ log_proba_perturbation_likelihood
 
+    def separate_single_MH_step(self, random_PRNGKey, old_sample, step_size, log_proba, **model_kwargs):
+        
+        def map_func(carry, index_Bf):
+            rng_key, key_proposal, key_accept = random.split(carry[0], 3)
+
+            u_proposal = dist.Normal(carry[1][index_Bf], step_size[index_Bf]).sample(key_proposal)
+            
+            self._fake_mixing_matrix.update_params(carry[1].reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'))
+            # old_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+            
+            proposal_params = jnp.copy(carry[1])
+            proposal_params = proposal_params.at[index_Bf].set(u_proposal)
+            # self._fake_mixing_matrix.update_params(proposal_params.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'))
+            # proposal_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+
+            # accept_prob = -(log_proba(old_mixing_matrix, **model_kwargs) - log_proba(proposal_mixing_matrix, **model_kwargs))
+            accept_prob = -(log_proba(carry[1], **model_kwargs) - log_proba(proposal_params, **model_kwargs))
+            new_param = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, u_proposal, carry[1][index_Bf])
+            
+            proposal_params = proposal_params.at[index_Bf].set(new_param)
+            return (rng_key, proposal_params), new_param
+
+        carry, new_sample = jlax.scan(map_func, (random_PRNGKey, jnp.ravel(old_sample,order='F')), jnp.arange(jnp.ravel(old_sample,order='F').shape[0]))
+        latest_PRNGKey = carry[0]
+        return latest_PRNGKey, new_sample.reshape(old_sample.shape,order='F')
 
 # def get_sample_parameter(mcmc_kernel, full_initial_guess, random_PRNGKey=random.PRNGKey(100), **model_kwargs):
 #     """ The mcmc_kernel provided must be provided with a log_proba function which aims at be maximised !!! Not minimised
