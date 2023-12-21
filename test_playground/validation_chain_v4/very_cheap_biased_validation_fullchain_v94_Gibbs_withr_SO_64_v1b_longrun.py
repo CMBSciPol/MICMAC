@@ -21,6 +21,7 @@ file_ver = 'biased_full_v94_Gchain_SO_64_v2a' # -> 10000 iterations + 10% error 
 file_ver = 'biased_full_v94_Gchain_SO_64_v2b' # -> 2000 iterations + 10% error + step-size_r 1e^-3 + biased_full_chain_v2b + initial_guess_r = 1e-3 ; C_approx only lensing
 file_ver = 'biased_full_v94_Gchain_SO_64_v2c' # -> 2000 iterations + 10% error + step-size_r 1e^-3 + biased_full_chain_v2c w/ invWishart + initial_guess_r = 1e-3 ; C_approx only lensing
 file_ver = 'biased_full_v94_Gchain_SO_64_v2e' # -> 2000 iterations + 10% error + step-size_r 1e^-3 + biased_full_chain_v2c + initial_guess_r = 1e-3 ; C_approx only lensing
+file_ver = 'biased_full_v94_Gchain_SO_64_v2f' # -> 2000 iterations + only synch + 10% error + step-size_r 1e^-3 + biased_full_chain_v2d + initial_guess_r = 1e-3 ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 
@@ -50,6 +51,7 @@ directory_toml_file = working_directory_path + 'toml_params/'
 path_toml_file = directory_toml_file + 'biased_full_chain_v2a.toml'
 path_toml_file = directory_toml_file + 'biased_full_chain_v2b.toml'
 path_toml_file = directory_toml_file + 'biased_full_chain_v2c.toml'
+path_toml_file = directory_toml_file + 'biased_full_chain_v2d.toml'
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
@@ -92,7 +94,8 @@ step_size_B_f = np.zeros((col_dim_B_f,2))
 step_size_B_f[:,0] = minimum_std_Fisher_diag[:MICMAC_obj.number_frequencies-len_pos_special_freqs]
 step_size_B_f[:,1] = minimum_std_Fisher_diag[MICMAC_obj.number_frequencies-len_pos_special_freqs:2*(MICMAC_obj.number_frequencies-len_pos_special_freqs)]
 
-MICMAC_obj.covariance_step_size_B_f = jnp.diag(step_size_B_f.ravel(order='F')**2)
+# MICMAC_obj.covariance_step_size_B_f = jnp.diag(step_size_B_f.ravel(order='F')**2)
+MICMAC_obj.covariance_step_size_B_f = np.copy(step_size_B_f)[:-1,:-1]
 
 MICMAC_obj.step_size_r = minimum_std_Fisher_diag[-1]
 
@@ -130,7 +133,14 @@ len_pos_special_freqs = len(MICMAC_obj.pos_special_freqs)
 # gap = 1
 # gap = 0
 # init_params_mixing_matrix = exact_params_mixing_matrix.ravel(order='F') + gap*np.random.uniform(low=-step_size_B_f,high=step_size_B_f, size=((MICMAC_obj.number_frequencies-len_pos_special_freqs)*2))
-init_params_mixing_matrix = exact_params_mixing_matrix.ravel(order='F')*np.random.uniform(low=.9,high=1.1, size=((MICMAC_obj.number_frequencies-len_pos_special_freqs)*2))
+# dimension_free_param_B_f = (MICMAC_obj.number_frequencies-len_pos_special_freqs)*2
+dimension_free_param_B_f = jnp.size(MICMAC_obj.indexes_free_Bf)
+# init_params_mixing_matrix = jnp.copy(exact_params_mixing_matrix).ravel(order='F')
+# init_params_mixing_matrix = init_params_mixing_matrix.at[MICMAC_obj.indexes_free_Bf].set(np.random.uniform(low=.9,high=1.1, size=(dimension_free_param_B_f)))
+first_guess = jnp.copy(jnp.ravel(exact_params_mixing_matrix,order='F'))
+# first_guess = first_guess.at[free_indexes_Bf].set(first_guess[free_indexes_Bf]*np.random.uniform(low=.9,high=1.1, size=(jnp.size(free_indexes_Bf))))
+first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(first_guess[MICMAC_obj.indexes_free_Bf]*np.random.uniform(low=.99,high=1.01, size=(dimension_free_param_B_f)))
+init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
 
 print(f'Exact param matrix : {exact_params_mixing_matrix}')
 print(f'Initial param matrix : {init_params_mixing_matrix}')

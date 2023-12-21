@@ -78,17 +78,17 @@ def multivariate_Metropolis_Hasting_step(random_PRNGKey, old_sample, covariance_
 
         return new_sample.reshape(old_sample.shape,order='F')
 
-def single_Metropolis_Hasting_step_positive_constraint(random_PRNGKey, old_sample, step_size, log_proba, **model_kwargs):
-        rng_key, key_proposal, key_accept = random.split(random_PRNGKey, 3)
+# def single_Metropolis_Hasting_step_positive_constraint(random_PRNGKey, old_sample, step_size, log_proba, **model_kwargs):
+#         rng_key, key_proposal, key_accept = random.split(random_PRNGKey, 3)
 
-        u_proposal = dist.Normal(jnp.ravel(old_sample,order='F'), step_size).sample(key_proposal)
+#         u_proposal = dist.Normal(jnp.ravel(old_sample,order='F'), step_size).sample(key_proposal)
 
-        u_proposal = jnp.where(u_proposal < 0, jnp.ravel(old_sample,order='F'), u_proposal)
+#         u_proposal = jnp.where(u_proposal < 0, jnp.ravel(old_sample,order='F'), u_proposal)
 
-        accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(u_proposal, **model_kwargs))
-        new_sample = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, u_proposal, jnp.ravel(old_sample,order='F'))
+#         accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(u_proposal, **model_kwargs))
+#         new_sample = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, u_proposal, jnp.ravel(old_sample,order='F'))
 
-        return new_sample.reshape(old_sample.shape,order='F')
+#         return new_sample.reshape(old_sample.shape,order='F')
 
 def get_log_pdf_lognormal(x, mean, scale):
     return -(jnp.log(x) - mean)**2/(2*scale**2) - jnp.log(x*scale*jnp.sqrt(2*jnp.pi))
@@ -114,10 +114,83 @@ def single_lognormal_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_si
 
         return new_sample.reshape(old_sample.shape,order='F')
 
+def separate_single_MH_step(random_PRNGKey, old_sample, step_size, log_proba, **model_kwargs):
+    
+    def map_func(carry, index_Bf):
+        rng_key, key_proposal, key_accept = random.split(carry[0], 3)
+
+        u_proposal = dist.Normal(carry[1][index_Bf], step_size[index_Bf]).sample(key_proposal)
+        
+        # self._fake_mixing_matrix.update_params(carry[1].reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'))
+        # old_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+        
+        proposal_params = jnp.copy(carry[1])
+        proposal_params = proposal_params.at[index_Bf].set(u_proposal)
+        # self._fake_mixing_matrix.update_params(proposal_params.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'))
+        # proposal_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+
+        # accept_prob = -(log_proba(old_mixing_matrix, **model_kwargs) - log_proba(proposal_mixing_matrix, **model_kwargs))
+        accept_prob = -(log_proba(carry[1], **model_kwargs) - log_proba(proposal_params, **model_kwargs))
+        new_param = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, u_proposal, carry[1][index_Bf])
+        
+        proposal_params = proposal_params.at[index_Bf].set(new_param)
+        return (rng_key, proposal_params), new_param
+
+    carry, new_sample = jlax.scan(map_func, (random_PRNGKey, jnp.ravel(old_sample,order='F')), jnp.arange(jnp.ravel(old_sample,order='F').shape[0]))
+    latest_PRNGKey = carry[0]
+    return latest_PRNGKey, new_sample.reshape(old_sample.shape,order='F')
+    
+def separate_single_MH_step_index(random_PRNGKey, old_sample, step_size, log_proba, indexes_Bf, **model_kwargs):
+    
+    def map_func(carry, index_Bf):
+        rng_key, key_proposal, key_accept = random.split(carry[0], 3)
+
+        u_proposal = dist.Normal(carry[1][index_Bf], step_size[index_Bf]).sample(key_proposal)
+        
+        
+        proposal_params = jnp.copy(carry[1])
+        proposal_params = proposal_params.at[index_Bf].set(u_proposal)
+
+        accept_prob = -(log_proba(carry[1], **model_kwargs) - log_proba(proposal_params, **model_kwargs))
+        new_param = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, u_proposal, carry[1][index_Bf])
+        
+        proposal_params = proposal_params.at[index_Bf].set(new_param)
+        return (rng_key, proposal_params), new_param
+
+    carry, new_params = jlax.scan(map_func, (random_PRNGKey, jnp.ravel(old_sample,order='F')), indexes_Bf)
+    new_sample = jnp.copy(jnp.ravel(old_sample,order='F'))
+    new_sample = new_sample.at[indexes_Bf].set(new_params)
+    latest_PRNGKey = carry[0]
+    return latest_PRNGKey, new_sample.reshape(old_sample.shape,order='F') 
+
+def log_proba_proposal(new_sample, old_sample, step_size, grad_proba, **model_kwargs):
+    """ Return log proba proposal distribution MALA
+    """
+    return -1/(4*step_size)*jnp.linalg.norm(new_sample - old_sample - step_size*grad_proba(x, **model_kwargs),ord=2)**2
+
+def get_MALA_step(random_PRNGKey, old_sample, step_size, log_proba, grad_proba, indexes_Bf, **model_kwargs):
+    """ Compute Metropolis-adjusted Langevin (MALA) step for a given log-probability function and its gradient.
+    """
+
+    rng_key, key_proposal, key_accept = random.split(random_PRNGKey, 3)
+
+    fluctuation = dist.Normal(jnp.ravel(old_sample,order='F'), jnp.ones(jnp.size(old_sample))).sample(key_proposal)*jnp.sqrt(2*step_size)
+
+    u_proposal = old_sample + step_size*grad_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) + fluctuation
+
+    diff_proposal = -(log_proba_proposal(u_proposal, jnp.ravel(old_sample,order='F'), step_size, grad_proba, **model_kwargs) 
+                        - log_proba_proposal(jnp.ravel(old_sample,order='F'), u_proposal, step_size, grad_proba, **model_kwargs))
+
+    accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(u_proposal, **model_kwargs)) + diff_proposal
+    new_sample = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, u_proposal, jnp.ravel(old_sample,order='F'))
+
+    return new_sample[indexes_Bf].reshape(old_sample.shape,order='F')
+
 
 class Sampling_functions(object):
     def __init__(self, nside, lmax, nstokes, 
-                 frequency_array, freq_inverse_noise, pos_special_freqs=[0,-1], 
+                 frequency_array, freq_inverse_noise, pos_special_freqs=[0,-1],
+                 mask=None,
                  number_components=3, lmin=2,
                  n_iter=8, limit_iter_cg=2000, tolerance_CG=10**(-12)):
 
@@ -137,6 +210,10 @@ class Sampling_functions(object):
         self.frequency_array = frequency_array
         self.number_components = int(number_components)
         self.pos_special_freqs = pos_special_freqs
+        if mask is None:
+            self.mask = jnp.ones(12*self.nside**2)
+        else:
+            self.mask = mask
 
         # CG parameters
         self.limit_iter_cg = int(limit_iter_cg) # Maximum number of iterations for the different CGs
@@ -220,10 +297,11 @@ class Sampling_functions(object):
         red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix)
         # red_cov_approx_matrix_sqrt_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix))
 
-        # First right member : C_approx^(1/2) (E (B^t N^{-1} B)^{-1} E^t)^{-1} C_approx^(1/2) x    
-        # first_member = map_random_x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))/(BtinvNB[0,0])
-        # first_member = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_x)[0]/BtinvNB[0,0] # Selecting CMB component of the random variable
-        first_member = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_x)[0]/BtinvNB[0,0]/jhp.nside2resol(self.nside)**2 # Selecting CMB component of the random variable
+        # First right member (E (B^t N^{-1} B)^{-1} E^t)^{-1} x
+        # first_member = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_x)[0]/BtinvNB[0,0]/jhp.nside2resol(self.nside)**2 # Selecting CMB component of the random variable
+        N_c_inv = jnp.copy(BtinvNB[0,0])
+        N_c_inv = N_c_inv.at[...,self.mask!=0].set(1/BtinvNB[0,0,self.mask!=0]/jhp.nside2resol(self.nside)**2)
+        first_member = jnp.einsum('kcp,cfp,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_x)[0]*N_c_inv # Selecting CMB component of the random variable
 
         if suppress_low_modes:
             covariance_unity = jnp.zeros((self.lmax+1-self.lmin,self.nstokes,self.nstokes))
@@ -291,9 +369,8 @@ class Sampling_functions(object):
         # red_cov_approx_matrix_sqrt_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix))
 
         # First right member : C_approx^(1/2) (E (B^t N^{-1} B)^{-1} E^t)^{-1} C_approx^(1/2) x    
-        # first_member = map_random_x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))/(BtinvNB[0,0])
-        # first_member = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_x)[0]/BtinvNB[0,0] # Selecting CMB component of the random variable
-        first_member = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_x)[0] # Selecting CMB component of the random variable
+        # first_member = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_x)[0] # Selecting CMB component of the random variable
+        first_member = jnp.einsum('kcp,cfp,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_x)[0] # Selecting CMB component of the random variable
 
         # if suppress_low_modes:
         #     # covariance_unity = jnp.zeros((self.lmax+1-self.lmin,self.nstokes,self.nstokes))
@@ -306,10 +383,11 @@ class Sampling_functions(object):
         # second_member = micmac.maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(map_random_y, jnp.linalg.pinv(red_cov_approx_matrix_sqrt_sqrt), nside=nside, lmin=lmin, n_iter=n_iter)
 
         map_solution_0 = first_member + second_member
-        # map_solution_0 = second_member
-        # return map_solution_0
-        # map_solution = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(map_solution_0.reshape((self.nstokes,self.npix)), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
-        map_solution = jnp.einsum('cf,c,sp->fsp', BtinvN_sqrt, BtinvNB[:,0], map_solution_0)/BtinvNB[0,0]/jhp.nside2resol(self.nside)**2
+
+        # map_solution = jnp.einsum('cf,c,sp->fsp', BtinvN_sqrt, BtinvNB[:,0], map_solution_0)/BtinvNB[0,0]/jhp.nside2resol(self.nside)**2
+        N_c_inv = jnp.copy(BtinvNB[0,0])
+        N_c_inv = N_c_inv.at[...,self.mask!=0].set(1/BtinvNB[0,0,self.mask!=0]/jhp.nside2resol(self.nside)**2)
+        map_solution = jnp.einsum('cfp,cp,sp->fsp', BtinvN_sqrt, BtinvNB[:,0], map_solution_0)*N_c_inv
 
         if suppress_low_modes:
             map_solution = self.get_band_limited_maps(map_solution)
@@ -343,21 +421,28 @@ class Sampling_functions(object):
             Fluctuation maps [nstokes, npix]
         """
 
-        # assert red_cov_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
+            # assert red_cov_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
         chx.assert_axis_dimension(red_cov_matrix, 0, self.lmax + 1 - self.lmin)
 
         red_inverse_cov_matrix = jnp.linalg.pinv(red_cov_matrix)
-        
 
+        jax_key_PNRG, jax_key_PNRG_xi = random.split(jax_key_PNRG)
         # Creation of the random maps
         if jnp.size(map_random_realization_xi) == 0:
             print("Recalculating xi !")
             # map_random_realization_xi = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
-            map_random_realization_xi = jax.random.normal(jax_key_PNRG, shape=(self.nstokes,self.npix))/jhp.nside2resol(self.nside)
+            map_random_realization_xi = jax.random.normal(jax_key_PNRG_xi, shape=(self.nstokes,self.npix))/jhp.nside2resol(self.nside)#*mask_to_use
+        
+        jax_key_PNRG, *jax_key_PNRG_chi = random.split(jax_key_PNRG,self.number_frequencies+1)
         if jnp.size(map_random_realization_chi) == 0:
             print("Recalculating chi !")
             # map_random_realization_chi = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["number_frequencies"],param_dict["nstokes"],12*param_dict["nside"]**2))
-            map_random_realization_chi = jax.random.normal(jax_key_PNRG, shape=(self.number_frequencies,self.nstokes,self.npix))#/jhp.nside2resol(self.nside)
+            # map_random_realization_chi = jax.random.normal(jax_key_PNRG, shape=(number_frequencies,nstokes,npix))#/jhp.nside2resol(nside)
+            def fmap(random_key):
+                # random_map = jax.random.normal(jax_key_PNRG_chi[index_freq], shape=(nstokes,npix))#/jhp.nside2resol(nside)
+                random_map = jax.random.normal(random_key, shape=(self.nstokes,self.npix))#/jhp.nside2resol(nside)
+                return MICMAC_sampler_obj.get_band_limited_maps(random_map)
+            map_random_realization_chi = jax.vmap(fmap)(jnp.array(jax_key_PNRG_chi))
 
         # Computation of the right side member of the CG
         red_inv_cov_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_inverse_cov_matrix)
@@ -365,20 +450,28 @@ class Sampling_functions(object):
         # First right member : C^{-1/2} \xi
         right_member_1 = maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(map_random_realization_xi, red_inv_cov_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
 
+        N_c_inv = jnp.copy(BtinvNB[0,0])
+        N_c_inv = N_c_inv.at[...,self.mask!=0].set(1/BtinvNB[0,0,self.mask!=0]/jhp.nside2resol(self.nside)**2)
+        N_c_inv_repeat = np.repeat(N_c_inv.ravel(order='C'), self.nstokes).reshape((self.nstokes,self.npix), order='F').ravel()
+
         ## Left hand side term : (E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2} \chi
         # right_member_2 = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_realization_chi)[0]/BtinvNB[0,0] # Selecting CMB component of the random variable
-        right_member_2 = jnp.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_realization_chi)[0]/BtinvNB[0,0]/jhp.nside2resol(self.nside)**2 # Selecting CMB component of the random variable
+        # right_member_2 = jnp.einsum('kcp,cfp,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_realization_chi)[0]/BtinvNB[0,0]/jhp.nside2resol(nside)**2 # Selecting CMB component of the random variable
+        right_member_2 = jnp.einsum('kcp,cfp,fsp->ksp', BtinvNB, BtinvN_sqrt, map_random_realization_chi)[0]*N_c_inv # Selecting CMB component of the random variable
 
         right_member = (right_member_1 + right_member_2).ravel()
 
         # Computation of the left side member of the CG
-        
+
         # First left member : C^{-1} 
-        first_term_left = lambda x : maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(x.reshape((self.nstokes,self.npix)), red_inverse_cov_matrix, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
-        
+        first_term_left = lambda x : maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(x.reshape((nstokes,npix)), red_inverse_cov_matrix, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
+
         ## Second left member : (E^t (B^t N^{-1} B) E)
-        def second_term_left(x, number_component=self.number_components):
-            return x/BtinvNB[0,0]/jhp.nside2resol(self.nside)**2
+        def second_term_left(x):
+            return x*N_c_inv_repeat
+            # x_new = x.reshape((nstokes, npix))*N_c_inv
+            # return jnp.ravel(x_new)#/jhp.nside2resol(nside)**2
+            # return x/BtinvNB[0,0]/jhp.nside2resol(nside)**2
 
         func_left_term = lambda x : first_term_left(x).ravel() + second_term_left(x).ravel()
         # Initial guess for the CG
@@ -439,14 +532,23 @@ class Sampling_functions(object):
     
         # right_member = np.einsum('kc,csp->ksp', np.linalg.pinv(BtinvNB), s_cML_extended)[0].ravel() # Selecting CMB component of the
         # right_member = (s_cML/BtinvNB[0,0]/jhp.nside2resol(self.nside)**2).ravel()
-        right_member = (s_cML/BtinvNB[0,0]/jhp.nside2resol(self.nside)**2).ravel()
+
+        N_c_inv = jnp.copy(BtinvNB[0,0])
+        N_c_inv = N_c_inv.at[...,self.mask!=0].set(1/BtinvNB[0,0,self.mask!=0]/jhp.nside2resol(self.nside)**2)
+        N_c_inv_repeat = np.repeat(N_c_inv.ravel(order='C'), self.nstokes).reshape((self.nstokes,self.npix), order='F').ravel()
+
+        # right_member = (s_cML/BtinvNB[0,0]/jhp.nside2resol(self.nside)**2).ravel()
+        right_member = (s_cML*N_c_inv).ravel()
 
         # Computation of the left side member of the CG
         first_term_left = lambda x : maps_x_reduced_matrix_generalized_sqrt_sqrt_JAX_compatible(x.reshape((self.nstokes,self.npix)), jnp.linalg.pinv(red_cov_matrix), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
         
         ## Second left member : (E^t (B^t N^{-1} B)^{-1} E)^{-1} x
         def second_term_left(x, number_component=self.number_components):
-            return x/BtinvNB[0,0]/jhp.nside2resol(self.nside)**2
+            return x*N_c_inv_repeat
+            # x_new = x.reshape((self.nstokes,self.npix))*N_c_inv
+            # return jnp.ravel(x_new)
+            # return x/BtinvNB[0,0]/jhp.nside2resol(self.nside)**2
 
         func_left_term = lambda x : first_term_left(x).ravel() + second_term_left(x).ravel()
 
@@ -602,7 +704,6 @@ class Sampling_functions(object):
         # red_cov_matrix_sampled = model_kwargs['red_cov_matrix_sampled']
         # red_cov_matrix_sampled = r_param * model_kwargs['theoretical_red_cov_r1_tensor'] + model_kwargs['theoretical_red_cov_r0_total']
         red_cov_matrix_sampled = r_param * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
-
         sum_dets = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(jnp.linalg.det(red_cov_matrix_sampled)) ).sum()
         
         return -( jnp.einsum('lij,lji->l', red_sigma_ell, jnp.linalg.pinv(red_cov_matrix_sampled)).sum() + sum_dets)/2
@@ -632,8 +733,6 @@ class Sampling_functions(object):
                 return self.get_band_limited_maps(full_data_without_CMB_with_noise[index])
                 
             full_data_without_CMB_with_noise = jax.vmap(fmap)(jnp.arange(self.number_components-1))
-
-            
 
         first_term_complete = jnp.einsum('psc,cm,msp', full_data_without_CMB_with_noise.T, BtinvNB_fg, full_data_without_CMB_with_noise)
         return -(-first_term_complete + 0)/2.
@@ -838,31 +937,49 @@ class Sampling_functions(object):
     #     # log_proba_perturbation_likelihood = self.get_conditional_proba_perturbation_likelihood_JAX_v2_slow_unpix(jnp.copy(new_mixing_matrix), modified_sample_eta_maps, red_cov_approx_matrix, with_prints=False)
     #     return log_proba_spectral_likelihood #+ log_proba_perturbation_likelihood
 
-    def separate_single_MH_step(self, random_PRNGKey, old_sample, step_size, log_proba, **model_kwargs):
+    def spectral_likelihood_dB(self, new_params_mixing_matrix, full_data, **model_kwargs):
+        """
+        Returns a list of the derivatives of -log(L_sp)
+        per each spectral parameter
+        """
+
+        self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+
+        new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+        new_mixing_matrix_dB = self._fake_mixing_matrix.get_B_db(jax_use=True)
+
+        invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, new_mixing_matrix, jax_use=True)
+        BtinvN = get_BtinvN(self.freq_inverse_noise, new_mixing_matrix, jax_use=True)
         
-        def map_func(carry, index_Bf):
-            rng_key, key_proposal, key_accept = random.split(carry[0], 3)
+        BtinvNd = jnp.einsum('cf, fsp -> csp', BtinvN, full_data)
 
-            u_proposal = dist.Normal(carry[1][index_Bf], step_size[index_Bf]).sample(key_proposal)
-            
-            self._fake_mixing_matrix.update_params(carry[1].reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'))
-            # old_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
-            
-            proposal_params = jnp.copy(carry[1])
-            proposal_params = proposal_params.at[index_Bf].set(u_proposal)
-            # self._fake_mixing_matrix.update_params(proposal_params.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'))
-            # proposal_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+        P = jnp.einsum('ef,fc,cg,lg,lh->eh', self.freq_inverse_noise, new_mixing_matrix, invBtinvNB, new_mixing_matrix, self.freq_inverse_noise)
 
-            # accept_prob = -(log_proba(old_mixing_matrix, **model_kwargs) - log_proba(proposal_mixing_matrix, **model_kwargs))
-            accept_prob = -(log_proba(carry[1], **model_kwargs) - log_proba(proposal_params, **model_kwargs))
-            new_param = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, u_proposal, carry[1][index_Bf])
-            
-            proposal_params = proposal_params.at[index_Bf].set(new_param)
-            return (rng_key, proposal_params), new_param
+        logL_dB = jnp.einsum('csp,ck,bfk,fg,gsp->b', BtinvNd, invBtinvNB, new_mixing_matrix_dB, self.freq_inverse_noise-P, full_data)
 
-        carry, new_sample = jlax.scan(map_func, (random_PRNGKey, jnp.ravel(old_sample,order='F')), jnp.arange(jnp.ravel(old_sample,order='F').shape[0]))
-        latest_PRNGKey = carry[0]
-        return latest_PRNGKey, new_sample.reshape(old_sample.shape,order='F')
+        return -logL_dB
+
+    def spectral_likelihood_dB_f(self, new_params_mixing_matrix, full_data_without_CMB, **model_kwargs):
+        """
+        Returns a list of the derivatives of -log(L_sp)
+        per each spectral parameter
+        """
+
+        self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+
+        new_mixing_matrix_fg = self._fake_mixing_matrix.get_B(jax_use=True)[:,1:]
+        new_mixing_matrix_dB_fg = self._fake_mixing_matrix.get_B_db(jax_use=True)[:,:,1:]
+
+        invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, new_mixing_matrix_fg, jax_use=True)
+        BtinvN = get_BtinvN(self.freq_inverse_noise, new_mixing_matrix_fg, jax_use=True)
+        
+        BtinvNd = jnp.einsum('cf, fsp -> csp', BtinvN, full_data_without_CMB)
+
+        P = jnp.einsum('ef,fc,cg,lg,lh->eh', self.freq_inverse_noise, new_mixing_matrix_fg, invBtinvNB, new_mixing_matrix_fg, self.freq_inverse_noise)
+
+        logL_dB = jnp.einsum('csp,ck,bfk,fg,gsp->b', BtinvNd, invBtinvNB, new_mixing_matrix_dB_fg, self.freq_inverse_noise-P, full_data_without_CMB)
+
+        return -logL_dB
 
 # def get_sample_parameter(mcmc_kernel, full_initial_guess, random_PRNGKey=random.PRNGKey(100), **model_kwargs):
 #     """ The mcmc_kernel provided must be provided with a log_proba function which aims at be maximised !!! Not minimised

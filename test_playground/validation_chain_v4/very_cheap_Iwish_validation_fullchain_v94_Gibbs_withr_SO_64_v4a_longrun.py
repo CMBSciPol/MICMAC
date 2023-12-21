@@ -17,10 +17,7 @@ import micmac as micmac
 from jax import config
 config.update("jax_enable_x64", True)
 
-file_ver = 'biased_full_v94_Gchain_SO_64_v2a' # -> 10000 iterations + 10% error + step-size_r 1e^-3 + biased_full_chain_v2a + initial_guess_r = 1e-3 ; C_approx only lensing
-file_ver = 'biased_full_v94_Gchain_SO_64_v2b' # -> 2000 iterations + 10% error + step-size_r 1e^-3 + biased_full_chain_v2b + initial_guess_r = 1e-3 ; C_approx only lensing
-file_ver = 'biased_full_v94_Gchain_SO_64_v2c' # -> 2000 iterations + 10% error + step-size_r 1e^-3 + biased_full_chain_v2c w/ invWishart + initial_guess_r = 1e-3 ; C_approx only lensing
-file_ver = 'biased_full_v94_Gchain_SO_64_v2e' # -> 2000 iterations + 10% error + step-size_r 1e^-3 + biased_full_chain_v2c + initial_guess_r = 1e-3 ; C_approx only lensing
+file_ver = 'Iwish_full_v94_Gchain_SO_64_v4a' # -> 1000 iterations + 10% error + invWishart + Iwish_full_chain_v4a + initial_guess_r = 1e-3 ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 
@@ -46,10 +43,7 @@ working_directory_path = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MI
 directory_save_file = working_directory_path + 'save_directory/'
 directory_toml_file = working_directory_path + 'toml_params/'
 
-# path_toml_file = directory_toml_file + 'full_chain_v1a.toml'
-path_toml_file = directory_toml_file + 'biased_full_chain_v2a.toml'
-path_toml_file = directory_toml_file + 'biased_full_chain_v2b.toml'
-path_toml_file = directory_toml_file + 'biased_full_chain_v2c.toml'
+path_toml_file = directory_toml_file + 'Iwish_full_chain_v4a.toml'
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
@@ -99,37 +93,21 @@ MICMAC_obj.step_size_r = minimum_std_Fisher_diag[-1]
 # Generation input maps
 input_freq_maps, input_cmb_maps, theoretical_red_cov_r0_total, theoretical_red_cov_r1_tensor = MICMAC_obj.generate_input_freq_maps_from_fgs(freq_maps_fgs, return_only_freq_maps=False)
 
-# Re-Defining the data if needed
-indices_polar = np.array([1,2,4])
-partial_indices_polar = indices_polar[:MICMAC_obj.nstokes]
-
-
 theoretical_r0_total = micmac.get_c_ells_from_red_covariance_matrix(theoretical_red_cov_r0_total)#[partial_indices_polar,:]
 theoretical_r1_tensor = micmac.get_c_ells_from_red_covariance_matrix(theoretical_red_cov_r1_tensor)#[partial_indices_polar,:]
-
-# Params mixing matrix
-init_mixing_matrix_obj = micmac.InitMixingMatrix(MICMAC_obj.frequency_array, MICMAC_obj.number_components, pos_special_freqs=MICMAC_obj.pos_special_freqs)
-exact_params_mixing_matrix = init_mixing_matrix_obj.init_params()
-
 
 c_ell_approx = np.zeros((3,MICMAC_obj.lmax+1))
 c_ell_approx[0,MICMAC_obj.lmin:] = theoretical_r0_total[0,:]
 c_ell_approx[1,MICMAC_obj.lmin:] = theoretical_r0_total[1,:]
 
+# Mixing matrix parameters 
+init_mixing_matrix_obj = micmac.InitMixingMatrix(MICMAC_obj.frequency_array, MICMAC_obj.number_components, pos_special_freqs=MICMAC_obj.pos_special_freqs)
+exact_params_mixing_matrix = init_mixing_matrix_obj.init_params()
 
 # First guesses
 initial_wiener_filter_term = np.zeros((MICMAC_obj.nstokes, MICMAC_obj.npix))
 initial_fluctuation_maps = np.zeros((MICMAC_obj.nstokes, MICMAC_obj.npix))
 
-len_pos_special_freqs = len(MICMAC_obj.pos_special_freqs)
-# step_size_B_f = MICMAC_obj.step_size_B_f*jnp.ones((MICMAC_obj.number_frequencies-len_pos_special_freqs)*2)
-# gap = 10
-# gap = 5
-# gap = 4
-# gap = 2
-# gap = 1
-# gap = 0
-# init_params_mixing_matrix = exact_params_mixing_matrix.ravel(order='F') + gap*np.random.uniform(low=-step_size_B_f,high=step_size_B_f, size=((MICMAC_obj.number_frequencies-len_pos_special_freqs)*2))
 init_params_mixing_matrix = exact_params_mixing_matrix.ravel(order='F')*np.random.uniform(low=.9,high=1.1, size=((MICMAC_obj.number_frequencies-len_pos_special_freqs)*2))
 
 print(f'Exact param matrix : {exact_params_mixing_matrix}')
@@ -148,9 +126,6 @@ time_start_sampling = time.time()
 MICMAC_obj.perform_sampling(input_freq_maps, c_ell_approx, CMB_c_ell, init_params_mixing_matrix, 
                          initial_guess_r=initial_guess_r, initial_wiener_filter_term=initial_wiener_filter_term, initial_fluctuation_maps=initial_fluctuation_maps,
                          theoretical_r0_total=theoretical_r0_total, theoretical_r1_tensor=theoretical_r1_tensor)
-# MICMAC_obj.perform_sampling_v2(input_freq_maps, c_ell_approx, CMB_c_ell, init_params_mixing_matrix, 
-#                          initial_guess_r=initial_guess_r, initial_wiener_filter_term=initial_wiener_filter_term, initial_fluctuation_maps=initial_fluctuation_maps,
-#                          theoretical_r0_total=theoretical_r0_total, theoretical_r1_tensor=theoretical_r1_tensor)
 time_full_chain = (time.time()-time_start_sampling)/60
 print("End of iterations in {} minutes, saving all files !".format(time_full_chain), flush=True)
 
