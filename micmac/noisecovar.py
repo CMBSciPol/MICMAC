@@ -57,9 +57,9 @@ def get_BtinvN(invN, B, jax_use=False):
     """
 
     if jax_use:
-        return jnp.einsum("fc,fh->ch", B, invN)
+        return jnp.einsum("fc...,fh...->ch...", B, invN)
 
-    return np.einsum("fc,fh->ch", B, invN)
+    return np.einsum("fc...,fh...->ch...", B, invN)
 
 
 def get_BtinvNB(invN, B, jax_use=False):
@@ -71,9 +71,9 @@ def get_BtinvNB(invN, B, jax_use=False):
     BtinvN = get_BtinvN(invN, B, jax_use)
 
     if jax_use:
-        return jnp.einsum("ch,hf->cf", BtinvN, B)
+        return jnp.einsum("ch...,hf...->cf...", BtinvN, B)
 
-    return np.einsum("ch,hf->cf", BtinvN, B)
+    return np.einsum("ch...,hf...->cf...", BtinvN, B)
 
 
 def get_inv_BtinvNB(invN, B, jax_use=False):
@@ -85,9 +85,9 @@ def get_inv_BtinvNB(invN, B, jax_use=False):
     BtinvNB = get_BtinvNB(invN, B, jax_use)
 
     if jax_use:
-        return jnp.linalg.inv(BtinvNB)
+        return jnp.linalg.pinv(BtinvNB.swapaxes(0,-1)).swapaxes(0,-1)
 
-    return np.linalg.inv(BtinvNB)
+    return np.linalg.pinv(BtinvNB.swapaxes(0,-1)).swapaxes(0,-1)
 
 
 def get_Wd(invN, B, d, jax_use=False):
@@ -100,9 +100,9 @@ def get_Wd(invN, B, d, jax_use=False):
     invBtinvNB = get_inv_BtinvNB(invN, B, jax_use)
 
     if jax_use:
-        return jnp.einsum("cg,hg,hf,fsp->csp", invBtinvNB, B, invN, d)
+        return jnp.einsum("cg...,hg...,hf...,f...->c...", invBtinvNB, B, invN, d)
 
-    return np.einsum("cg,hg,hf,fsp->csp", invBtinvNB, B, invN, d)
+    return np.einsum("cg...,hg...,hf...,f...->c...", invBtinvNB, B, invN, d)
 
 
 ## Choose if we want to keep these ones

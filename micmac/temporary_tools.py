@@ -37,3 +37,21 @@ def generate_power_spectra_CAMB(Nside,  r=0, Alens=1, H0=67.5, ombh2=0.022, omch
 #     for key in file_flux.__dict__['files']:
 #         dict_obj[key] = file_flux[key]
 #     return dict_obj
+
+def get_MCMC_batch_error(sample_single_chain, batch_size):
+    # number_iterations = np.size(sample_single_chain, axis=0)
+    number_iterations = sample_single_chain.shape[0]
+    assert number_iterations%batch_size == 0
+
+    overall_mean = np.average(sample_single_chain, axis=0)
+    standard_error = np.sqrt((batch_size/number_iterations)*((sample_single_chain-overall_mean)**2).sum())
+    return standard_error
+
+
+def get_empirical_covariance_JAX(samples):
+    """ Compute empirical covariance from samples
+    """
+    number_samples = jnp.size(samples, axis=0)
+    mean_samples = jnp.mean(samples, axis=0)
+
+    return (jnp.einsum('ti,tj->tij',samples,samples).sum(axis=0) - number_samples*jnp.einsum('i,j->ij',mean_samples,mean_samples))/(number_samples-1)
