@@ -1,12 +1,12 @@
 # [Quick_test_parameters]
 sample_eta_B_f = true
 biased_version = false
-harmonic_correction = false
 cheap_save = true
 very_cheap_save = true
 use_automatic_step_size = false
 lognormal_r = false
 indexes_free_Bf = false
+disable_chex = false
 
 # [Instrument_parameters]
 instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_noise and frequency_array will be taken from fgbuster, 
@@ -16,8 +16,6 @@ instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_n
 
 # [CMB_parameters]
 r_true = 0.01
-only_select_Bmodes = false
-no_Emodes_CMB = false
 sample_r_Metropolis = true
 sample_C_inv_Wishart = false
 
@@ -31,8 +29,9 @@ number_components = 3
 pos_special_freqs = [0,-1]
 
 # [CG_parameters]
-limit_iter_cg = 2000 # Maximum number of iterations for the different CGs
-tolerance_CG = 1e-12 # Tolerance for the different CGs
+limit_iter_cg = 200 #2000 # Maximum number of iterations for the different CGs
+limit_iter_cg_eta = 50 # Maximum number of iterations for the CG of eta
+tolerance_CG = 1e-10 # Tolerance for the different CGs
 
 # [Metropolis-Hastings-within-Gibbs_parameters]
 step_size_B_f = 1e-3 #1e-4 #1e-6
