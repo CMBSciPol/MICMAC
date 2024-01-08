@@ -19,6 +19,8 @@ config.update("jax_enable_x64", True)
 
 file_ver = 'biased_masked_full_v94_Gchain_SO_64_v1a' # -> 3000 iterations + mask + 1% error + biased_full_chain_v1a ; C_approx only lensing
 file_ver = 'biased_unmasked_full_v100_Gchain_SO_64_v0a' # -> 3000 iterations + unmask + 1% error + biased_full_chain_v1a ; C_approx only lensing
+file_ver = 'biased_unmasked_full_v101_Gchain_SO_64_v0b' # -> 2500 iterations + unmask + 1% error + biased_full_chain_v1c ; C_approx only lensing
+file_ver = 'biased_unmasked_full_v101_Gchain_SO_64_v1a' # -> 2500 iterations + masked + 1% error + biased_full_chain_v1c ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -38,6 +40,7 @@ directory_save_file = working_directory_path + 'save_directory/'
 directory_toml_file = working_directory_path + 'toml_params/'
 
 path_toml_file = directory_toml_file + 'biased_full_chain_v1a.toml'
+path_toml_file = directory_toml_file + 'biased_full_chain_v1c.toml'
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
 
 
@@ -66,7 +69,7 @@ apod_mask = hp.ud_grade(hp.read_map(path_mask),nside_out=MICMAC_obj.nside)
 mask = np.copy(apod_mask)
 mask[apod_mask>0] = 1
 
-mask = np.ones_like(apod_mask)
+# mask = np.ones_like(apod_mask)
 
 MICMAC_obj.mask = mask
 
@@ -79,6 +82,11 @@ nb_pixels_mask = int(mask.sum())
 freq_inverse_noise_masked[:,:,mask!=0] = np.repeat(freq_inverse_noise.ravel(order='F'), nb_pixels_mask).reshape((MICMAC_obj.number_frequencies,MICMAC_obj.number_frequencies,nb_pixels_mask), order='C')
 
 MICMAC_obj.freq_inverse_noise = freq_inverse_noise_masked
+
+
+initial_guess_r=10**(-2)
+initial_guess_r=10**(-3)
+# initial_guess_r=10**(-8)
 
 
 
@@ -140,10 +148,6 @@ init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-l
 
 print(f'Exact param matrix : {exact_params_mixing_matrix}')
 print(f'Initial param matrix : {init_params_mixing_matrix}')
-
-initial_guess_r=10**(-2)
-initial_guess_r=10**(-3)
-# initial_guess_r=10**(-8)
 
 
 CMB_c_ell = np.zeros_like(c_ell_approx)

@@ -20,6 +20,7 @@ config.update("jax_enable_x64", True)
 file_ver = 'corr_masked_full_v100_Gchain_SO_64_v1a' # -> WF&Fluct v2 + 2500 iterations + 100 limit_iter + mask + 1% error + corr_full_chain_v1a ; C_approx only lensing
 file_ver = 'corr_masked_full_v100_Gchain_SO_64_v1b' # -> WF&Fluct v2 + 1000 iterations + 200 limit_iter + mask + 1% error + corr_full_chain_v1b ; C_approx only lensing
 file_ver = 'corr_masked_full_v100_Gchain_SO_64_v1c' # -> WF&Fluct v2 + 1500 iterations + restrict_to_mask + 50 limit_iter_eta + mask + 1% error + corr_full_chain_v1c ; C_approx only lensing
+file_ver = 'corr_masked_full_v100_Gchain_SO_64_v2a' # -> WF&Fluct v2c ; log_eta v2c(0?) + 2500 iterations + restrict_to_mask + 50 limit_iter_eta + mask + 1% error + corr_full_chain_v2a ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -42,6 +43,7 @@ directory_toml_file = working_directory_path + 'toml_params/'
 path_toml_file = directory_toml_file + 'corr_full_chain_v1a.toml'
 path_toml_file = directory_toml_file + 'corr_full_chain_v1b.toml'
 path_toml_file = directory_toml_file + 'corr_full_chain_v1c.toml'
+path_toml_file = directory_toml_file + 'corr_full_chain_v2a.toml'
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)

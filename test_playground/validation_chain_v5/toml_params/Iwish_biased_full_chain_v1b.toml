@@ -29,6 +29,7 @@ pos_special_freqs = [0,-1]
 
 # [CG_parameters]
 limit_iter_cg = 200 #2000 # Maximum number of iterations for the different CGs
+limit_iter_cg_eta = 50 # Maximum number of iterations for the CG of eta
 tolerance_CG = 1e-10 # Tolerance for the different CGs
 
 # [Metropolis-Hastings-within-Gibbs_parameters]
@@ -40,7 +41,7 @@ num_sample_AM = 100000 # Number of samples for the automated step-size starting 
 epsilon_cov = 1e-20
 
 # [Sampling_parameters]
-overrelax = 0 #-0.995 # Overrelaxation parameter for the sampling
-number_iterations_sampling = 2000 # Maximum number of iterations for the sampling
+# overrelax = 0 #-0.995 # Overrelaxation parameter for the sampling
+number_iterations_sampling = 2500 # Maximum number of iterations for the sampling
 number_iterations_done = 0 # Number of iterations already accomplished, in case the chain is resuming from a previous run
 seed = 42

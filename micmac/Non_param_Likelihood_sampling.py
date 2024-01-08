@@ -436,7 +436,8 @@ class MICMAC_Sampler(Sampling_functions):
         # jitted_get_inverse_wishart_sampling_from_c_ells = jax.jit(self.get_inverse_wishart_sampling_from_c_ells, static_argnames=['q_prior', 'option_ell_2', 'tol'])
         # jitted_get_inverse_wishart_sampling_from_c_ells = jax.jit(self.get_inverse_wishart_sampling_from_c_ells)
         # jitted_get_inverse_wishart_sampling_from_c_ells = jax.jit(self.get_inverse_gamma_sampling_from_c_ells) # Use of gamma distribution instead of inverse Wishart
-        func_get_inverse_wishart_sampling_from_c_ells = self.get_inverse_gamma_sampling_from_c_ells
+        func_get_inverse_wishart_sampling_from_c_ells = self.get_inverse_wishart_sampling_from_c_ells
+        # func_get_inverse_wishart_sampling_from_c_ells = self.get_inverse_gamma_sampling_from_c_ells
 
         if self.lognormal_r:
             # Using lognormal proposal distribution for r
@@ -463,6 +464,7 @@ class MICMAC_Sampler(Sampling_functions):
 
         dimension_param_B_f = (self.number_frequencies-len_pos_special_freqs)*(self.number_correlations-1)
         number_correlations = self.number_correlations
+        mask_binary = self.mask
         
 
         ## Preparing the step-size for Metropolis-within-Gibbs of B_f sampling
@@ -479,7 +481,7 @@ class MICMAC_Sampler(Sampling_functions):
 
         print(f"Starting {self.number_iterations_sampling} iterations from {self.number_iterations_done} iterations done", flush=True)
 
-        @scan_tqdm(actual_number_of_iterations)
+        @scan_tqdm(actual_number_of_iterations, )
         def all_sampling_steps(carry, iteration):
             """ Gibbs sampling function, performing the following steps :
                 - Sampling of eta, for the C_approx term
@@ -505,8 +507,9 @@ class MICMAC_Sampler(Sampling_functions):
             mixing_matrix_sampled = self.mixing_matrix_obj.get_B(jax_use=True)
 
             # Few checks for the mixing matrix
-            chx.assert_axis_dimension(mixing_matrix_sampled, 0, self.number_frequencies)
-            chx.assert_axis_dimension(mixing_matrix_sampled, 1, self.number_components)
+            # chx.assert_axis_dimension(mixing_matrix_sampled, 0, self.number_frequencies)
+            # chx.assert_axis_dimension(mixing_matrix_sampled, 1, self.number_components)
+            chx.assert_shape(mixing_matrix_sampled, (self.number_frequencies, self.number_components))
 
             # Application of new mixing matrix to the noise covariance and extracted CMB map from data
             invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, mixing_matrix_sampled, jax_use=True)
@@ -538,7 +541,8 @@ class MICMAC_Sampler(Sampling_functions):
             
             ## Geting the Wiener filter term, mean of the variable s_c
             # wiener_filter_term = self.solve_generalized_wiener_filter_term(s_cML, red_cov_matrix_sample, invBtinvNB, initial_guess=jnp.copy(WF_term_maps))
-            wiener_filter_term = self.solve_generalized_wiener_filter_term_v2(s_cML, red_cov_matrix_sample, invBtinvNB, initial_guess=jnp.copy(WF_term_maps))
+            # wiener_filter_term = self.solve_generalized_wiener_filter_term_v2(s_cML, red_cov_matrix_sample, invBtinvNB, initial_guess=jnp.copy(WF_term_maps))
+            wiener_filter_term = self.solve_generalized_wiener_filter_term_v2c(s_cML, red_cov_matrix_sample, invBtinvNB, initial_guess=jnp.copy(WF_term_maps))
             # wiener_filter_term = jitted_solve_wiener_filter_term(s_cML, red_cov_matrix_sample, invBtinvNB, initial_guess=jnp.copy(WF_term_maps))
 
             ## Preparing the random variables for the fluctuation term
@@ -549,7 +553,10 @@ class MICMAC_Sampler(Sampling_functions):
             map_random_realization_chi = None
 
             ## Getting the fluctuation maps terms, for the variance of the variable s_c
-            fluctuation_maps = self.get_fluctuating_term_maps_v2(red_cov_matrix_sample, invBtinvNB, BtinvN_sqrt, new_subPRNGKey, 
+            # fluctuation_maps = self.get_fluctuating_term_maps_v2(red_cov_matrix_sample, invBtinvNB, BtinvN_sqrt, new_subPRNGKey, 
+            #                                                   map_random_realization_xi=map_random_realization_xi, map_random_realization_chi=map_random_realization_chi, 
+            #                                                   initial_guess=jnp.copy(fluct_maps))
+            fluctuation_maps = self.get_fluctuating_term_maps_v2c(red_cov_matrix_sample, invBtinvNB, BtinvN_sqrt, new_subPRNGKey, 
                                                               map_random_realization_xi=map_random_realization_xi, map_random_realization_chi=map_random_realization_chi, 
                                                               initial_guess=jnp.copy(fluct_maps))
             # fluctuation_maps = jitted_get_fluctuating_term(red_cov_matrix_sample, invBtinvNB, BtinvN_sqrt, new_subPRNGKey, 
@@ -567,7 +574,8 @@ class MICMAC_Sampler(Sampling_functions):
             # Sampling step 3 : sampling of CMB covariance C
             
             ## Preparing the c_ell which will be used for the sampling
-            c_ells_Wishart_modified = get_cell_from_map_jax(s_c_sample, lmax=self.lmax, n_iter=self.n_iter)*(2*jnp.arange(self.lmax+1) + 1)
+            c_ells_Wishart_ = get_cell_from_map_jax(s_c_sample, lmax=self.lmax, n_iter=self.n_iter)
+            c_ells_Wishart_modified = c_ells_Wishart_*(2*jnp.arange(self.lmax+1) + 1)
             ### Getting them in the format [lmax,nstokes,nstokes]
             red_c_ells_Wishart_modified = get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_modified)[self.lmin:]
 
@@ -578,7 +586,8 @@ class MICMAC_Sampler(Sampling_functions):
             if self.sample_C_inv_Wishart:
                 # Sampling C with inverse Wishart
                 # red_cov_matrix_sample = jitted_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_modified, PRNGKey=new_subPRNGKey_2)
-                red_cov_matrix_sample = func_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_modified, PRNGKey=new_subPRNGKey_2)
+                # red_cov_matrix_sample = func_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_modified, PRNGKey=new_subPRNGKey_2)
+                red_cov_matrix_sample = func_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_, PRNGKey=new_subPRNGKey_2)
 
             elif self.sample_r_Metropolis:
                 # Sampling r which will parametrize C(r) = C_scalar + r*C_tensor
@@ -677,9 +686,12 @@ class MICMAC_Sampler(Sampling_functions):
                          PRNGKey)
         self.update_one_sample(initial_carry_0)
 
+        jitted_all_sampling_steps = jax.jit(all_sampling_steps)
+        # jitted_scan = jax.jit(jlx.scan)
         time_start_sampling = time.time()
         # Start sampling !!!
-        last_sample, all_samples = jlx.scan(all_sampling_steps, initial_carry, jnp.arange(actual_number_of_iterations))
+        # last_sample, all_samples = jlx.scan(all_sampling_steps, initial_carry, jnp.arange(actual_number_of_iterations))
+        last_sample, all_samples = jlx.scan(jitted_all_sampling_steps, initial_carry, jnp.arange(actual_number_of_iterations))
         time_full_chain = (time.time()-time_start_sampling)/60      
         print("End of iterations in {} minutes, saving all files !".format(time_full_chain), flush=True)
 
