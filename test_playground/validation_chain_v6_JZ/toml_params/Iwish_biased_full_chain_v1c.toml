@@ -1,5 +1,5 @@
 # [Quick_test_parameters]
-sample_eta_B_f = false
+sample_eta_B_f = true
 biased_version = true
 cheap_save = true
 very_cheap_save = true

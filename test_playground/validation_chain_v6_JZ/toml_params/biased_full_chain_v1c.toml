@@ -8,6 +8,7 @@ lognormal_r = false
 indexes_free_Bf = false
 # disable_chex = false
 restrict_to_mask = true
+use_old_s_c_sampling = false
 
 # [Instrument_parameters]
 instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_noise and frequency_array will be taken from fgbuster, 
@@ -44,6 +45,6 @@ epsilon_cov = 1e-20
 
 # [Sampling_parameters]
 # overrelax = 0 #-0.995 # Overrelaxation parameter for the sampling
-number_iterations_sampling = 2500 # Maximum number of iterations for the sampling
+number_iterations_sampling = 2000 # Maximum number of iterations for the sampling
 number_iterations_done = 0 # Number of iterations already accomplished, in case the chain is resuming from a previous run
 seed = 42

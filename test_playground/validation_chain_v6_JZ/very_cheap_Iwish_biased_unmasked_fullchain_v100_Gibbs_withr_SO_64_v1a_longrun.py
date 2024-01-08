@@ -23,6 +23,7 @@ file_ver = 'Iwish_biased_unmasked_full_v100_Gchain_SO_64_v2a' # -> 2000 iteratio
 # file_ver = 'rwish_biased_unmasked_full_v100_Gchain_SO_64_v2a' # -> 2000 iterations + no B_f/eta + unmask + rwish_biased_full_chain_v1c ; C_approx only lensing
 file_ver = 'Iwish_biased_unmasked_full_v100_Gchain_SO_64_v2b' # -> 2000 iterations + no B_f/eta + unmask + invGamma + Iwish_biased_full_chain_v1b ; C_approx only lensing
 file_ver = 'Iwish_biased_unmasked_full_v100_Gchain_SO_64_v2c' # -> 2000 iterations + no B_f/eta + unmask + invWishart + Iwish_biased_full_chain_v1b ; C_approx only lensing
+file_ver = 'Iwish_biased_unmasked_full_v100_Gchain_SO_64_v3a' # -> 4000 iterations + with B_f/eta + unmask + invWishart + Iwish_biased_full_chain_v1c ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -43,8 +44,8 @@ path_Fisher = '../Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lm
 perso_repo_path = "/gpfswork/rech/nih/ube74zo/MICMAC_save/validation_chain_v6_JZ/"
 directory_save_file = perso_repo_path + 'save_directory/'
 
-working_directory_path = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/validation_chain_v5/'
-working_directory_path = current_path + '/'
+# working_directory_path = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/validation_chain_v5/'
+working_directory_path = current_path + '/validation_chain_v6_JZ/'
 directory_toml_file = working_directory_path + 'toml_params/'
 
 # path_toml_file = directory_toml_file + 'biased_full_chain_v1a.toml'

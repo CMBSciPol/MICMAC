@@ -21,6 +21,7 @@ file_ver = 'biased_masked_full_v94_Gchain_SO_64_v1a' # -> 3000 iterations + mask
 file_ver = 'biased_unmasked_full_v100_Gchain_SO_64_v0a' # -> 3000 iterations + unmask + 1% error + biased_full_chain_v1a ; C_approx only lensing
 file_ver = 'biased_unmasked_full_v101_Gchain_SO_64_v0b' # -> 2500 iterations + unmask + 1% error + biased_full_chain_v1c ; C_approx only lensing
 file_ver = 'biased_unmasked_full_v101_Gchain_SO_64_v1a' # -> 2500 iterations + masked + 1% error + biased_full_chain_v1c ; C_approx only lensing
+file_ver = 'biased_unmasked_full_v101_Gchain_SO_64_v1b' # -> 1250 iterations + masked + 1% error + biased_full_chain_v1cb ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -41,6 +42,7 @@ directory_toml_file = working_directory_path + 'toml_params/'
 
 path_toml_file = directory_toml_file + 'biased_full_chain_v1a.toml'
 path_toml_file = directory_toml_file + 'biased_full_chain_v1c.toml'
+path_toml_file = directory_toml_file + 'biased_full_chain_v1cb.toml'
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
 
 

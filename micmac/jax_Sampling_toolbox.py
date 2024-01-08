@@ -634,17 +634,17 @@ class Sampling_functions(object):
         #     initial_guess = maps_x_red_covariance_cell_JAX(initial_guess.reshape((self.nstokes,self.npix)), red_cov_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
 
         # inv_first_part_term_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), jnp.linalg.pinv(red_cov_matrix_sqrt), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
-        inv_first_part_term_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), jnp.linalg.pinv(red_cov_matrix), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
-        # inv_first_part_term_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), red_cov_matrix, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
-        ## Second left member pixel operator : (E^t (B^t N^{-1} B)^{-1} E) x
-        def inv_second_part_term_left(x):
-            return jnp.einsum('sp,p->sp',x.reshape((self.nstokes,self.npix)),invBtinvNB[0,0,...]*jhp.nside2resol(self.nside)**2)
+        # inv_first_part_term_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), jnp.linalg.pinv(red_cov_matrix), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
+        # # inv_first_part_term_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), red_cov_matrix, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
+        # ## Second left member pixel operator : (E^t (B^t N^{-1} B)^{-1} E) x
+        # def inv_second_part_term_left(x):
+        #     return jnp.einsum('sp,p->sp',x.reshape((self.nstokes,self.npix)),invBtinvNB[0,0,...]*jhp.nside2resol(self.nside)**2)
         # def inv_second_part_term_left(x):
         #     return jnp.einsum('sp,p->sp',x.reshape((self.nstokes,self.npix)),N_c_inv)
 
         # precond_func = lambda x : inv_first_part_term_left(x).ravel() + inv_second_part_term_left(x).ravel()
         # precond_func = lambda x : inv_second_part_term_left(x).ravel()
-        precond_func = lambda x : inv_first_part_term_left(x).ravel()
+        # precond_func = lambda x : inv_first_part_term_left(x).ravel()
         # precond_func = lambda x : x.ravel() -  inv_first_part_term_left(inv_second_part_term_left(inv_first_part_term_left(x))).ravel()/(N_c_inv).sum()
 
         # Actual start of the CG
@@ -661,13 +661,14 @@ class Sampling_functions(object):
 
         # func_norm = lambda x : jnp.sqrt(jnp.sum((x.reshape((self.nstokes,self.npix))*self.mask)**2))
         # func_norm = lambda x : jnp.sqrt(jnp.sum((x*mask_to_use)**2))
-        func_norm = lambda x : jnp.linalg.norm((x.reshape((self.nstokes,self.npix))*self.mask).ravel(),ord=2)
+        # func_norm = lambda x : jnp.linalg.norm((x.reshape((self.nstokes,self.npix))*self.mask).ravel(),ord=2)
+        func_norm = lambda x : jnp.linalg.norm(x,ord=2)
         # func_norm = lambda x : jnp.linalg.norm((x*mask_to_use).ravel(),ord=2)
 
         # func_norm = lambda x : jnp.sqrt(jnp.sum((x.reshape((self.nstokes,self.npix)))**2))
 
 
-        precond_lineax = lx.FunctionLinearOperator(precond_func, jax.ShapeDtypeStruct((self.nstokes*self.npix,),jnp.float64), tags=(lx.symmetric_tag,lx.positive_semidefinite_tag))
+        # precond_lineax = lx.FunctionLinearOperator(precond_func, jax.ShapeDtypeStruct((self.nstokes*self.npix,),jnp.float64), tags=(lx.symmetric_tag,lx.positive_semidefinite_tag))
 
         CG_obj = lx.CG(rtol=self.tolerance_CG, atol=1e-8, max_steps=self.limit_iter_cg, norm=func_norm)
 
@@ -751,18 +752,18 @@ class Sampling_functions(object):
 
         # inv_first_part_term_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), jnp.linalg.pinv(red_cov_matrix_sqrt), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
         # inv_first_part_term_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), jnp.linalg.pinv(red_cov_matrix), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
-        inv_first_part_term_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), red_cov_matrix, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
-                # Second left member pixel operator : (E^t (B^t N^{-1} B)^{-1} E) x
-        def inv_second_part_term_left(x):
-            # return jnp.einsum('sp,p->sp',x.reshape((self.nstokes,self.npix)),invBtinvNB[0,0,...]*jhp.nside2resol(self.nside)**2)
-            return x*N_c_repeat
+        # inv_first_part_term_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), red_cov_matrix, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
+        #         # Second left member pixel operator : (E^t (B^t N^{-1} B)^{-1} E) x
         # def inv_second_part_term_left(x):
-        #     return jnp.einsum('sp,p->sp',x.reshape((self.nstokes,self.npix)),N_c_inv)
+        #     # return jnp.einsum('sp,p->sp',x.reshape((self.nstokes,self.npix)),invBtinvNB[0,0,...]*jhp.nside2resol(self.nside)**2)
+        #     return x*N_c_repeat
+        # # def inv_second_part_term_left(x):
+        # #     return jnp.einsum('sp,p->sp',x.reshape((self.nstokes,self.npix)),N_c_inv)
 
         # precond_func = lambda x : x.ravel() -  inv_first_part_term_left(inv_second_part_term_left(inv_first_part_term_left(x))).ravel()/(N_c_inv).sum()
         # precond_func = lambda x : inv_first_part_term_left(x).ravel() + inv_second_part_term_left(x).ravel()
         # precond_func = lambda x : inv_first_part_term_left(x).ravel() + inv_second_part_term_left(x).ravel()
-        precond_func = lambda x : inv_second_part_term_left(x).ravel()
+        # precond_func = lambda x : inv_second_part_term_left(x).ravel()
         # precond_func = lambda x : inv_first_part_term_left(x).ravel()
 
 
@@ -772,7 +773,7 @@ class Sampling_functions(object):
         #                                                                 tol=self.tolerance_CG, maxiter=self.limit_iter_cg, M=precond_func)
         func_lineax = lx.FunctionLinearOperator(func_left_term, jax.ShapeDtypeStruct((self.nstokes*self.npix,),jnp.float64), tags=(lx.symmetric_tag,lx.positive_semidefinite_tag))
 
-        precond_lineax = lx.FunctionLinearOperator(precond_func, jax.ShapeDtypeStruct((self.nstokes*self.npix,),jnp.float64), tags=(lx.symmetric_tag,lx.positive_semidefinite_tag))
+        # precond_lineax = lx.FunctionLinearOperator(precond_func, jax.ShapeDtypeStruct((self.nstokes*self.npix,),jnp.float64), tags=(lx.symmetric_tag,lx.positive_semidefinite_tag))
 
         # mask_binary = jnp.copy(self.mask)
         # if mask_binary is None:
@@ -783,7 +784,8 @@ class Sampling_functions(object):
         # func_norm = lambda x : jnp.sqrt(jnp.sum((x.reshape((self.nstokes,self.npix))*self.mask)**2))
         # func_norm = lambda x : jnp.sqrt(jnp.sum((x*mask_to_use)**2))
         # func_norm = lambda x : jnp.linalg.norm(x*mask_to_use,ord=2)
-        func_norm = lambda x : jnp.linalg.norm((x.reshape((self.nstokes,self.npix))*self.mask).ravel(),ord=2)
+        # func_norm = lambda x : jnp.linalg.norm((x.reshape((self.nstokes,self.npix))*self.mask).ravel(),ord=2)
+        func_norm = lambda x : jnp.linalg.norm(x,ord=2)
         # func_norm = lambda x : jnp.linalg.norm((x*mask_to_use).ravel(),ord=2)
         # def func_norm(x, _mask_to_use=mask_to_use):
         #     # return jnp.sqrt(jnp.sum((x*_mask_to_use)**2))
