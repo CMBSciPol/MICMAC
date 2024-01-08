@@ -353,7 +353,7 @@ class MICMAC_Sampler(Sampling_functions):
         # Disabling all chex checks to speed up the code
         # chx acts like an assert, but is JAX compatible
         if self.disable_chex:
-            print("Disabling chex !!!")
+            print("Disabling chex !!!", flush=True)
             chx.disable_asserts()
 
         # Series of tests

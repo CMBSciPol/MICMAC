@@ -43,7 +43,7 @@ perso_repo_path = "/gpfswork/rech/nih/ube74zo/MICMAC_save/validation_chain_v6_JZ
 directory_save_file = perso_repo_path + 'save_directory/'
 
 # working_directory_path = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/validation_chain_v5/'
-working_directory_path = current_path + '/'
+working_directory_path = current_path + '/validation_chain_v6_JZ/'
 directory_toml_file = working_directory_path + 'toml_params/'
 
 path_toml_file = directory_toml_file + 'biased_full_chain_v1c.toml'
@@ -67,7 +67,7 @@ instrument['depth_p'] /= reduction_noise
 np.random.seed(noise_seed)
 # freq_maps = get_observation(instrument, model, nside=NSIDE, noise=noise)[:, 1:, :]   # keep only Q and U
 freq_maps_fgs = get_observation(instrument, fgs_model, nside=MICMAC_obj.nside, noise=noise)[:, 1:, :]   # keep only Q and U
-print("Shape for input frequency maps :", freq_maps_fgs.shape)
+print("Shape for input frequency maps :", freq_maps_fgs.shape, flush=True)
 
 
 # Mask initialization
@@ -152,14 +152,15 @@ first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
     first_guess[MICMAC_obj.indexes_free_Bf]*np.random.uniform(low=.99,high=1.01, size=(dimension_free_param_B_f)))
 init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
 
-print(f'Exact param matrix : {exact_params_mixing_matrix}')
-print(f'Initial param matrix : {init_params_mixing_matrix}')
+print(f'Exact param matrix : {exact_params_mixing_matrix}', flush=True)
+print(f'Initial param matrix : {init_params_mixing_matrix}', flush=True)
 
 
 CMB_c_ell = np.zeros_like(c_ell_approx)
 # CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + MICMAC_obj.r_true*theoretical_r1_tensor)
 CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + initial_guess_r*theoretical_r1_tensor)
 
+print("Begining sampling !", flush=True)
 time_start_sampling = time.time()
 MICMAC_obj.perform_sampling(input_freq_maps_masked, c_ell_approx, CMB_c_ell, init_params_mixing_matrix, 
                          initial_guess_r=initial_guess_r, initial_wiener_filter_term=initial_wiener_filter_term, initial_fluctuation_maps=initial_fluctuation_maps,
