@@ -27,6 +27,7 @@ file_ver = 'corr_masked_full_v100_Gchain_SO_64_v3c' # -> WF&Fluct v2c ; log_eta 
 reduction_noise = 1
 factor_Fisher = 1
 
+current_path = os.path.dirname(os.path.abspath(''))
 sys.path.append(os.path.dirname(os.path.abspath('')))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath('')))+'/tutorials/')
 
