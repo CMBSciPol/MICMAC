@@ -21,6 +21,8 @@ file_ver = 'corr_masked_full_v100_Gchain_SO_64_v1a' # -> WF&Fluct v2 + 2500 iter
 file_ver = 'corr_masked_full_v100_Gchain_SO_64_v1b' # -> WF&Fluct v2 + 1000 iterations + 200 limit_iter + mask + 1% error + corr_full_chain_v1b ; C_approx only lensing
 file_ver = 'corr_masked_full_v100_Gchain_SO_64_v1c' # -> WF&Fluct v2 + 1500 iterations + restrict_to_mask + 50 limit_iter_eta + mask + 1% error + corr_full_chain_v1c ; C_approx only lensing
 file_ver = 'corr_masked_full_v100_Gchain_SO_64_v2a' # -> WF&Fluct v2c ; log_eta v2c(0?) + 2500 iterations + restrict_to_mask + 50 limit_iter_eta + mask + 1% error + corr_full_chain_v2a ; C_approx only lensing
+file_ver = 'corr_masked_full_v100_Gchain_SO_64_v3a' # -> WF&Fluct v2c ; log_eta v2c + 1500 iterations + corr_full_chain_v2a  + restrict_to_mask + 50 limit_iter_eta + mask + 1% error ; C_approx only lensing
+# file_ver = 'corr_masked_full_v100_Gchain_SO_64_v3b' # -> WF&Fluct v2c ; log_eta v2c + 3000 iterations + corr_full_chain_v2b  + restrict_to_mask + 200 limit_iter_eta + mask + 1% error ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -44,8 +46,12 @@ directory_save_file = perso_repo_path + 'save_directory/'
 working_directory_path = current_path + '/'
 directory_toml_file = working_directory_path + 'toml_params/'
 
-
+# path_toml_file = directory_toml_file + 'full_chain_v1a.toml'
+path_toml_file = directory_toml_file + 'corr_full_chain_v1a.toml'
+path_toml_file = directory_toml_file + 'corr_full_chain_v1b.toml'
+path_toml_file = directory_toml_file + 'corr_full_chain_v1c.toml'
 path_toml_file = directory_toml_file + 'corr_full_chain_v2a.toml'
+# path_toml_file = directory_toml_file + 'corr_full_chain_v2b.toml'
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
@@ -75,6 +81,9 @@ print("Shape for input frequency maps :", freq_maps_fgs.shape)
 apod_mask = hp.ud_grade(hp.read_map(path_mask),nside_out=MICMAC_obj.nside)
 mask = np.copy(apod_mask)
 mask[apod_mask>0] = 1
+
+# mask = np.ones_like(apod_mask)
+
 MICMAC_obj.mask = mask
 
 # MICMAC_obj.freq_inverse_noise = micmac.get_noise_covar(instrument['depth_p'], MICMAC_obj.nside)
@@ -88,9 +97,10 @@ freq_inverse_noise_masked[:,:,mask!=0] = np.repeat(freq_inverse_noise.ravel(orde
 MICMAC_obj.freq_inverse_noise = freq_inverse_noise_masked
 
 initial_guess_r = MICMAC_obj.r_true
-# initial_guess_r=10**(-2)
-# initial_guess_r=10**(-3)
+initial_guess_r=10**(-2)
+initial_guess_r=10**(-3)
 # initial_guess_r=10**(-8)
+
 
 
 # Generation step-size
@@ -145,8 +155,12 @@ first_guess = jnp.copy(jnp.ravel(exact_params_mixing_matrix,order='F'))
 
 # first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
 #     first_guess[MICMAC_obj.indexes_free_Bf]*np.random.uniform(low=.9,high=1.1, size=(dimension_free_param_B_f)))
+# first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
+#     first_guess[MICMAC_obj.indexes_free_Bf]*np.random.uniform(low=.99,high=1.01, size=(dimension_free_param_B_f)))
+# init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
+print("First guess from 5 $\sigma$ Fisher !", flush=True)
 first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
-    first_guess[MICMAC_obj.indexes_free_Bf]*np.random.uniform(low=.99,high=1.01, size=(dimension_free_param_B_f)))
+    first_guess[MICMAC_obj.indexes_free_Bf] + minimum_std_Fisher_diag[:-1]*np.random.uniform(low=-5,high=5, size=(dimension_free_param_B_f)))
 init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
 
 print(f'Exact param matrix : {exact_params_mixing_matrix}')

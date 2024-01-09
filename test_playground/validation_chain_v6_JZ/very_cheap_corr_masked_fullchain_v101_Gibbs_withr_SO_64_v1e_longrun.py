@@ -21,7 +21,8 @@ file_ver = 'corr_masked_full_v100_Gchain_SO_64_v1a' # -> WF&Fluct v2 + 2500 iter
 file_ver = 'corr_masked_full_v100_Gchain_SO_64_v1b' # -> WF&Fluct v2 + 1000 iterations + 200 limit_iter + mask + 1% error + corr_full_chain_v1b ; C_approx only lensing
 file_ver = 'corr_masked_full_v100_Gchain_SO_64_v1c' # -> WF&Fluct v2 + 1500 iterations + restrict_to_mask + 50 limit_iter_eta + mask + 1% error + corr_full_chain_v1c ; C_approx only lensing
 file_ver = 'corr_masked_full_v100_Gchain_SO_64_v2a' # -> WF&Fluct v2c ; log_eta v2c(0?) + 2500 iterations + restrict_to_mask + 50 limit_iter_eta + mask + 1% error + corr_full_chain_v2a ; C_approx only lensing
-file_ver = 'corr_masked_full_v100_Gchain_SO_64_v3b' # -> WF&Fluct v2c ; log_eta v2c + 3000 iterations + corr_full_chain_v2b  + restrict_to_mask + 200 limit_iter_eta + mask + 1% error ; C_approx only lensing
+file_ver = 'corr_masked_full_v100_Gchain_SO_64_v3b' # -> WF&Fluct v2c ; log_eta v2c + 2250 iterations + corr_full_chain_v2b  + restrict_to_mask + 200 limit_iter_eta + mask + 1% error ; C_approx only lensing
+file_ver = 'corr_masked_full_v100_Gchain_SO_64_v3c' # -> WF&Fluct v2c ; log_eta v2c + 2250 iterations + corr_full_chain_v2c  + restrict_to_mask + 200 limit_iter_eta + mask + 1% error ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -32,12 +33,17 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath('')))+'/tutorial
 from fgbuster.observation_helpers import *
 from micmac import *
 
-path_mask = "/Users/mag/Documents/PHD1Y/Masks/mask_SAT_apodized.fits"
+common_repo = "/gpfswork/rech/nih/commun/"
+path_mask = common_repo + "masks/mask_SO_SAT_apodized.fits"
 
-path_Fisher = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
+# path_Fisher = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
+path_Fisher = '../Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
 
-working_directory_path = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/validation_chain_v5/'
-directory_save_file = working_directory_path + 'save_directory/'
+perso_repo_path = "/gpfswork/rech/nih/ube74zo/MICMAC_save/validation_chain_v6_JZ/"
+directory_save_file = perso_repo_path + 'save_directory/'
+
+# working_directory_path = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/validation_chain_v5/'
+working_directory_path = current_path + '/'
 directory_toml_file = working_directory_path + 'toml_params/'
 
 # path_toml_file = directory_toml_file + 'full_chain_v1a.toml'
@@ -46,6 +52,7 @@ path_toml_file = directory_toml_file + 'corr_full_chain_v1b.toml'
 path_toml_file = directory_toml_file + 'corr_full_chain_v1c.toml'
 path_toml_file = directory_toml_file + 'corr_full_chain_v2a.toml'
 path_toml_file = directory_toml_file + 'corr_full_chain_v2b.toml'
+path_toml_file = directory_toml_file + 'corr_full_chain_v2c.toml'
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)

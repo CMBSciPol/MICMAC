@@ -1199,8 +1199,8 @@ class Sampling_functions(object):
         log_proba_perturbation_likelihood = self.get_conditional_proba_correction_likelihood_JAX_v2(new_mixing_matrix, component_eta_maps, red_cov_approx_matrix)
 
         return (log_proba_spectral_likelihood + log_proba_perturbation_likelihood)
-    
-    def get_conditional_proba_mixing_matrix_v2b_JAX(self, new_params_mixing_matrix, full_data_without_CMB, component_eta_maps, red_cov_approx_matrix, previous_inverse):
+
+    def get_conditional_proba_mixing_matrix_v2b_JAX(self, new_params_mixing_matrix, full_data_without_CMB, component_eta_maps, red_cov_approx_matrix, previous_inverse, log_proba_perturbation=None):
         """ Get conditional probability of the conditional probability associated with the B_f parameters
             
             The associated conditional probability is given by : 
@@ -1226,7 +1226,11 @@ class Sampling_functions(object):
 
         # Compute correction term to the likelihood : (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta)
         # log_proba_perturbation_likelihood, inverse_term = self.get_conditional_proba_correction_likelihood_JAX_v2b(new_mixing_matrix, component_eta_maps, red_cov_approx_matrix,previous_inverse=previous_inverse,return_inverse=True)
-        log_proba_perturbation_likelihood, inverse_term = self.get_conditional_proba_correction_likelihood_JAX_v2c(new_mixing_matrix, component_eta_maps, red_cov_approx_matrix,previous_inverse=previous_inverse,return_inverse=True)
+        if log_proba_perturbation is None:
+            log_proba_perturbation_likelihood, inverse_term = self.get_conditional_proba_correction_likelihood_JAX_v2c(new_mixing_matrix, component_eta_maps, red_cov_approx_matrix,previous_inverse=previous_inverse,return_inverse=True)
+        else:
+            log_proba_perturbation_likelihood = log_proba_perturbation
+            inverse_term = previous_inverse
 
         return (log_proba_spectral_likelihood + log_proba_perturbation_likelihood), inverse_term
 

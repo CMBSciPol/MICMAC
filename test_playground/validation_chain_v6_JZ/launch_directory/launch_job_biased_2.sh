@@ -23,6 +23,8 @@ module load python
 #conda activate /gpfswork/rech/nih/commun/micmac_soft/micmac_env
 source /linkhome/rech/genkqu01/ube74zo/MICMAC/.bash_profile
 
+echo $PYSM_LOCAL_DATA
+
 # echo launched commands
 # set -x
 

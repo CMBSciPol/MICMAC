@@ -38,6 +38,7 @@ class MICMAC_Sampler(Sampling_functions):
 
                  restrict_to_mask=False,
                  use_old_s_c_sampling=False,
+                 fixed_eta_covariance=False,
 
                  cheap_save=True, very_cheap_save=False,
                  biased_version=False, lognormal_r=False,
@@ -71,6 +72,7 @@ class MICMAC_Sampler(Sampling_functions):
             indexes_free_Bf = jnp.arange((self.number_frequencies-len(pos_special_freqs))*(self.number_correlations-1))
         self.indexes_free_Bf = jnp.array(indexes_free_Bf)
         self.use_old_s_c_sampling = bool(use_old_s_c_sampling)
+        self.fixed_eta_covariance = bool(fixed_eta_covariance)
 
         # CMB parameters
         self.r_true = float(r_true)
@@ -428,6 +430,8 @@ class MICMAC_Sampler(Sampling_functions):
         ## Jitting the sampling function
         jitted_sample_eta = jax.jit(self.get_sampling_eta_v2, static_argnames=['suppress_low_modes'])
         
+        func_fixed_covariance_eta = self.get_conditional_proba_correction_likelihood_JAX_v2c
+
         # jitted_get_fluctuating_term = jax.jit(self.get_fluctuating_term_maps)
         # jitted_solve_wiener_filter_term = jax.jit(self.solve_generalized_wiener_filter_term)
 
@@ -472,7 +476,6 @@ class MICMAC_Sampler(Sampling_functions):
 
         dimension_param_B_f = (self.number_frequencies-len_pos_special_freqs)*(self.number_correlations-1)
         number_correlations = self.number_correlations
-        mask_binary = self.mask
         
 
         ## Preparing the step-size for Metropolis-within-Gibbs of B_f sampling
@@ -545,8 +548,14 @@ class MICMAC_Sampler(Sampling_functions):
                 # Checking shape of the resulting maps
                 chx.assert_shape(eta_maps_sample, (self.nstokes, self.npix))
 
+                # Computing the associated log proba term fixed correction covariance for the B_f sampling
+                if self.fixed_eta_covariance:
+                    log_proba_perturbation, inverse_term = func_fixed_covariance_eta(mixing_matrix_sampled, eta_maps_sample, red_cov_approx_matrix, previous_inverse=inverse_term, return_inverse=True)
+                else:
+                    log_proba_perturbation = None
+
             # Sampling step 2 : sampling of Gaussian variable s_c, contrained CMB map realization
-            
+
             ## Geting the Wiener filter term, mean of the variable s_c
             # wiener_filter_term = self.solve_generalized_wiener_filter_term(s_cML, red_cov_matrix_sample, invBtinvNB, initial_guess=jnp.copy(WF_term_maps))
             # wiener_filter_term = self.solve_generalized_wiener_filter_term_v2(s_cML, red_cov_matrix_sample, invBtinvNB, initial_guess=jnp.copy(WF_term_maps))
@@ -661,7 +670,7 @@ class MICMAC_Sampler(Sampling_functions):
                                                             log_proba=jitted_Bf_func_sampling,
                                                             full_data_without_CMB=full_data_without_CMB, component_eta_maps=eta_maps_sample, 
                                                             red_cov_approx_matrix=red_cov_approx_matrix,
-                                                            previous_inverse=inverse_term)
+                                                            previous_inverse=inverse_term, log_proba_perturbation=log_proba_perturbation)
 
                 # Checking the shape of the resulting mixing matrix
                 chx.assert_axis_dimension(params_mixing_matrix_sample, 0, self.number_frequencies-len_pos_special_freqs)
