@@ -23,6 +23,7 @@ file_ver = 'biased_unmasked_full_v101_Gchain_SO_64_v0b' # -> 2500 iterations + u
 file_ver = 'biased_unmasked_full_v101_Gchain_SO_64_v1a' # -> 2500 iterations + masked + 1% error + biased_full_chain_v1c + with precond WF ; C_approx only lensing
 file_ver = 'biased_unmasked_full_v101_Gchain_SO_64_v1b' # -> 2500 iterations + masked + 1% error + biased_full_chain_v1c ; C_approx only lensing
 file_ver = 'biased_unmasked_full_v101_Gchain_SO_64_v2a' # -> 2000 iterations + masked + 1% error + biased_full_chain_v1c ; C_approx only lensing
+file_ver = 'biased_unmasked_full_v101_Gchain_SO_64_v2c' # -> 4000 iterations + masked + 1% error + biased_full_chain_v1e ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -48,6 +49,7 @@ working_directory_path = current_path + '/validation_chain_v6_JZ/'
 directory_toml_file = working_directory_path + 'toml_params/'
 
 path_toml_file = directory_toml_file + 'biased_full_chain_v1c.toml'
+path_toml_file = directory_toml_file + 'biased_full_chain_v1e.toml'
 print("Beginning : creating MICMAC object from toml file : ", path_toml_file, flush=True)
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
 print("Creating MICMAC object from toml file : ", path_toml_file, flush=True)
