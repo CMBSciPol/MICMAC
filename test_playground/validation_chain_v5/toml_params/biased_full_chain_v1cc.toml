@@ -1,5 +1,5 @@
 # [Quick_test_parameters]
-sample_eta_B_f = false
+sample_eta_B_f = true
 biased_version = true
 cheap_save = true
 very_cheap_save = true
@@ -8,7 +8,7 @@ lognormal_r = false
 indexes_free_Bf = false
 # disable_chex = false
 restrict_to_mask = true
-use_old_s_c_sampling = false
+use_old_s_c_sampling = true
 
 # [Instrument_parameters]
 instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_noise and frequency_array will be taken from fgbuster, 
@@ -18,8 +18,8 @@ instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_n
 
 # [CMB_parameters]
 r_true = 0.01
-sample_r_Metropolis = false
-sample_C_inv_Wishart = true
+sample_r_Metropolis = true
+sample_C_inv_Wishart = false
 
 # [Problem_parameters]
 nside = 64
@@ -45,6 +45,6 @@ epsilon_cov = 1e-20
 
 # [Sampling_parameters]
 # overrelax = 0 #-0.995 # Overrelaxation parameter for the sampling
-number_iterations_sampling = 2500 # Maximum number of iterations for the sampling
+number_iterations_sampling = 1500 # Maximum number of iterations for the sampling
 number_iterations_done = 0 # Number of iterations already accomplished, in case the chain is resuming from a previous run
 seed = 42
