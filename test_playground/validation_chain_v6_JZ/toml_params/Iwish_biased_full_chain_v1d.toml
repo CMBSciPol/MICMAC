@@ -7,7 +7,7 @@ use_automatic_step_size = false
 lognormal_r = false
 indexes_free_Bf = false
 # disable_chex = false
-restrict_to_mask = true
+restrict_to_mask = false
 use_old_s_c_sampling = false
 fixed_eta_covariance = false
 
@@ -19,8 +19,8 @@ instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_n
 
 # [CMB_parameters]
 r_true = 0.01
-sample_r_Metropolis = true
-sample_C_inv_Wishart = false
+sample_r_Metropolis = false
+sample_C_inv_Wishart = true
 
 # [Problem_parameters]
 nside = 64

@@ -16,14 +16,16 @@ import micmac as micmac
 
 from jax import config
 config.update("jax_enable_x64", True)
+# jax.check_tracer_leaks(True)
 
-file_ver = 'corr_masked_full_v100_Gchain_SO_64_v1a' # -> WF&Fluct v2 + 2500 iterations + 100 limit_iter + mask + 1% error + corr_full_chain_v1a ; C_approx only lensing
-file_ver = 'corr_masked_full_v100_Gchain_SO_64_v1b' # -> WF&Fluct v2 + 1000 iterations + 200 limit_iter + mask + 1% error + corr_full_chain_v1b ; C_approx only lensing
-file_ver = 'corr_masked_full_v100_Gchain_SO_64_v1c' # -> WF&Fluct v2 + 1500 iterations + restrict_to_mask + 50 limit_iter_eta + mask + 1% error + corr_full_chain_v1c ; C_approx only lensing
-file_ver = 'corr_masked_full_v100_Gchain_SO_64_v2a' # -> WF&Fluct v2c ; log_eta v2c(0?) + 2500 iterations + restrict_to_mask + 50 limit_iter_eta + mask + 1% error + corr_full_chain_v2a ; C_approx only lensing
-file_ver = 'corr_masked_full_v100_Gchain_SO_64_v3b' # -> WF&Fluct v2c ; log_eta v2c + 2250 iterations + corr_full_chain_v2b  + restrict_to_mask + 200 limit_iter_eta + mask + 1% error ; C_approx only lensing
-file_ver = 'corr_masked_full_v100_Gchain_SO_64_v3c' # -> WF&Fluct v2c ; log_eta v2c + 2250 iterations + corr_full_chain_v2c  + restrict_to_mask + 200 limit_iter_eta + mask + 1% error ; C_approx only lensing
-file_ver = 'corr_masked_full_v100_Gchain_SO_64_v3cb' # -> WF&Fluct v2c ; 2250 iterations + corr_full_chain_v2c  + restrict_to_mask + 200 limit_iter_eta + mask + func_norm w/o mask ; C_approx only lensing
+file_ver = 'Iwish_biased_unmasked_full_v100_Gchain_SO_64_v1a' # -> 4000 iterations + no B_f/eta + unmask + Iwish_biased_full_chain_v1a ; C_approx only lensing ;; LIMIT_ITER = 10 ????
+file_ver = 'Iwish_biased_unmasked_full_v100_Gchain_SO_64_v2a' # -> 2000 iterations + no B_f/eta + unmask + Iwish_biased_full_chain_v1b ; C_approx only lensing
+# file_ver = 'rwish_biased_unmasked_full_v100_Gchain_SO_64_v2a' # -> 2000 iterations + no B_f/eta + unmask + rwish_biased_full_chain_v1c ; C_approx only lensing
+file_ver = 'Iwish_biased_unmasked_full_v100_Gchain_SO_64_v2b' # -> 2000 iterations + no B_f/eta + unmask + invGamma + Iwish_biased_full_chain_v1b ; C_approx only lensing
+file_ver = 'Iwish_biased_unmasked_full_v100_Gchain_SO_64_v2c' # -> 2000 iterations + no B_f/eta + unmask + invWishart + Iwish_biased_full_chain_v1b ; C_approx only lensing
+file_ver = 'Iwish_biased_unmasked_full_v100_Gchain_SO_64_v3a' # -> 2000 iterations + with B_f/eta + unmask + invWishart + Iwish_biased_full_chain_v1c ; C_approx only lensing
+file_ver = 'Iwish_biased_unmasked_full_v100_Gchain_SO_64_v3b' # -> 2000 iterations + with B_f/eta + corr + unmask + invWishart + Iwish_biased_full_chain_v1d ; C_approx only lensing
+file_ver = 'Iwish_biased_unmasked_full_v100_Gchain_SO_64_v3c' # -> 2000 iterations + with B_f/eta + corr + unmask + invWishart + Iwish_biased_full_chain_v1e + fixed_eta_cov ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -35,6 +37,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath('')))+'/tutorial
 from fgbuster.observation_helpers import *
 from micmac import *
 
+# path_mask = "/Users/mag/Documents/PHD1Y/Masks/mask_SAT_apodized.fits"
 common_repo = "/gpfswork/rech/nih/commun/"
 path_mask = common_repo + "masks/mask_SO_SAT_apodized.fits"
 
@@ -50,14 +53,13 @@ directory_save_file = perso_repo_path + 'save_directory/'
 working_directory_path = current_path + '/validation_chain_v6_JZ/'
 directory_toml_file = working_directory_path + 'toml_params/'
 
-# path_toml_file = directory_toml_file + 'full_chain_v1a.toml'
-path_toml_file = directory_toml_file + 'corr_full_chain_v1a.toml'
-path_toml_file = directory_toml_file + 'corr_full_chain_v1b.toml'
-path_toml_file = directory_toml_file + 'corr_full_chain_v1c.toml'
-path_toml_file = directory_toml_file + 'corr_full_chain_v2a.toml'
-path_toml_file = directory_toml_file + 'corr_full_chain_v2b.toml'
-path_toml_file = directory_toml_file + 'corr_full_chain_v2c.toml'
-
+# path_toml_file = directory_toml_file + 'biased_full_chain_v1a.toml'
+# path_toml_file = directory_toml_file + 'Iwish_biased_full_chain_v1a.toml'
+path_toml_file = directory_toml_file + 'Iwish_biased_full_chain_v1b.toml'
+path_toml_file = directory_toml_file + 'Iwish_biased_full_chain_v1c.toml'
+# path_toml_file = directory_toml_file + 'rwish_biased_full_chain_v1c.toml'
+path_toml_file = directory_toml_file + 'Iwish_biased_full_chain_v1d.toml'
+path_toml_file = directory_toml_file + 'Iwish_biased_full_chain_v1e.toml'
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
 
@@ -87,7 +89,7 @@ apod_mask = hp.ud_grade(hp.read_map(path_mask),nside_out=MICMAC_obj.nside)
 mask = np.copy(apod_mask)
 mask[apod_mask>0] = 1
 
-# mask = np.ones_like(apod_mask)
+mask = np.ones_like(apod_mask)
 
 MICMAC_obj.mask = mask
 
@@ -102,10 +104,6 @@ freq_inverse_noise_masked[:,:,mask!=0] = np.repeat(freq_inverse_noise.ravel(orde
 MICMAC_obj.freq_inverse_noise = freq_inverse_noise_masked
 
 initial_guess_r = MICMAC_obj.r_true
-initial_guess_r=10**(-2)
-initial_guess_r=10**(-3)
-# initial_guess_r=10**(-8)
-
 
 
 # Generation step-size
@@ -160,8 +158,10 @@ first_guess = jnp.copy(jnp.ravel(exact_params_mixing_matrix,order='F'))
 
 # first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
 #     first_guess[MICMAC_obj.indexes_free_Bf]*np.random.uniform(low=.9,high=1.1, size=(dimension_free_param_B_f)))
+
 # first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
 #     first_guess[MICMAC_obj.indexes_free_Bf]*np.random.uniform(low=.99,high=1.01, size=(dimension_free_param_B_f)))
+
 # init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
 print("First guess from 5 $\sigma$ Fisher !", flush=True)
 first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(

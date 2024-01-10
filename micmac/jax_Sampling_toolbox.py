@@ -858,6 +858,82 @@ class Sampling_functions(object):
         sampling_Wishart = sampling_Wishart.at[self.lmin:].set(sampling_Wishart_map)
         return jnp.linalg.pinv(sampling_Wishart)
 
+    def get_conditional_proba_C_from_previous_sample(self, red_sigma_ell, red_cov_matrix_sampled):
+        """ Compute log-proba of C parametrized by r_param. The associated log proba is :
+                -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
+
+            Parameters
+            ----------
+            :param r_param: parameter of the covariance C to be sampled
+            :param red_sigma_ell: covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+            :param theoretical_red_cov_r1_tensor: tensor mode covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+            :param theoretical_red_cov_r0_total: scalar mode covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+
+            Returns
+            -------
+            :return: log-proba of C parametrized by r_param
+        """
+        chx.assert_equal_shape(red_sigma_ell, red_cov_matrix_sampled)
+
+        # Getting determinant of the covariance matrix
+        sum_dets = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(jnp.linalg.det(red_cov_matrix_sampled)) ).sum()
+        
+        return -( jnp.einsum('lij,lji->l', red_sigma_ell, jnp.linalg.pinv(red_cov_matrix_sampled)).sum() + sum_dets)/2
+
+
+    def get_inverse_wishart_sampling_from_c_ells_v2(self, sigma_ell, PRNGKey, red_cov_ell_2=None):
+        """ Solve sampling step 3 : inverse Wishart distribution with C
+
+            sigma_ell is expected to be exactly the parameter of the inverse Wishart (so it should NOT be multiplied by 2*ell+1 if it is thought as a power spectrum)
+
+            Compute a matrix sample following an inverse Wishart distribution. The 3 steps follow Gupta & Nagar (2000) :
+                1. Sample n = 2*ell - p + 2*q_prior independent Gaussian vectors with covariance (sigma_ell)^{-1}
+                2. Compute their outer product to form a matrix of dimension n_stokes*n_stokes ; which gives us a sample following the Wishart distribution
+                3. Invert this matrix to obtain the final result : a matrix sample following an inverse Wishart distribution
+
+            Also assumes the monopole and dipole to be 0
+
+            Parameters
+            ----------
+            :param sigma_ell: initial power spectrum which will define the parameter matrix of the inverse Wishart distribution ; must be of dimension [number_correlations, lmax+1]
+            :param PRNGKey: random key for JAX PNRG
+            
+            Returns
+            -------
+            :return: Matrices following an inverse Wishart distribution, of dimensions [lmin:lmax, nstokes, nstokes]
+        """
+
+        chx.assert_axis_dimension(sigma_ell, 1, self.lmax+1)
+        c_ells_Wishart_modified = jnp.copy(sigma_ell)*(2*jnp.arange(self.lmax+1) + 1)
+        invert_parameter_Wishart = jnp.linalg.pinv(get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_modified))
+
+        PRNGKey, subkey = random.split(PRNGKey)
+        ell_2 = 2
+        red_cov_ell_2 
+        new_sample_ell_2 = multivariate_Metropolis_Hasting_step(PRNGKey, old_sample, covariance_matrix, self.get_conditional_proba_C_from_previous_sample, **model_kwargs)
+
+        sampling_Wishart = jnp.zeros_like(invert_parameter_Wishart)
+
+        def map_sampling_Wishart(ell_PNRGKey, ell):
+            """ Compute the sampling of the Wishart distribution for a given ell
+            """
+
+            sample_gaussian = random.multivariate_normal(ell_PNRGKey, jnp.zeros(self.nstokes), invert_parameter_Wishart[ell], shape=(2*(self.lmax+1) - self.nstokes,))
+
+            weighting = jnp.where(ell >= (jnp.arange(2*(self.lmax+1)-self.nstokes)+self.nstokes)/2, 1, 0)
+
+            sample_to_return = jnp.einsum('lk,l,lm->km',sample_gaussian,weighting,sample_gaussian)
+            # new_carry = new_ell_PRNGKey
+            return sample_to_return
+        
+        min_value_ell = jnp.array([3, self.lmin]).max()
+        PRNGKey_map = random.split(PRNGKey, self.lmax-min_value_ell+1) # Prepare lmax+1-lmin PRNGKeys to be used
+        sampling_Wishart_map = jax.vmap(map_sampling_Wishart)(PRNGKey_map, jnp.arange(min_value_ell,self.lmax+1)) 
+        # Map over PRNGKeys and ells to create samples of the Wishart distribution, of dimension [lmax+1-lmin,nstokes,nstokes]
+
+        sampling_Wishart = sampling_Wishart.at[min_value_ell:].set(sampling_Wishart_map)
+        return jnp.linalg.pinv(sampling_Wishart)
+
     def get_inverse_gamma_sampling_from_c_ells(self, sigma_ell, PRNGKey):
         """ Solve sampling step 3 : inverse Gamma distribution with C
 
@@ -1131,9 +1207,10 @@ class Sampling_functions(object):
         #     mask_binary = jnp.ones_like(self.mask)
         # mask_to_use = jnp.repeat(mask_binary[:].ravel(order='C'), self.nstokes).reshape((self.nstokes,self.npix), order='F').ravel()
 
-        func_norm = lambda x : jnp.linalg.norm((x.reshape((self.nstokes,self.npix))*self.mask).ravel(),ord=2)
+        # func_norm = lambda x : jnp.linalg.norm((x.reshape((self.nstokes,self.npix))*self.mask).ravel(),ord=2)
         # func_norm = lambda x : jnp.linalg.norm((x*mask_to_use).ravel(),ord=2)
         # func_norm = lambda x : jnp.sqrt(jnp.sum((x.reshape((self.nstokes,self.npix)))**2))
+        func_norm = lambda x : jnp.linalg.norm(x,ord=2)
 
         # def inv_sqrt_second_part_left(x):
         #     # return x.reshape((self.nstokes,self.npix))*N_c_inv
@@ -1272,12 +1349,12 @@ def single_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_size, log_pr
 
         return new_sample.reshape(old_sample.shape,order='F')
 
-# def multivariate_Metropolis_Hasting_step(random_PRNGKey, old_sample, covariance_matrix, log_proba, **model_kwargs):
-#         rng_key, key_proposal, key_accept = random.split(random_PRNGKey, 3)
-#         u_proposal = dist.MultivariateNormal(jnp.ravel(old_sample,order='F'), covariance_matrix).sample(key_proposal)
-#         accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(u_proposal, **model_kwargs))
-#         new_sample = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, u_proposal, jnp.ravel(old_sample,order='F'))
-#         return new_sample.reshape(old_sample.shape,order='F')
+def multivariate_Metropolis_Hasting_step(random_PRNGKey, old_sample, covariance_matrix, log_proba, **model_kwargs):
+        rng_key, key_proposal, key_accept = random.split(random_PRNGKey, 3)
+        u_proposal = dist.MultivariateNormal(jnp.ravel(old_sample,order='F'), covariance_matrix).sample(key_proposal)
+        accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(u_proposal, **model_kwargs))
+        new_sample = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, u_proposal, jnp.ravel(old_sample,order='F'))
+        return new_sample.reshape(old_sample.shape,order='F')
 
 def get_log_pdf_lognormal(x, mean, scale):
     return -(jnp.log(x) - mean)**2/(2*scale**2) - jnp.log(x*scale*jnp.sqrt(2*jnp.pi))

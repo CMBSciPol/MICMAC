@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=corr_3
+#SBATCH --job-name=corr_0b
 #SBATCH --account=nih@cpu          # use CPU allocation
 #SBATCH --qos=qos_cpu-t3          # dev qos (10 jobs, 2h max.)
 #SBATCH --mail-user=magdy.morshed.fr@gmail.com
@@ -36,13 +36,16 @@ export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 # OpenMP binding
 export OMP_PLACES=cores
 
+
+
 # srun python /linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_v6_JZ/very_cheap_biased_unmasked_fullchain_v100_Gibbs_withr_SO_64_v1a_longrun.py  1> logs/log_biased_unmasked_full_v101_Gchain_SO_64_v2a.log 2> errs/err_biased_unmasked_full_v101_Gchain_SO_64_v2a.log
 # srun python /linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_v6_JZ/very_cheap_biased_unmasked_fullchain_v100_Gibbs_withr_SO_64_v1a_longrun.py  1> logs/log_biased_unmasked_full_v101_Gchain_SO_64_v2c.log 2> errs/err_biased_unmasked_full_v101_Gchain_SO_64_v2c.log
 
-export VER=corr_masked_full_v100_Gchain_SO_64_3cb
+# export VER=corr_masked_full_v100_Gchain_SO_64_3ab
+export VER=corr_unmasked_full_v101_Gchain_SO_64_v0b
 
 export SRC_PATH=/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_v6_JZ
-srun python $SRC_PATH/very_cheap_corr_masked_fullchain_v101_Gibbs_withr_SO_64_v1e_longrun.py  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
+srun python $SRC_PATH/very_cheap_corr_unmasked_fullchain_v101_Gibbs_withr_SO_64_v0b_longrun.py  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
 
 
 echo "Run finished !"

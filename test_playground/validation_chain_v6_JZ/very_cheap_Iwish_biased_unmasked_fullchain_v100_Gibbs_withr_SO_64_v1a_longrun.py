@@ -24,6 +24,7 @@ file_ver = 'Iwish_biased_unmasked_full_v100_Gchain_SO_64_v2a' # -> 2000 iteratio
 file_ver = 'Iwish_biased_unmasked_full_v100_Gchain_SO_64_v2b' # -> 2000 iterations + no B_f/eta + unmask + invGamma + Iwish_biased_full_chain_v1b ; C_approx only lensing
 file_ver = 'Iwish_biased_unmasked_full_v100_Gchain_SO_64_v2c' # -> 2000 iterations + no B_f/eta + unmask + invWishart + Iwish_biased_full_chain_v1b ; C_approx only lensing
 file_ver = 'Iwish_biased_unmasked_full_v100_Gchain_SO_64_v3a' # -> 2000 iterations + with B_f/eta + unmask + invWishart + Iwish_biased_full_chain_v1c ; C_approx only lensing
+file_ver = 'Iwish_biased_unmasked_full_v100_Gchain_SO_64_v3b' # -> 2000 iterations + with B_f/eta + corr + unmask + invWishart + Iwish_biased_full_chain_v1d ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -56,6 +57,7 @@ directory_toml_file = working_directory_path + 'toml_params/'
 path_toml_file = directory_toml_file + 'Iwish_biased_full_chain_v1b.toml'
 path_toml_file = directory_toml_file + 'Iwish_biased_full_chain_v1c.toml'
 # path_toml_file = directory_toml_file + 'rwish_biased_full_chain_v1c.toml'
+path_toml_file = directory_toml_file + 'Iwish_biased_full_chain_v1d.toml'
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
 
@@ -158,6 +160,10 @@ first_guess = jnp.copy(jnp.ravel(exact_params_mixing_matrix,order='F'))
 # first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
 #     first_guess[MICMAC_obj.indexes_free_Bf]*np.random.uniform(low=.99,high=1.01, size=(dimension_free_param_B_f)))
 
+# init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
+print("First guess from 5 $\sigma$ Fisher !", flush=True)
+first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
+    first_guess[MICMAC_obj.indexes_free_Bf] + minimum_std_Fisher_diag[:-1]*np.random.uniform(low=-5,high=5, size=(dimension_free_param_B_f)))
 init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
 
 print(f'Exact param matrix : {exact_params_mixing_matrix}')
