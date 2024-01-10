@@ -39,6 +39,6 @@ export OMP_PLACES=cores
 export VER=Iwish_biased_unmasked_full_v100_Gchain_SO_64_v3c
 
 export SRC_PATH=/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_v6_JZ
-srun python $SRC_PATH/very_cheap_Iwish_biased_masked_fullchain_v100_Gibbs_withr_SO_64_v1b_longrun.py  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
+srun python $SRC_PATH/very_cheap_Iwish_biased_unmasked_fullchain_v100_Gibbs_withr_SO_64_v1b_longrun.py  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
 
 echo "Run finished !"

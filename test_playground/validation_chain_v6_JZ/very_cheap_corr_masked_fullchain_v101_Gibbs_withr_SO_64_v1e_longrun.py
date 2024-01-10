@@ -28,7 +28,9 @@ file_ver = 'corr_masked_full_v100_Gchain_SO_64_v3cb' # -> WF&Fluct v2c ; 2250 it
 reduction_noise = 1
 factor_Fisher = 1
 
-current_path = os.path.dirname(os.path.abspath(''))
+perso_repo_path = "/gpfswork/rech/nih/ube74zo/MICMAC_save/validation_chain_v6_JZ/"
+# current_path = os.path.dirname(os.path.abspath(''))
+current_path = perso_repo_path
 sys.path.append(os.path.dirname(os.path.abspath('')))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath('')))+'/tutorials/')
 
@@ -43,11 +45,11 @@ path_home_test_playground = '/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_
 # path_Fisher = '../Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
 path_Fisher = path_home_test_playground + 'Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
 
-perso_repo_path = "/gpfswork/rech/nih/ube74zo/MICMAC_save/validation_chain_v6_JZ/"
+# perso_repo_path = "/gpfswork/rech/nih/ube74zo/MICMAC_save/validation_chain_v6_JZ/"
 directory_save_file = perso_repo_path + 'save_directory/'
 
 # working_directory_path = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/validation_chain_v5/'
-working_directory_path = current_path + '/validation_chain_v6_JZ/'
+working_directory_path = current_path + '/'#'/validation_chain_v6_JZ/'
 directory_toml_file = working_directory_path + 'toml_params/'
 
 # path_toml_file = directory_toml_file + 'full_chain_v1a.toml'
