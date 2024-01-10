@@ -30,8 +30,10 @@ reduction_noise = 1
 factor_Fisher = 1
 
 perso_repo_path = "/gpfswork/rech/nih/ube74zo/MICMAC_save/validation_chain_v6_JZ/"
+path_home_test_playground = '/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/'
 # current_path = os.path.dirname(os.path.abspath(''))
-current_path = perso_repo_path
+# current_path = perso_repo_path
+current_path = path_home_test_playground + '/validation_chain_v6_JZ/'
 sys.path.append(os.path.dirname(os.path.abspath('')))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath('')))+'/tutorials/')
 
@@ -42,7 +44,7 @@ from micmac import *
 common_repo = "/gpfswork/rech/nih/commun/"
 path_mask = common_repo + "masks/mask_SO_SAT_apodized.fits"
 
-path_home_test_playground = '/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/'
+# path_home_test_playground = '/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/'
 # path_Fisher = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
 # path_Fisher = '../Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
 path_Fisher = path_home_test_playground + 'Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
