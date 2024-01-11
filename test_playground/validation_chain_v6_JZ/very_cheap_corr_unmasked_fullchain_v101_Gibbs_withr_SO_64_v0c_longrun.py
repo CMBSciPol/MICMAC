@@ -26,7 +26,8 @@ file_ver = 'corr_masked_full_v100_Gchain_SO_64_v3ab' # -> WF&Fluct v2c ; 1250 it
 # file_ver = 'corr_masked_full_v100_Gchain_SO_64_v3b' # -> WF&Fluct v2c ; log_eta v2c + 3000 iterations + corr_full_chain_v2b  + restrict_to_mask + 200 limit_iter_eta + mask + 1% error ; C_approx only lensing
 file_ver = 'corr_unmasked_full_v101_Gchain_SO_64_v0a' # -> WF&Fluct v2c ; 1250 iterations + corr_full_chain_v2a  + restrict_to_mask + 50 limit_iter_eta + unmasked + func_norm w/o mask ; C_approx only lensing
 file_ver = 'corr_unmasked_full_v101_Gchain_SO_64_v0b' # -> WF&Fluct v2c ; 1250 iterations + corr_full_chain_v2b  + restrict_to_mask + 200 limit_iter_eta + unmasked + func_norm w/o mask + fixed eta_cov ; C_approx only lensing
-file_ver = 'corr_unmasked_full_v102_Gchain_SO_64_v0a' # -> perturbation_eta ; 3500 iterations + corr_full_chain_v3a  + w/o restrict_to_mask + 200 limit_iter_eta + unmasked + func_norm w/o mask ; C_approx only lensing
+file_ver = 'corr_unmasked_full_v102_Gchain_SO_64_v0a' # -> WF&Fluct v2c ; 3500 iterations + corr_full_chain_v2d  + w/o restrict_to_mask + 50 limit_iter_eta + unmasked + func_norm w/o mask ; C_approx only lensing
+file_ver = 'corr_unmasked_full_v102_Gchain_SO_64_v0b' # -> perturbation_eta ; 3500 iterations + corr_full_chain_v3ab  + w/o restrict_to_mask + 200 limit_iter_eta + unmasked + func_norm w/o mask ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -64,6 +65,7 @@ path_toml_file = directory_toml_file + 'corr_full_chain_v1c.toml'
 path_toml_file = directory_toml_file + 'corr_full_chain_v2a.toml'
 path_toml_file = directory_toml_file + 'corr_full_chain_v2b.toml'
 path_toml_file = directory_toml_file + 'corr_full_chain_v3a.toml'
+path_toml_file = directory_toml_file + 'corr_full_chain_v3ab.toml'
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)

@@ -39,6 +39,7 @@ class MICMAC_Sampler(Sampling_functions):
                  restrict_to_mask=False,
                  use_old_s_c_sampling=False,
                  fixed_eta_covariance=False,
+                 perturbation_eta_covariance=False,
 
                  cheap_save=True, very_cheap_save=False,
                  biased_version=False, lognormal_r=False,
@@ -73,6 +74,7 @@ class MICMAC_Sampler(Sampling_functions):
         self.indexes_free_Bf = jnp.array(indexes_free_Bf)
         self.use_old_s_c_sampling = bool(use_old_s_c_sampling)
         self.fixed_eta_covariance = bool(fixed_eta_covariance)
+        self.perturbation_eta_covariance = bool(perturbation_eta_covariance)
 
         # CMB parameters
         self.r_true = float(r_true)
@@ -462,16 +464,20 @@ class MICMAC_Sampler(Sampling_functions):
 
         # jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v2_JAX)
         jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v2b_JAX)
-
         sampling_func = separate_single_MH_step_index_accelerated
+
         if self.biased_version:
             print("Using biased version of mixing matrix sampling !!!", flush=True)
             jitted_Bf_func_sampling = jax.jit(self.get_biased_conditional_proba_mixing_matrix_v2_JAX)
             sampling_func = separate_single_MH_step_index
+        if self.perturbation_eta_covariance:
+            print("Using perturbation of eta covariance !!!", flush=True)
+            jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_JAX)
+            sampling_func = separate_single_MH_step_index
 
         ## Preparing the scalar quantities
         PRNGKey = random.PRNGKey(self.seed)
-        
+
         actual_number_of_iterations = self.number_iterations_sampling - self.number_iterations_done
 
         dimension_param_B_f = (self.number_frequencies-len_pos_special_freqs)*(self.number_correlations-1)
@@ -507,13 +513,14 @@ class MICMAC_Sampler(Sampling_functions):
             """
 
             # Extracting the variables from the carry
-            eta_maps_sample, WF_term_maps, fluct_maps, red_cov_matrix_sample, _all_r_samples, _all_B_f_samples, PRNGKey, old_s_c_sample, inverse_term = carry
+            # eta_maps_sample, WF_term_maps, fluct_maps, red_cov_matrix_sample, _all_r_samples, _all_B_f_samples, PRNGKey, old_s_c_sample, inverse_term = carry
+            eta_maps_sample, WF_term_maps, fluct_maps, red_cov_matrix_sample, _all_r_samples, params_mixing_matrix_sample, PRNGKey, old_s_c_sample, inverse_term = carry
 
             # Preparing a new PRNGKey for eta sampling
             PRNGKey, subPRNGKey = random.split(PRNGKey)
 
             # Extracting the mixing matrix parameters and initializing the new one
-            params_mixing_matrix_sample = _all_B_f_samples[iteration].reshape((self.number_frequencies-len_pos_special_freqs,number_correlations-1),order='F')
+            params_mixing_matrix_sample = params_mixing_matrix_sample.reshape((self.number_frequencies-len_pos_special_freqs,number_correlations-1),order='F')
             self.mixing_matrix_obj.update_params(params_mixing_matrix_sample)
             mixing_matrix_sampled = self.mixing_matrix_obj.get_B(jax_use=True)
 
@@ -553,6 +560,10 @@ class MICMAC_Sampler(Sampling_functions):
                     log_proba_perturbation, inverse_term = func_fixed_covariance_eta(mixing_matrix_sampled, eta_maps_sample, red_cov_approx_matrix, previous_inverse=inverse_term, return_inverse=True)
                 else:
                     log_proba_perturbation = None
+                
+                if self.perturbation_eta_covariance:
+                    _, inverse_term = func_fixed_covariance_eta(mixing_matrix_sampled, eta_maps_sample, red_cov_approx_matrix, previous_inverse=inverse_term, return_inverse=True)
+                
 
             # Sampling step 2 : sampling of Gaussian variable s_c, contrained CMB map realization
 
@@ -651,11 +662,11 @@ class MICMAC_Sampler(Sampling_functions):
             if self.sample_eta_B_f:
                 # Preparing the step-size
                 step_size_Bf = initial_step_size_Bf
-                if self.use_automatic_step_size:
-                    covariance_matrix_B_f = jnp.where(iteration < self.num_sample_AM, 
-                                                    self.covariance_step_size_B_f,
-                                                    self.compute_covariance_nd(iteration, _all_B_f_samples))
-                    step_size_Bf = jnp.array(jnp.diag(jsp.linalg.sqrtm(covariance_matrix_B_f)), dtype=jnp.float64)
+                # if self.use_automatic_step_size:
+                #     covariance_matrix_B_f = jnp.where(iteration < self.num_sample_AM, 
+                #                                     self.covariance_step_size_B_f,
+                #                                     self.compute_covariance_nd(iteration, _all_B_f_samples))
+                #     step_size_Bf = jnp.array(jnp.diag(jsp.linalg.sqrtm(covariance_matrix_B_f)), dtype=jnp.float64)
 
                 # Sampling B_f
                 if self.biased_version:
@@ -664,6 +675,13 @@ class MICMAC_Sampler(Sampling_functions):
                                                             log_proba=jitted_Bf_func_sampling,
                                                             full_data_without_CMB=full_data_without_CMB, component_eta_maps=eta_maps_sample, 
                                                             red_cov_approx_matrix=red_cov_approx_matrix)
+                elif self.perturbation_eta_covariance:
+                    new_subPRNGKey_3, params_mixing_matrix_sample = sampling_func(random_PRNGKey=new_subPRNGKey_3, old_sample=params_mixing_matrix_sample, 
+                                                            step_size=step_size_Bf, indexes_Bf=self.indexes_free_Bf,
+                                                            log_proba=jitted_Bf_func_sampling,
+                                                            full_data_without_CMB=full_data_without_CMB, component_eta_maps=eta_maps_sample, 
+                                                            red_cov_approx_matrix=red_cov_approx_matrix, previous_inverse=inverse_term, 
+                                                            old_params_mixing_matrix=params_mixing_matrix_sample)
                 else:
                     new_subPRNGKey_3, params_mixing_matrix_sample, inverse_term = sampling_func(random_PRNGKey=new_subPRNGKey_3, old_sample=params_mixing_matrix_sample, 
                                                             step_size=step_size_Bf, indexes_Bf=self.indexes_free_Bf,
@@ -674,12 +692,13 @@ class MICMAC_Sampler(Sampling_functions):
 
                 # Checking the shape of the resulting mixing matrix
                 chx.assert_axis_dimension(params_mixing_matrix_sample, 0, self.number_frequencies-len_pos_special_freqs)
-            
+
             ## Updating B_f samples array
-            _all_B_f_samples = _all_B_f_samples.at[iteration+1].set(params_mixing_matrix_sample.ravel(order='F'))
+            # _all_B_f_samples = _all_B_f_samples.at[iteration+1].set(params_mixing_matrix_sample.ravel(order='F'))
             
             ## Updating the carry
-            new_carry = (eta_maps_sample, wiener_filter_term, fluctuation_maps, red_cov_matrix_sample, _all_r_samples, _all_B_f_samples, PRNGKey, s_c_sample, inverse_term)
+            # new_carry = (eta_maps_sample, wiener_filter_term, fluctuation_maps, red_cov_matrix_sample, _all_r_samples, _all_B_f_samples, PRNGKey, s_c_sample, inverse_term)
+            new_carry = (eta_maps_sample, wiener_filter_term, fluctuation_maps, red_cov_matrix_sample, _all_r_samples, params_mixing_matrix_sample, PRNGKey, s_c_sample, inverse_term)
             all_samples = (eta_maps_sample, wiener_filter_term, fluctuation_maps, red_cov_matrix_sample, _all_r_samples[iteration+1], params_mixing_matrix_sample)
 
             return new_carry, all_samples
