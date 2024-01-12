@@ -1271,7 +1271,7 @@ class Sampling_functions(object):
         self._fake_mixing_matrix.update_params(old_params_mixing_matrix, jax_use=True)
         old_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
 
-        self._fake_mixing_matrix.update_params(new_params_mixing_matrix)
+        self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape(old_params_mixing_matrix.shape,order='F'), jax_use=True))
         new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
 
 
@@ -1290,7 +1290,7 @@ class Sampling_functions(object):
         new_N_c_inv_repeat = jnp.repeat(new_N_c_inv.ravel(order='C'), self.nstokes).reshape((self.nstokes,self.npix), order='F').ravel()
 
         first_part_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
-        
+
         def second_part_left(x):
             return x*(new_N_c_inv_repeat-old_N_c_inv_repeat)
 
