@@ -9,7 +9,7 @@ indexes_free_Bf = false
 # disable_chex = false
 restrict_to_mask = true
 use_old_s_c_sampling = false
-fixed_eta_covariance = false
+# fixed_eta_covariance = false
 
 # [Instrument_parameters]
 instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_noise and frequency_array will be taken from fgbuster, 

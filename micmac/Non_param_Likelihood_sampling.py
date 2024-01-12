@@ -30,15 +30,14 @@ class MICMAC_Sampler(Sampling_functions):
     def __init__(self, nside, lmax, nstokes, 
                  frequency_array, freq_inverse_noise, pos_special_freqs=[0,-1], 
                  number_components=3, lmin=2,
-                 n_iter=8, limit_iter_cg=2000, tolerance_CG=10**(-10),
+                 n_iter=8, limit_iter_cg=2000, tolerance_CG=1e-10, atol_CG=1e-8,
                  limit_iter_cg_eta=200,
                  mask=None,
                  use_automatic_step_size=True, num_sample_AM = 1000, 
-                 epsilon_cov = 10**(-20), scale_param = 2.38**2,
+                 epsilon_cov = 1e-20, scale_param = 2.38**2,
 
                  restrict_to_mask=False,
                  use_old_s_c_sampling=False,
-                 fixed_eta_covariance=False,
                  perturbation_eta_covariance=False,
 
                  cheap_save=True, very_cheap_save=False,
@@ -46,7 +45,7 @@ class MICMAC_Sampler(Sampling_functions):
                  r_true=0,
                  sample_eta_B_f=True,
                  sample_r_Metropolis=True, sample_C_inv_Wishart=False,
-                 step_size_B_f=10**(-5), step_size_r=10**(-4),
+                 step_size_B_f=1e-5, step_size_r=1e-4,
                  indexes_free_Bf=False,
 
                  instrument_name='SO_SAT',
@@ -59,7 +58,7 @@ class MICMAC_Sampler(Sampling_functions):
                                             frequency_array=frequency_array,freq_inverse_noise=freq_inverse_noise, 
                                             pos_special_freqs=pos_special_freqs,number_components=number_components,
                                             n_iter=n_iter, limit_iter_cg=limit_iter_cg, limit_iter_cg_eta=limit_iter_cg_eta, 
-                                            tolerance_CG=tolerance_CG, 
+                                            tolerance_CG=tolerance_CG, atol_CG=atol_CG, 
                                             mask=mask, restrict_to_mask=restrict_to_mask)
 
         # Quick test parameters
@@ -73,7 +72,7 @@ class MICMAC_Sampler(Sampling_functions):
             indexes_free_Bf = jnp.arange((self.number_frequencies-len(pos_special_freqs))*(self.number_correlations-1))
         self.indexes_free_Bf = jnp.array(indexes_free_Bf)
         self.use_old_s_c_sampling = bool(use_old_s_c_sampling)
-        self.fixed_eta_covariance = bool(fixed_eta_covariance)
+        # self.fixed_eta_covariance = bool(fixed_eta_covariance)
         self.perturbation_eta_covariance = bool(perturbation_eta_covariance)
 
         # CMB parameters
@@ -556,10 +555,10 @@ class MICMAC_Sampler(Sampling_functions):
                 chx.assert_shape(eta_maps_sample, (self.nstokes, self.npix))
 
                 # Computing the associated log proba term fixed correction covariance for the B_f sampling
-                if self.fixed_eta_covariance:
-                    log_proba_perturbation, inverse_term = func_fixed_covariance_eta(mixing_matrix_sampled, eta_maps_sample, red_cov_approx_matrix, previous_inverse=inverse_term, return_inverse=True)
-                else:
-                    log_proba_perturbation = None
+                # if self.fixed_eta_covariance:
+                #     log_proba_perturbation, inverse_term = func_fixed_covariance_eta(mixing_matrix_sampled, eta_maps_sample, red_cov_approx_matrix, previous_inverse=inverse_term, return_inverse=True)
+                # else:
+                #     log_proba_perturbation = None
                 
                 if self.perturbation_eta_covariance:
                     _, inverse_term = func_fixed_covariance_eta(mixing_matrix_sampled, eta_maps_sample, red_cov_approx_matrix, previous_inverse=inverse_term, return_inverse=True)
@@ -688,10 +687,11 @@ class MICMAC_Sampler(Sampling_functions):
                                                             log_proba=jitted_Bf_func_sampling,
                                                             full_data_without_CMB=full_data_without_CMB, component_eta_maps=eta_maps_sample, 
                                                             red_cov_approx_matrix=red_cov_approx_matrix,
-                                                            previous_inverse=inverse_term, log_proba_perturbation=log_proba_perturbation)
+                                                            previous_inverse=inverse_term)
 
                 # Checking the shape of the resulting mixing matrix
                 chx.assert_axis_dimension(params_mixing_matrix_sample, 0, self.number_frequencies-len_pos_special_freqs)
+                params_mixing_matrix_sample = params_mixing_matrix_sample.reshape((self.number_frequencies-len_pos_special_freqs,number_correlations-1),order='F')
 
             ## Updating B_f samples array
             # _all_B_f_samples = _all_B_f_samples.at[iteration+1].set(params_mixing_matrix_sample.ravel(order='F'))
@@ -706,16 +706,24 @@ class MICMAC_Sampler(Sampling_functions):
         # Initializing r and B_f samples
         ## Note  : all r/B_f are taken into account for automatic step-size issues, might be deleted in future versions for memory issues
         all_r_samples = jnp.zeros(actual_number_of_iterations+1)
-        all_B_f_samples = jnp.zeros((actual_number_of_iterations+1, dimension_param_B_f)) # Note B_f is initialized as 1d vector, and is updated as such
+        # all_B_f_samples = jnp.zeros((actual_number_of_iterations+1, dimension_param_B_f)) # Note B_f is initialized as 1d vector, and is updated as such
 
         all_r_samples = all_r_samples.at[0].set(initial_guess_r)
-        all_B_f_samples = all_B_f_samples.at[0].set(params_mixing_matrix_init_sample.ravel(order='F'))
+        # all_B_f_samples = all_B_f_samples.at[0].set(params_mixing_matrix_init_sample.ravel(order='F'))
 
+        # initial_carry = (initial_eta, 
+        #                  wiener_filter_term, fluctuation_maps, 
+        #                  red_cov_matrix,
+        #                  all_r_samples,
+        #                  all_B_f_samples,
+        #                  PRNGKey,
+        #                  wiener_filter_term+fluctuation_maps,
+        #                  jnp.zeros_like(initial_eta))
         initial_carry = (initial_eta, 
                          wiener_filter_term, fluctuation_maps, 
                          red_cov_matrix,
                          all_r_samples,
-                         all_B_f_samples,
+                         params_mixing_matrix_init_sample,
                          PRNGKey,
                          wiener_filter_term+fluctuation_maps,
                          jnp.zeros_like(initial_eta))

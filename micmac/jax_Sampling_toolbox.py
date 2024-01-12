@@ -20,7 +20,9 @@ class Sampling_functions(object):
                  frequency_array, freq_inverse_noise, pos_special_freqs=[0,-1],
                  mask=None,
                  number_components=3, lmin=2,
-                 n_iter=8, limit_iter_cg=2000, limit_iter_cg_eta=50, tolerance_CG=10**(-10),
+                 n_iter=8, 
+                 limit_iter_cg=2000, limit_iter_cg_eta=50, 
+                 tolerance_CG=1e-10, atol_CG=1e-8,
                  restrict_to_mask=False):
         """ Sampling functions object
             Contains all the functions needed for the sampling step of the Gibbs sampler
@@ -63,6 +65,7 @@ class Sampling_functions(object):
         self.n_iter = int(n_iter) # Number of iterations for estimation of alms
         self.limit_iter_cg = int(limit_iter_cg) # Maximum number of iterations for the different CGs
         self.tolerance_CG = float(tolerance_CG) # Tolerance for the different CGs
+        self.atol_CG = float(atol_CG) # Absolute tolerance for the different CGs
         self.limit_iter_cg_eta = float(limit_iter_cg_eta) # Maximum number of iterations for the CG of eta
 
         # Tools
@@ -305,7 +308,7 @@ class Sampling_functions(object):
 
         # Actual start of the CG
         fluctuating_map, number_iterations = jsp.sparse.linalg.cg(func_left_term, right_member.ravel(), x0=initial_guess.ravel(), 
-                                                                    tol=self.tolerance_CG, atol=self.tolerance_CG, maxiter=self.limit_iter_cg)
+                                                                    tol=self.tolerance_CG, atol=self.atol_CG, maxiter=self.limit_iter_cg)
         print("CG-Python-0 Fluct finished in ", number_iterations, "iterations !!")
 
         return fluctuating_map.reshape((self.nstokes, self.npix))
@@ -360,7 +363,7 @@ class Sampling_functions(object):
             initial_guess = jnp.zeros_like(s_cML)
 
         # Actual start of the CG
-        wiener_filter_term, number_iterations = jsp.sparse.linalg.cg(func_left_term, right_member.ravel(), x0=initial_guess.ravel(), tol=self.tolerance_CG, atol=self.tolerance_CG, maxiter=self.limit_iter_cg)
+        wiener_filter_term, number_iterations = jsp.sparse.linalg.cg(func_left_term, right_member.ravel(), x0=initial_guess.ravel(), tol=self.tolerance_CG, atol=self.atol_CG, maxiter=self.limit_iter_cg)
         print("CG-Python-0 WF finished in ", number_iterations, "iterations !!")
 
         return wiener_filter_term.reshape((self.nstokes, self.npix))
@@ -670,7 +673,7 @@ class Sampling_functions(object):
 
         # precond_lineax = lx.FunctionLinearOperator(precond_func, jax.ShapeDtypeStruct((self.nstokes*self.npix,),jnp.float64), tags=(lx.symmetric_tag,lx.positive_semidefinite_tag))
 
-        CG_obj = lx.CG(rtol=self.tolerance_CG, atol=1e-8, max_steps=self.limit_iter_cg, norm=func_norm)
+        CG_obj = lx.CG(rtol=self.tolerance_CG, atol=self.atol_CG, max_steps=self.limit_iter_cg, norm=func_norm)
 
         time_start = time.time()
         # fluctuating_map_z, number_iterations = jsp.sparse.linalg.cg(func_left_term, right_member.ravel(), x0=initial_guess.ravel(), 
@@ -792,7 +795,7 @@ class Sampling_functions(object):
         #     return jnp.sqrt(jnp.sum((x[_mask_to_use!=0])**2))
         # func_norm = lambda x : jnp.sqrt(jnp.sum((x.reshape((self.nstokes,self.npix))**2)))
 
-        CG_obj = lx.CG(rtol=self.tolerance_CG, atol=1e-8, max_steps=self.limit_iter_cg, norm=func_norm)
+        CG_obj = lx.CG(rtol=self.tolerance_CG, atol=self.atol_CG, max_steps=self.limit_iter_cg, norm=func_norm)
         # CG_obj = lx.CG(rtol=self.tolerance_CG, atol=1e-8, max_steps=self.limit_iter_cg)
 
         time_start = time.time()
@@ -1081,7 +1084,7 @@ class Sampling_functions(object):
         ## Computation of ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta
         initial_guess = jnp.zeros((self.nstokes,self.npix))
         right_member = jnp.copy(component_eta_maps_2)
-        inverse_term, number_iterations = jsp.sparse.linalg.cg(func_left_term, right_member.ravel(), x0=initial_guess.ravel(), tol=self.tolerance_CG, atol=self.tolerance_CG, maxiter=self.limit_iter_cg)
+        inverse_term, number_iterations = jsp.sparse.linalg.cg(func_left_term, right_member.ravel(), x0=initial_guess.ravel(), tol=self.tolerance_CG, atol=self.atol_CG, maxiter=self.limit_iter_cg)
 
         ## Computation of C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta
         component_eta_maps_3 = maps_x_red_covariance_cell_JAX(inverse_term.reshape(self.nstokes,self.npix), red_cov_approx_matrix_msqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
@@ -1134,7 +1137,7 @@ class Sampling_functions(object):
             initial_guess = jnp.copy(previous_inverse)
 
         right_member = jnp.copy(component_eta_maps)
-        inverse_term, number_iterations = jsp.sparse.linalg.cg(func_left_term, right_member.ravel(), x0=initial_guess.ravel(), tol=self.tolerance_CG, atol=self.tolerance_CG, maxiter=self.limit_iter_cg_eta)
+        inverse_term, number_iterations = jsp.sparse.linalg.cg(func_left_term, right_member.ravel(), x0=initial_guess.ravel(), tol=self.tolerance_CG, atol=self.atol_CG, maxiter=self.limit_iter_cg_eta)
 
         ## Computation of C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta
         # component_eta_maps_3 = maps_x_red_covariance_cell_JAX(inverse_term.reshape(self.nstokes,self.npix), red_cov_approx_matrix_msqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
@@ -1221,7 +1224,7 @@ class Sampling_functions(object):
 
         # precond_lineax = lx.FunctionLinearOperator(precond_func, jax.ShapeDtypeStruct((self.nstokes*self.npix,),jnp.float64), tags=(lx.symmetric_tag,lx.positive_semidefinite_tag))
 
-        CG_obj = lx.CG(rtol=self.tolerance_CG, atol=1e-8, max_steps=self.limit_iter_cg_eta, norm=func_norm)
+        CG_obj = lx.CG(rtol=self.tolerance_CG, atol=self.atol_CG, max_steps=self.limit_iter_cg_eta, norm=func_norm)
 
         time_start = time.time()
         options_dict = {"y0":initial_guess.ravel()}
@@ -1340,7 +1343,7 @@ class Sampling_functions(object):
 
         return (log_proba_spectral_likelihood + log_proba_perturbation_likelihood)
 
-    def get_conditional_proba_mixing_matrix_v2b_JAX(self, new_params_mixing_matrix, full_data_without_CMB, component_eta_maps, red_cov_approx_matrix, previous_inverse, log_proba_perturbation=None):
+    def get_conditional_proba_mixing_matrix_v2b_JAX(self, new_params_mixing_matrix, full_data_without_CMB, component_eta_maps, red_cov_approx_matrix, previous_inverse):
         """ Get conditional probability of the conditional probability associated with the B_f parameters
             
             The associated conditional probability is given by : 
@@ -1366,11 +1369,7 @@ class Sampling_functions(object):
 
         # Compute correction term to the likelihood : (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta)
         # log_proba_perturbation_likelihood, inverse_term = self.get_conditional_proba_correction_likelihood_JAX_v2b(new_mixing_matrix, component_eta_maps, red_cov_approx_matrix,previous_inverse=previous_inverse,return_inverse=True)
-        if log_proba_perturbation is None:
-            log_proba_perturbation_likelihood, inverse_term = self.get_conditional_proba_correction_likelihood_JAX_v2c(new_mixing_matrix, component_eta_maps, red_cov_approx_matrix,previous_inverse=previous_inverse,return_inverse=True)
-        else:
-            log_proba_perturbation_likelihood = log_proba_perturbation
-            inverse_term = previous_inverse
+        log_proba_perturbation_likelihood, inverse_term = self.get_conditional_proba_correction_likelihood_JAX_v2c(new_mixing_matrix, component_eta_maps, red_cov_approx_matrix,previous_inverse=previous_inverse,return_inverse=True)
 
         return (log_proba_spectral_likelihood + log_proba_perturbation_likelihood), inverse_term
     
