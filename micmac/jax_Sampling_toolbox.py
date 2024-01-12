@@ -1271,7 +1271,7 @@ class Sampling_functions(object):
         self._fake_mixing_matrix.update_params(old_params_mixing_matrix, jax_use=True)
         old_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
 
-        self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape(old_params_mixing_matrix.shape,order='F'), jax_use=True))
+        self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape(old_params_mixing_matrix.shape,order='F'), jax_use=True)
         new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
 
 
