@@ -21,24 +21,41 @@ file_ver = 'corr_masked_full_v100_Gchain_SO_64_v1a' # -> WF&Fluct v2 + 2500 iter
 file_ver = 'corr_masked_full_v100_Gchain_SO_64_v1b' # -> WF&Fluct v2 + 1000 iterations + 200 limit_iter + mask + 1% error + corr_full_chain_v1b ; C_approx only lensing
 file_ver = 'corr_masked_full_v100_Gchain_SO_64_v1c' # -> WF&Fluct v2 + 1500 iterations + restrict_to_mask + 50 limit_iter_eta + mask + 1% error + corr_full_chain_v1c ; C_approx only lensing
 file_ver = 'corr_masked_full_v100_Gchain_SO_64_v2a' # -> WF&Fluct v2c ; log_eta v2c(0?) + 2500 iterations + restrict_to_mask + 50 limit_iter_eta + mask + 1% error + corr_full_chain_v2a ; C_approx only lensing
-file_ver = 'corr_masked_full_v100_Gchain_SO_64_v3b' # -> WF&Fluct v2c ; log_eta v2c + 3000 iterations + corr_full_chain_v2b  + restrict_to_mask + 200 limit_iter_eta + mask + 1% error ; C_approx only lensing
-file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1b' # -> perturbation_eta ; 3500 iterations + corr_full_chain_v3a  + w/o restrict_to_mask + 200 limit_iter_eta + mask + func_norm w/o mask ; C_approx only lensing
+file_ver = 'corr_masked_full_v100_Gchain_SO_64_v3a' # -> WF&Fluct v2c ; log_eta v2c + 1500 iterations + corr_full_chain_v2a  + restrict_to_mask + 50 limit_iter_eta + mask + 1% error ; C_approx only lensing
+file_ver = 'corr_masked_full_v100_Gchain_SO_64_v3ab' # -> WF&Fluct v2c ; 1250 iterations + corr_full_chain_v2a  + restrict_to_mask + 50 limit_iter_eta + mask + func_norm w/o mask ; C_approx only lensing
+# file_ver = 'corr_masked_full_v100_Gchain_SO_64_v3b' # -> WF&Fluct v2c ; log_eta v2c + 3000 iterations + corr_full_chain_v2b  + restrict_to_mask + 200 limit_iter_eta + mask + 1% error ; C_approx only lensing
+file_ver = 'corr_unmasked_full_v101_Gchain_SO_64_v0a' # -> WF&Fluct v2c ; 1250 iterations + corr_full_chain_v2a  + restrict_to_mask + 50 limit_iter_eta + unmasked + func_norm w/o mask ; C_approx only lensing
+file_ver = 'corr_unmasked_full_v101_Gchain_SO_64_v0b' # -> WF&Fluct v2c ; 1250 iterations + corr_full_chain_v2b  + restrict_to_mask + 200 limit_iter_eta + unmasked + func_norm w/o mask + fixed eta_cov ; C_approx only lensing
+file_ver = 'corr_unmasked_full_v102_Gchain_SO_64_v0a' # -> perturbation_eta ; 3500 iterations + corr_full_chain_v3a  + w/o restrict_to_mask + 200 limit_iter_eta + unmasked + func_norm w/o mask ; C_approx only lensing
+file_ver = 'corr_unmasked_Iwish_full_v102_Gchain_SO_64_v0c' # -> Iwish + perturbation_eta ; 2450 iterations + corr_full_chain_Iwish_v3c  + w/o restrict_to_mask + 200 limit_iter_eta + unmasked + func_norm w/o mask ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
 
+perso_repo_path = "/gpfswork/rech/nih/ube74zo/MICMAC_save/validation_chain_v6_JZ/"
+path_home_test_playground = '/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/'
+# current_path = os.path.dirname(os.path.abspath(''))
+# current_path = perso_repo_path
+current_path = path_home_test_playground + '/validation_chain_v6_JZ/'
 sys.path.append(os.path.dirname(os.path.abspath('')))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath('')))+'/tutorials/')
 
 from fgbuster.observation_helpers import *
 from micmac import *
 
-path_mask = "/Users/mag/Documents/PHD1Y/Masks/mask_SAT_apodized.fits"
+common_repo = "/gpfswork/rech/nih/commun/"
+path_mask = common_repo + "masks/mask_SO_SAT_apodized.fits"
 
-path_Fisher = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
+# path_home_test_playground = '/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/'
+# path_Fisher = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
+# path_Fisher = '../Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
+path_Fisher = path_home_test_playground + 'Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
 
-working_directory_path = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/validation_chain_v5/'
-directory_save_file = working_directory_path + 'save_directory/'
+# perso_repo_path = "/gpfswork/rech/nih/ube74zo/MICMAC_save/validation_chain_v6_JZ/"
+directory_save_file = perso_repo_path + 'save_directory/'
+
+# working_directory_path = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/validation_chain_v5/'
+working_directory_path = current_path + '/'#'/validation_chain_v6_JZ/'
 directory_toml_file = working_directory_path + 'toml_params/'
 
 # path_toml_file = directory_toml_file + 'full_chain_v1a.toml'
@@ -48,6 +65,8 @@ path_toml_file = directory_toml_file + 'corr_full_chain_v1c.toml'
 path_toml_file = directory_toml_file + 'corr_full_chain_v2a.toml'
 path_toml_file = directory_toml_file + 'corr_full_chain_v2b.toml'
 path_toml_file = directory_toml_file + 'corr_full_chain_v3a.toml'
+path_toml_file = directory_toml_file + 'corr_full_chain_Iwish_v3c.toml'
+
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
 
@@ -77,7 +96,7 @@ apod_mask = hp.ud_grade(hp.read_map(path_mask),nside_out=MICMAC_obj.nside)
 mask = np.copy(apod_mask)
 mask[apod_mask>0] = 1
 
-# mask = np.ones_like(apod_mask)
+mask = np.ones_like(apod_mask)
 
 MICMAC_obj.mask = mask
 
