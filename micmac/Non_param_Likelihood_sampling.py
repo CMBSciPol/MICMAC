@@ -33,7 +33,7 @@ class MICMAC_Sampler(Sampling_functions):
                  n_iter=8, limit_iter_cg=2000, tolerance_CG=1e-10, atol_CG=1e-8,
                  limit_iter_cg_eta=200,
                  mask=None,
-                 use_automatic_step_size=True, num_sample_AM = 1000, 
+                 use_automatic_step_size=False, num_sample_AM = 1000, 
                  epsilon_cov = 1e-20, scale_param = 2.38**2,
 
                  restrict_to_mask=False,
@@ -518,7 +518,8 @@ class MICMAC_Sampler(Sampling_functions):
 
             # Extracting the variables from the carry
             # eta_maps_sample, WF_term_maps, fluct_maps, red_cov_matrix_sample, _all_r_samples, _all_B_f_samples, PRNGKey, old_s_c_sample, inverse_term = carry
-            eta_maps_sample, WF_term_maps, fluct_maps, red_cov_matrix_sample, _all_r_samples, params_mixing_matrix_sample, PRNGKey, old_s_c_sample, inverse_term = carry
+            # eta_maps_sample, WF_term_maps, fluct_maps, red_cov_matrix_sample, _all_r_samples, params_mixing_matrix_sample, PRNGKey, old_s_c_sample, inverse_term = carry
+            eta_maps_sample, WF_term_maps, fluct_maps, red_cov_matrix_sample, r_sample, params_mixing_matrix_sample, PRNGKey, old_s_c_sample, inverse_term = carry
 
             # Preparing a new PRNGKey for eta sampling
             PRNGKey, subPRNGKey = random.split(PRNGKey)
@@ -632,15 +633,20 @@ class MICMAC_Sampler(Sampling_functions):
                 # Sampling r which will parametrize C(r) = C_scalar + r*C_tensor
 
                 # Possibly use automatic step size
-                if self.use_automatic_step_size:
-                    step_size_r = jnp.where(iteration<self.num_sample_AM,  self.step_size_r, jnp.sqrt(self.compute_covariance_1d(iteration, _all_r_samples)))
-                else:
-                    step_size_r = self.step_size_r
+                # if self.use_automatic_step_size:
+                #     step_size_r = jnp.where(iteration<self.num_sample_AM,  self.step_size_r, jnp.sqrt(self.compute_covariance_1d(iteration, _all_r_samples)))
+                # else:
+                #     step_size_r = self.step_size_r
 
-                r_sample = r_sampling_MH(random_PRNGKey=new_subPRNGKey_2, old_sample=_all_r_samples[iteration],
-                                                          step_size=step_size_r, log_proba=self.get_conditional_proba_C_from_r, 
+                # r_sample = r_sampling_MH(random_PRNGKey=new_subPRNGKey_2, old_sample=_all_r_samples[iteration],
+                #                                           step_size=step_size_r, log_proba=self.get_conditional_proba_C_from_r, 
+                #                                           red_sigma_ell=red_c_ells_Wishart_modified, theoretical_red_cov_r1_tensor=theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total=theoretical_red_cov_r0_total)
+                # _all_r_samples = _all_r_samples.at[iteration+1].set(r_sample)
+
+                r_sample = r_sampling_MH(random_PRNGKey=new_subPRNGKey_2, old_sample=r_sample,
+                                                          step_size=self.step_size_r, log_proba=self.get_conditional_proba_C_from_r, 
                                                           red_sigma_ell=red_c_ells_Wishart_modified, theoretical_red_cov_r1_tensor=theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total=theoretical_red_cov_r0_total)
-                _all_r_samples = _all_r_samples.at[iteration+1].set(r_sample)
+                # _all_r_samples = _all_r_samples.at[iteration+1].set(r_sample)
 
                 red_cov_matrix_sample = theoretical_red_cov_r0_total + r_sample*theoretical_red_cov_r1_tensor
             else:
@@ -700,36 +706,18 @@ class MICMAC_Sampler(Sampling_functions):
                 chx.assert_axis_dimension(params_mixing_matrix_sample, 0, self.number_frequencies-len_pos_special_freqs)
                 params_mixing_matrix_sample = params_mixing_matrix_sample.reshape((self.number_frequencies-len_pos_special_freqs,number_correlations-1),order='F')
 
-            ## Updating B_f samples array
-            # _all_B_f_samples = _all_B_f_samples.at[iteration+1].set(params_mixing_matrix_sample.ravel(order='F'))
-            
-            ## Updating the carry
-            # new_carry = (eta_maps_sample, wiener_filter_term, fluctuation_maps, red_cov_matrix_sample, _all_r_samples, _all_B_f_samples, PRNGKey, s_c_sample, inverse_term)
-            new_carry = (eta_maps_sample, wiener_filter_term, fluctuation_maps, red_cov_matrix_sample, _all_r_samples, params_mixing_matrix_sample, PRNGKey, s_c_sample, inverse_term)
-            all_samples = (eta_maps_sample, wiener_filter_term, fluctuation_maps, red_cov_matrix_sample, _all_r_samples[iteration+1], params_mixing_matrix_sample)
+
+            new_carry = (eta_maps_sample, wiener_filter_term, fluctuation_maps, red_cov_matrix_sample, r_sample, params_mixing_matrix_sample, PRNGKey, s_c_sample, inverse_term)
+            all_samples = (eta_maps_sample, wiener_filter_term, fluctuation_maps, red_cov_matrix_sample, r_sample, params_mixing_matrix_sample)
 
             return new_carry, all_samples
 
         # Initializing r and B_f samples
-        ## Note  : all r/B_f are taken into account for automatic step-size issues, might be deleted in future versions for memory issues
-        all_r_samples = jnp.zeros(actual_number_of_iterations+1)
-        # all_B_f_samples = jnp.zeros((actual_number_of_iterations+1, dimension_param_B_f)) # Note B_f is initialized as 1d vector, and is updated as such
 
-        all_r_samples = all_r_samples.at[0].set(initial_guess_r)
-        # all_B_f_samples = all_B_f_samples.at[0].set(params_mixing_matrix_init_sample.ravel(order='F'))
-
-        # initial_carry = (initial_eta, 
-        #                  wiener_filter_term, fluctuation_maps, 
-        #                  red_cov_matrix,
-        #                  all_r_samples,
-        #                  all_B_f_samples,
-        #                  PRNGKey,
-        #                  wiener_filter_term+fluctuation_maps,
-        #                  jnp.zeros_like(initial_eta))
         initial_carry = (initial_eta, 
                          wiener_filter_term, fluctuation_maps, 
                          red_cov_matrix,
-                         all_r_samples,
+                         r_sample,
                          params_mixing_matrix_init_sample,
                          PRNGKey,
                          wiener_filter_term+fluctuation_maps,
