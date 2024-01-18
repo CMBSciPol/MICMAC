@@ -717,7 +717,7 @@ class MICMAC_Sampler(Sampling_functions):
         initial_carry = (initial_eta, 
                          wiener_filter_term, fluctuation_maps, 
                          red_cov_matrix,
-                         r_sample,
+                         initial_guess_r,
                          params_mixing_matrix_init_sample,
                          PRNGKey,
                          wiener_filter_term+fluctuation_maps,
