@@ -23,7 +23,8 @@ class Sampling_functions(object):
                  n_iter=8, 
                  limit_iter_cg=2000, limit_iter_cg_eta=50, 
                  tolerance_CG=1e-10, atol_CG=1e-8,
-                 restrict_to_mask=False):
+                 restrict_to_mask=False,
+                 bin_ell_distribution=None):
         """ Sampling functions object
             Contains all the functions needed for the sampling step of the Gibbs sampler
 
@@ -60,6 +61,10 @@ class Sampling_functions(object):
             self.mask = jnp.ones(12*self.nside**2)
         else:
             self.mask = mask
+        if bin_ell_distribution is None:
+            self.bin_ell_distribution = jnp.arange(self.lmin, self.lmax+1)
+        else:
+            self.bin_ell_distribution = bin_ell_distribution # Expects array of the bounds of the bins, of size nbins+1
         
         # CG and harmonic parameters
         self.n_iter = int(n_iter) # Number of iterations for estimation of alms
@@ -90,6 +95,12 @@ class Sampling_functions(object):
         """ Return number of frequencies
         """
         return jnp.size(self.frequency_array)
+    
+    @property
+    def number_bins(self):
+        """ Return number of bins
+        """
+        return jnp.size(self.bin_ell_distribution)-1
 
     def get_band_limited_maps(self, input_map):
         """ Get band limited maps from input maps between lmin and lmax
@@ -836,8 +847,8 @@ class Sampling_functions(object):
             :return: Matrices following an inverse Wishart distribution, of dimensions [lmin:lmax, nstokes, nstokes]
         """
 
-        chx.assert_axis_dimension(sigma_ell, 1, self.lmax+1)
-        c_ells_Wishart_modified = jnp.copy(sigma_ell)*(2*jnp.arange(self.lmax+1) + 1)
+        chx.assert_axis_dimension(sigma_ell, 1, self.lmax+1-self.lmin)
+        c_ells_Wishart_modified = jnp.copy(sigma_ell)*(2*jnp.arange(self.lmin,self.lmax+1) + 1)
         invert_parameter_Wishart = jnp.linalg.pinv(get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_modified))
         
         sampling_Wishart = jnp.zeros_like(invert_parameter_Wishart)
@@ -846,19 +857,20 @@ class Sampling_functions(object):
             """ Compute the sampling of the Wishart distribution for a given ell
             """
 
-            sample_gaussian = random.multivariate_normal(ell_PNRGKey, jnp.zeros(self.nstokes), invert_parameter_Wishart[ell], shape=(2*(self.lmax+1) - self.nstokes,))
+            sample_gaussian = random.multivariate_normal(ell_PNRGKey, jnp.zeros(self.nstokes), invert_parameter_Wishart[ell], shape=(2*self.lmax - self.nstokes,))
 
-            weighting = jnp.where(ell >= (jnp.arange(2*(self.lmax+1)-self.nstokes)+self.nstokes)/2, 1, 0)
+            weighting = jnp.where(ell >= (jnp.arange(2*self.lmax-self.nstokes)+self.nstokes)/2, 1, 0)
 
             sample_to_return = jnp.einsum('lk,l,lm->km',sample_gaussian,weighting,sample_gaussian)
             # new_carry = new_ell_PRNGKey
             return sample_to_return
         
         PRNGKey_map = random.split(PRNGKey, self.lmax-self.lmin+1) # Prepare lmax+1-lmin PRNGKeys to be used
-        sampling_Wishart_map = jax.vmap(map_sampling_Wishart)(PRNGKey_map, jnp.arange(self.lmin,self.lmax+1)) 
+        # sampling_Wishart_map = jax.vmap(map_sampling_Wishart)(PRNGKey_map, jnp.arange(self.lmin,self.lmax+1))
+        sampling_Wishart = jax.vmap(map_sampling_Wishart)(PRNGKey_map, jnp.arange(self.lmin,self.lmax+1))
         # Map over PRNGKeys and ells to create samples of the Wishart distribution, of dimension [lmax+1-lmin,nstokes,nstokes]
 
-        sampling_Wishart = sampling_Wishart.at[self.lmin:].set(sampling_Wishart_map)
+        # sampling_Wishart = sampling_Wishart.at[self.lmin:].set(sampling_Wishart_map)
         return jnp.linalg.pinv(sampling_Wishart)
 
     def get_conditional_proba_C_from_previous_sample(self, red_sigma_ell, red_cov_matrix_sampled):
@@ -883,59 +895,6 @@ class Sampling_functions(object):
         
         return -( jnp.einsum('lij,lji->l', red_sigma_ell, jnp.linalg.pinv(red_cov_matrix_sampled)).sum() + sum_dets)/2
 
-
-    def get_inverse_wishart_sampling_from_c_ells_v2(self, sigma_ell, PRNGKey, red_cov_ell_2=None):
-        """ Solve sampling step 3 : inverse Wishart distribution with C
-
-            sigma_ell is expected to be exactly the parameter of the inverse Wishart (so it should NOT be multiplied by 2*ell+1 if it is thought as a power spectrum)
-
-            Compute a matrix sample following an inverse Wishart distribution. The 3 steps follow Gupta & Nagar (2000) :
-                1. Sample n = 2*ell - p + 2*q_prior independent Gaussian vectors with covariance (sigma_ell)^{-1}
-                2. Compute their outer product to form a matrix of dimension n_stokes*n_stokes ; which gives us a sample following the Wishart distribution
-                3. Invert this matrix to obtain the final result : a matrix sample following an inverse Wishart distribution
-
-            Also assumes the monopole and dipole to be 0
-
-            Parameters
-            ----------
-            :param sigma_ell: initial power spectrum which will define the parameter matrix of the inverse Wishart distribution ; must be of dimension [number_correlations, lmax+1]
-            :param PRNGKey: random key for JAX PNRG
-            
-            Returns
-            -------
-            :return: Matrices following an inverse Wishart distribution, of dimensions [lmin:lmax, nstokes, nstokes]
-        """
-
-        chx.assert_axis_dimension(sigma_ell, 1, self.lmax+1)
-        c_ells_Wishart_modified = jnp.copy(sigma_ell)*(2*jnp.arange(self.lmax+1) + 1)
-        invert_parameter_Wishart = jnp.linalg.pinv(get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_modified))
-
-        PRNGKey, subkey = random.split(PRNGKey)
-        ell_2 = 2
-        red_cov_ell_2 
-        new_sample_ell_2 = multivariate_Metropolis_Hasting_step(PRNGKey, old_sample, covariance_matrix, self.get_conditional_proba_C_from_previous_sample, **model_kwargs)
-
-        sampling_Wishart = jnp.zeros_like(invert_parameter_Wishart)
-
-        def map_sampling_Wishart(ell_PNRGKey, ell):
-            """ Compute the sampling of the Wishart distribution for a given ell
-            """
-
-            sample_gaussian = random.multivariate_normal(ell_PNRGKey, jnp.zeros(self.nstokes), invert_parameter_Wishart[ell], shape=(2*(self.lmax+1) - self.nstokes,))
-
-            weighting = jnp.where(ell >= (jnp.arange(2*(self.lmax+1)-self.nstokes)+self.nstokes)/2, 1, 0)
-
-            sample_to_return = jnp.einsum('lk,l,lm->km',sample_gaussian,weighting,sample_gaussian)
-            # new_carry = new_ell_PRNGKey
-            return sample_to_return
-        
-        min_value_ell = jnp.array([3, self.lmin]).max()
-        PRNGKey_map = random.split(PRNGKey, self.lmax-min_value_ell+1) # Prepare lmax+1-lmin PRNGKeys to be used
-        sampling_Wishart_map = jax.vmap(map_sampling_Wishart)(PRNGKey_map, jnp.arange(min_value_ell,self.lmax+1)) 
-        # Map over PRNGKeys and ells to create samples of the Wishart distribution, of dimension [lmax+1-lmin,nstokes,nstokes]
-
-        sampling_Wishart = sampling_Wishart.at[min_value_ell:].set(sampling_Wishart_map)
-        return jnp.linalg.pinv(sampling_Wishart)
 
     def get_inverse_gamma_sampling_from_c_ells(self, sigma_ell, PRNGKey):
         """ Solve sampling step 3 : inverse Gamma distribution with C
@@ -976,6 +935,106 @@ class Sampling_functions(object):
 
         sampling_Gamma = sampling_Gamma.at[self.lmin:].set(sampling_Gamma_map)
         return sampling_Gamma
+
+    def get_binned_red_c_ells_v2(self, red_c_ells_to_bin):
+        """ Bin the power spectrum to get the binned power spectrum
+            
+                Parameters
+                ----------
+                :param red_c_ells_to_bin: power spectrum to bin ; must be of dimension [lmax+1, nstokes, nstokes]
+
+                Returns
+                -------
+                :return: Binned power spectrum, of dimension [number_bins, nstokes, nstokes]
+        """
+        chx.assert_axis_dimension(red_c_ells_to_bin, 0, self.lmax+1 - self.lmin)
+
+        ell_distribution = jnp.arange(red_c_ells_to_bin.shape[0]) + self.lmin
+
+        # number_bins = self.bin_ell_distribution.shape[0]-1
+
+        def map_binned_red_c_ells(bin_ell):
+            """ Compute the binned power spectrum for a given ell
+            """
+            cond = jnp.logical_and(self.bin_ell_distribution[bin_ell]<=ell_distribution, self.bin_ell_distribution[bin_ell+1]>ell_distribution)
+            cond_quantitative = jnp.where(cond, 1, 0)
+            modes_to_bin = jnp.einsum('lij, l, l->lij', red_c_ells_to_bin, cond_quantitative, ell_distribution*(ell_distribution+1))
+
+            return modes_to_bin.sum(axis=0)#/(self.bin_ell_distribution[bin_ell+1]-self.bin_ell_distribution[bin_ell])
+
+        binned_red_c_ells = jax.vmap(map_binned_red_c_ells)(jnp.arange(self.number_bins))
+        return binned_red_c_ells
+
+
+    def get_binned_inverse_wishart_sampling_from_c_ells_v2(self, sigma_ell, PRNGKey):
+        """ Solve sampling step 3 : inverse Wishart distribution with C
+
+            sigma_ell is expected to be exactly the parameter of the inverse Wishart (so it should NOT be multiplied by 2*ell+1 if it is thought as a power spectrum)
+
+            Compute a matrix sample following an inverse Wishart distribution. The 3 steps follow Gupta & Nagar (2000) :
+                1. Sample n = 2*ell - p + 2*q_prior independent Gaussian vectors with covariance (sigma_ell)^{-1}
+                2. Compute their outer product to form a matrix of dimension n_stokes*n_stokes ; which gives us a sample following the Wishart distribution
+                3. Invert this matrix to obtain the final result : a matrix sample following an inverse Wishart distribution
+
+            Also assumes the monopole and dipole to be 0
+
+            Parameters
+            ----------
+            :param sigma_ell: initial power spectrum which will define the parameter matrix of the inverse Wishart distribution ; must be of dimension [number_correlations, lmax+1]
+            :param PRNGKey: random key for JAX PNRG
+            
+            Returns
+            -------
+            :return: Matrices following an inverse Wishart distribution, of dimensions [lmin:lmax, nstokes, nstokes]
+        """
+
+        # chx.assert_axis_dimension(sigma_ell, 1, self.lmax+1)
+        chx.assert_axis_dimension(sigma_ell, 1, self.lmax+1-self.lmin)
+        # c_ells_Wishart_modified = jnp.copy(sigma_ell)*(2*jnp.arange(self.lmax+1) + 1)
+        c_ells_Wishart_modified = jnp.copy(sigma_ell)*(2*(jnp.arange(self.lmax+1-self.lmin)+self.lmin) + 1)
+        # invert_parameter_Wishart = jnp.linalg.pinv(get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_modified))
+        binned_invert_parameter_Wishart = jnp.linalg.pinv(get_binned_red_c_ells_v2(get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_modified)))
+        
+        
+        # sampling_Wishart = jnp.zeros_like(invert_parameter_Wishart)
+        sampling_Wishart = jnp.zeros_like(binned_invert_parameter_Wishart)
+        # number_dof = lambda x: 2*x+1
+
+        def map_sampling_Wishart(ell_PNRGKey, binned_ell):
+            """ Compute the sampling of the Wishart distribution for a given ell
+            """
+
+            sample_gaussian = random.multivariate_normal(ell_PNRGKey, jnp.zeros(self.nstokes), binned_invert_parameter_Wishart[binned_ell], shape=(self.maximum_number_dof - self.nstokes-1,))
+
+            weighting = jnp.where(number_dof(binned_ell)-self.nstokes-1 >= jnp.arange(self.maximum_number_dof-self.nstokes-1), 1, 0)
+
+            sample_to_return = jnp.einsum('lk,l,lm->km',sample_gaussian,weighting,sample_gaussian)
+            # new_carry = new_ell_PRNGKey
+            return sample_to_return
+
+        # distribution_bins_over_lmin = self.bin_ell_distributed_min[self.bin_ell_distributed_min>=self.lmin]
+        distribution_bins_over_lmin = jnp.copy(self.bin_ell_distribution)[:-1]
+
+        # number_bins_over_lmin = distribution_bins_over_lmin.shape[0]
+        # number_bins_over_lmin = jnp.size(distribution_bins_over_lmin)
+
+        # PRNGKey_map = random.split(PRNGKey, self.lmax-self.lmin+1) # Prepare lmax+1-lmin PRNGKeys to be used
+        PRNGKey_map = random.split(PRNGKey, self.number_bins) # Prepare lmax+1-lmin PRNGKeys to be used
+
+        # sampling_Wishart_map = jax.vmap(map_sampling_Wishart)(PRNGKey_map, jnp.arange(self.lmin,self.lmax+1))
+        sampling_Wishart_map = jax.vmap(map_sampling_Wishart)(PRNGKey_map, jnp.arange(self.number_bins))
+        # Map over PRNGKeys and ells to create samples of the Wishart distribution, of dimension [lmax+1-lmin,nstokes,nstokes]
+
+        sampling_Wishart = sampling_Wishart.at[-self.number_bins:].set(sampling_Wishart_map)
+        sampling_invWishart = jnp.linalg.pinv(sampling_Wishart)
+
+        def reconstruct_spectra(ell):
+            cond = jnp.logical_and(self.bin_ell_distribution[:-1]<=ell, self.bin_ell_distribution[1:]>ell)
+            bin_contribution = jnp.where(cond, 1, 0)
+            return jnp.einsum('lij,l->ij',sampling_invWishart,bin_contribution)/(ell*(ell+1))
+        
+        reconstructed_spectra = jax.vmap(reconstruct_spectra)(jnp.arange(self.lmin,self.lmax+1))
+        return reconstructed_spectra
 
 
     def get_conditional_proba_C_from_r(self, r_param, red_sigma_ell, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total):

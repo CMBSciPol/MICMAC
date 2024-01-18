@@ -37,9 +37,11 @@ class MICMAC_Sampler(Sampling_functions):
                  epsilon_cov = 1e-20, scale_param = 2.38**2,
 
                  restrict_to_mask=False,
+                 bin_ell_distribution=None,
                  use_old_s_c_sampling=False,
                  perturbation_eta_covariance=False,
 
+                 use_binning=False,
                  cheap_save=True, very_cheap_save=False,
                  biased_version=False, lognormal_r=False,
                  r_true=0,
@@ -59,7 +61,7 @@ class MICMAC_Sampler(Sampling_functions):
                                             pos_special_freqs=pos_special_freqs,number_components=number_components,
                                             n_iter=n_iter, limit_iter_cg=limit_iter_cg, limit_iter_cg_eta=limit_iter_cg_eta, 
                                             tolerance_CG=tolerance_CG, atol_CG=atol_CG, 
-                                            mask=mask, restrict_to_mask=restrict_to_mask)
+                                            mask=mask, restrict_to_mask=restrict_to_mask, bin_ell_distribution=bin_ell_distribution)
 
         # Quick test parameters
         self.instrument_name = instrument_name
@@ -74,6 +76,7 @@ class MICMAC_Sampler(Sampling_functions):
         self.use_old_s_c_sampling = bool(use_old_s_c_sampling)
         # self.fixed_eta_covariance = bool(fixed_eta_covariance)
         self.perturbation_eta_covariance = bool(perturbation_eta_covariance)
+        self.use_binning = bool(use_binning)
 
         # CMB parameters
         self.r_true = float(r_true)
@@ -450,6 +453,8 @@ class MICMAC_Sampler(Sampling_functions):
         # jitted_get_inverse_wishart_sampling_from_c_ells = jax.jit(self.get_inverse_wishart_sampling_from_c_ells)
         # jitted_get_inverse_wishart_sampling_from_c_ells = jax.jit(self.get_inverse_gamma_sampling_from_c_ells) # Use of gamma distribution instead of inverse Wishart
         func_get_inverse_wishart_sampling_from_c_ells = self.get_inverse_wishart_sampling_from_c_ells
+        if self.use_binning:
+            func_get_inverse_wishart_sampling_from_c_ells = self.get_binned_inverse_wishart_sampling_from_c_ells_v2
         # func_get_inverse_wishart_sampling_from_c_ells = self.get_inverse_gamma_sampling_from_c_ells
 
         if self.lognormal_r:
@@ -607,9 +612,10 @@ class MICMAC_Sampler(Sampling_functions):
             
             ## Preparing the c_ell which will be used for the sampling
             c_ells_Wishart_ = get_cell_from_map_jax(s_c_sample, lmax=self.lmax, n_iter=self.n_iter)
-            c_ells_Wishart_modified = c_ells_Wishart_*(2*jnp.arange(self.lmax+1) + 1)
+            # c_ells_Wishart_modified = c_ells_Wishart_*(2*jnp.arange(self.lmax+1) + 1)
             ### Getting them in the format [lmax,nstokes,nstokes]
-            red_c_ells_Wishart_modified = get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_modified)[self.lmin:]
+            # red_c_ells_Wishart_modified = get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_modified)[self.lmin:]
+            red_c_ells_Wishart_modified = get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_*(2*jnp.arange(self.lmax+1) + 1))[self.lmin:]
 
             ## Preparing the new PRNGkey
             PRNGKey, new_subPRNGKey_2 = random.split(PRNGKey)
@@ -619,7 +625,8 @@ class MICMAC_Sampler(Sampling_functions):
                 # Sampling C with inverse Wishart
                 # red_cov_matrix_sample = jitted_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_modified, PRNGKey=new_subPRNGKey_2)
                 # red_cov_matrix_sample = func_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_modified, PRNGKey=new_subPRNGKey_2)
-                red_cov_matrix_sample = func_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_, PRNGKey=new_subPRNGKey_2)
+                # red_cov_matrix_sample = func_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_, PRNGKey=new_subPRNGKey_2)
+                red_cov_matrix_sample = func_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_[:,self.lmin:], PRNGKey=new_subPRNGKey_2)
 
             elif self.sample_r_Metropolis:
                 # Sampling r which will parametrize C(r) = C_scalar + r*C_tensor
