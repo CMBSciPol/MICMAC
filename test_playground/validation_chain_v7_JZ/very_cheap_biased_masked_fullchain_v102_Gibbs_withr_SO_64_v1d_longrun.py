@@ -83,8 +83,8 @@ apod_mask = hp.ud_grade(hp.read_map(path_mask),nside_out=MICMAC_obj.nside)
 mask = np.copy(apod_mask)
 mask[apod_mask>0] = 1
 
-nits_mask = np.copy(apod_mask)
-nits_mask[nits_mask<relative_treshold] = 0
+nhits_mask = np.copy(apod_mask)
+nhits_mask[nhits_mask<relative_treshold] = 0
 
 # mask = np.ones_like(apod_mask)
 

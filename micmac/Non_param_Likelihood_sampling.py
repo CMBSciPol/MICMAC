@@ -474,7 +474,7 @@ class MICMAC_Sampler(Sampling_functions):
             print("Using biased version of mixing matrix sampling !!!", flush=True)
             jitted_Bf_func_sampling = jax.jit(self.get_biased_conditional_proba_mixing_matrix_v2_JAX)
             sampling_func = separate_single_MH_step_index
-        if self.perturbation_eta_covariance:
+        elif self.perturbation_eta_covariance:
             print("Using perturbation of eta covariance !!!", flush=True)
             jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_JAX)
             sampling_func = separate_single_MH_step_index
