@@ -994,7 +994,6 @@ class Sampling_functions(object):
         c_ells_Wishart_modified = jnp.copy(sigma_ell)*(2*(jnp.arange(self.lmax+1-self.lmin)+self.lmin) + 1)
         # invert_parameter_Wishart = jnp.linalg.pinv(get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_modified))
         binned_invert_parameter_Wishart = jnp.linalg.pinv(self.get_binned_red_c_ells_v2(get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_modified)))
-        
 
         # sampling_Wishart = jnp.zeros_like(invert_parameter_Wishart)
         sampling_Wishart = jnp.zeros_like(binned_invert_parameter_Wishart)
