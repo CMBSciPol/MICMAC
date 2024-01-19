@@ -65,7 +65,7 @@ class Sampling_functions(object):
             self.bin_ell_distribution = jnp.arange(self.lmin, self.lmax+1)
         else:
             self.bin_ell_distribution = bin_ell_distribution # Expects array of the bounds of the bins, of size nbins+1
-        self.maximum_number_dof = self.bin_ell_distribution[-1]**2 - self.bin_ell_distribution[-2]**2
+        self.maximum_number_dof = int(self.bin_ell_distribution[-1]**2 - self.bin_ell_distribution[-2]**2)
     
 
         # CG and harmonic parameters
