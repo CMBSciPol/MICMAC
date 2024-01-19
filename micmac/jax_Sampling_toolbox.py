@@ -102,6 +102,14 @@ class Sampling_functions(object):
         """
         return jnp.size(self.bin_ell_distribution)-1
 
+    def number_dof(self, bin_index):
+        chx.assert_scalar(bin_index)
+        return (self.bin_ell_distribution[bin_index+1])**2 - self.bin_ell_distribution[bin_index]**2
+    
+    @property
+    def maximum_number_dof(self):
+        return self.number_dof(self.number_bins-1)
+
     def get_band_limited_maps(self, input_map):
         """ Get band limited maps from input maps between lmin and lmax
             :param input_map: input maps to be band limited ; dimension [nstokes, npix]
