@@ -11,7 +11,6 @@
 #SBATCH --ntasks=1                 # nbr of MPI processes
 #SBATCH --gres=gpu:4                 # nombre de GPU par noeud (max 8 avec gpu_p2, gpu_p4, gpu_p5)
 #SBATCH --cpus-per-task=10          # nbr of OpenMP threads
-#SBATCH --ngpus=4                  # nbr of GPUs
 #SBATCH --hint=nomultithread       # 1 thread / physical core (no hyperthreading)
 #SBATCH --mail-user=magdy.morshed.fr@gmail.com
 #SBATCH --mail-type=ALL
