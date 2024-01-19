@@ -65,7 +65,9 @@ class Sampling_functions(object):
             self.bin_ell_distribution = jnp.arange(self.lmin, self.lmax+1)
         else:
             self.bin_ell_distribution = bin_ell_distribution # Expects array of the bounds of the bins, of size nbins+1
-        
+        self.maximum_number_dof = self.bin_ell_distribution[-1]**2 - self.bin_ell_distribution[-2]**2
+    
+
         # CG and harmonic parameters
         self.n_iter = int(n_iter) # Number of iterations for estimation of alms
         self.limit_iter_cg = int(limit_iter_cg) # Maximum number of iterations for the different CGs
@@ -105,11 +107,7 @@ class Sampling_functions(object):
     def number_dof(self, bin_index):
         chx.assert_scalar(bin_index)
         return (self.bin_ell_distribution[bin_index+1])**2 - self.bin_ell_distribution[bin_index]**2
-    
-    @property
-    def maximum_number_dof(self):
-        return self.number_dof(self.number_bins-1)
-
+ 
     def get_band_limited_maps(self, input_map):
         """ Get band limited maps from input maps between lmin and lmax
             :param input_map: input maps to be band limited ; dimension [nstokes, npix]
