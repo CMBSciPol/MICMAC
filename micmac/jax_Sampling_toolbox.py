@@ -1437,13 +1437,14 @@ class Sampling_functions(object):
         perturbation_term = func_to_apply(inverse_term_x_Capprox_root).reshape(self.nstokes,self.npix)
         
         previous_inverse_x_eta = inverse_term.reshape(self.nstokes,self.npix)
+        previous_inverse_x_Capprox_root_x_eta = inverse_term_x_Capprox_root.reshape(self.nstokes,self.npix)
 
         # new_log_proba = jnp.einsum('sp,p,sp', component_eta_maps, central_term, previous_inverse_x_eta) - jnp.einsum('sp,p,sp', previous_inverse_x_eta, central_term, perturbation_term)
         # new_log_proba = jnp.einsum('sp,p,sp', component_eta_maps - perturbation_term, central_term, previous_inverse_x_eta)
-        new_log_proba = jnp.einsum('sp,p,sp', component_eta_maps, central_term, previous_inverse_x_eta) - jnp.einsum('sp,p,sp', perturbation_term, central_term, inverse_term_x_Capprox_root)
+        new_log_proba = jnp.einsum('sp,p,sp', component_eta_maps, central_term, previous_inverse_x_eta) - jnp.einsum('sp,p,sp', perturbation_term, central_term, previous_inverse_x_Capprox_root_x_eta)
         print("First order :", jnp.einsum('sp,p,sp', component_eta_maps, central_term, previous_inverse_x_eta))
         # print("Perturbation :", -jnp.einsum('sp,p,sp', perturbation_term, central_term, previous_inverse_x_eta))
-        print("Perturbation :", -jnp.einsum('sp,p,sp', perturbation_term, central_term, inverse_term_x_Capprox_root))
+        print("Perturbation :", -jnp.einsum('sp,p,sp', perturbation_term, central_term, previous_inverse_x_Capprox_root_x_eta))
 
         return -(-0 + new_log_proba)/2.*jhp.nside2resol(self.nside)**2
 
