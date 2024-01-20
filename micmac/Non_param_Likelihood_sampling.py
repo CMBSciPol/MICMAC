@@ -486,7 +486,8 @@ class MICMAC_Sampler(Sampling_functions):
 
         dimension_param_B_f = (self.number_frequencies-len_pos_special_freqs)*(self.number_correlations-1)
         number_correlations = self.number_correlations
-        
+        red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix)
+
 
         ## Preparing the step-size for Metropolis-within-Gibbs of B_f sampling
         initial_step_size_Bf = jnp.array(jnp.diag(jsp.linalg.sqrtm(self.covariance_step_size_B_f)), dtype=jnp.float64)
@@ -688,11 +689,13 @@ class MICMAC_Sampler(Sampling_functions):
                                                             full_data_without_CMB=full_data_without_CMB, component_eta_maps=eta_maps_sample, 
                                                             red_cov_approx_matrix=red_cov_approx_matrix)
                 elif self.perturbation_eta_covariance:
+                    inverse_term_x_Capprox_root = maps_x_red_covariance_cell_JAX(inverse_term.reshape(self.nstokes,self.npix), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
                     new_subPRNGKey_3, params_mixing_matrix_sample = sampling_func(random_PRNGKey=new_subPRNGKey_3, old_sample=params_mixing_matrix_sample, 
                                                             step_size=step_size_Bf, indexes_Bf=self.indexes_free_Bf,
                                                             log_proba=jitted_Bf_func_sampling,
                                                             full_data_without_CMB=full_data_without_CMB, component_eta_maps=eta_maps_sample, 
-                                                            red_cov_approx_matrix=red_cov_approx_matrix, previous_inverse=inverse_term, 
+                                                            red_cov_approx_matrix=red_cov_approx_matrix, previous_inverse=inverse_term,
+                                                            previous_inverse_x_Capprox_root=inverse_term_x_Capprox_root,
                                                             old_params_mixing_matrix=params_mixing_matrix_sample)
                 else:
                     new_subPRNGKey_3, params_mixing_matrix_sample, inverse_term = sampling_func(random_PRNGKey=new_subPRNGKey_3, old_sample=params_mixing_matrix_sample, 
