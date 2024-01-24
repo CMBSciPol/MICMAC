@@ -18,6 +18,7 @@ from jax import config
 config.update("jax_enable_x64", True)
 
 file_ver = 'Iwish_bin_masked_full_v102_Gchain_SO_64_v1a' # -> classical binning delta_ell=10 + 2000 iterations + Iwish_v1a + w/o restrict_to_mask + mask + perturbation_eta ; C_approx only lensing
+file_ver = 'Iwish_bin_masked_full_v102_Gchain_SO_64_v1ab' # -> classical binning delta_ell=10 + 2000 iterations + Iwish_v1a + acceptance_posdef=True+ w/o restrict_to_mask + mask + perturbation_eta ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1

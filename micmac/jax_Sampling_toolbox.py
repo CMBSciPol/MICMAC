@@ -20,6 +20,7 @@ class Sampling_functions(object):
                  frequency_array, freq_inverse_noise, pos_special_freqs=[0,-1],
                  mask=None,
                  number_components=3, lmin=2,
+                 lmin_r=-1, lmax_r=-1,
                  n_iter=8, 
                  limit_iter_cg=2000, limit_iter_cg_eta=50, 
                  tolerance_CG=1e-10, atol_CG=1e-8,
@@ -55,6 +56,12 @@ class Sampling_functions(object):
         self.lmax = int(lmax)
         assert lmin >= 2
         self.lmin = int(lmin)
+        if lmin_r == -1:
+            lmin_r = lmin
+        self.lmin_r = int(lmin_r)
+        if lmax_r == -1:
+            lmax_r = lmax
+        self.lmax_r = int(lmax_r)
         self.number_components = int(number_components)
         self.pos_special_freqs = pos_special_freqs
         if mask is None:
@@ -649,43 +656,13 @@ class Sampling_functions(object):
         # Initial guess for the CG
         if jnp.size(initial_guess) == 0:
             initial_guess = jnp.zeros_like(map_random_realization_xi)
-        # else:
-        #     # initial_guess = maps_x_red_covariance_cell_JAX(initial_guess.reshape((self.nstokes,self.npix)), jnp.linalg.pinv(red_cov_matrix_sqrt), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
-        #     initial_guess = maps_x_red_covariance_cell_JAX(initial_guess.reshape((self.nstokes,self.npix)), red_cov_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
 
-        # inv_first_part_term_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), jnp.linalg.pinv(red_cov_matrix_sqrt), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
-        # inv_first_part_term_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), jnp.linalg.pinv(red_cov_matrix), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
-        # # inv_first_part_term_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), red_cov_matrix, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
-        # ## Second left member pixel operator : (E^t (B^t N^{-1} B)^{-1} E) x
-        # def inv_second_part_term_left(x):
-        #     return jnp.einsum('sp,p->sp',x.reshape((self.nstokes,self.npix)),invBtinvNB[0,0,...]*jhp.nside2resol(self.nside)**2)
-        # def inv_second_part_term_left(x):
-        #     return jnp.einsum('sp,p->sp',x.reshape((self.nstokes,self.npix)),N_c_inv)
-
-        # precond_func = lambda x : inv_first_part_term_left(x).ravel() + inv_second_part_term_left(x).ravel()
-        # precond_func = lambda x : inv_second_part_term_left(x).ravel()
-        # precond_func = lambda x : inv_first_part_term_left(x).ravel()
         # precond_func = lambda x : x.ravel() -  inv_first_part_term_left(inv_second_part_term_left(inv_first_part_term_left(x))).ravel()/(N_c_inv).sum()
 
         # Actual start of the CG
-        # fluctuating_map_z, number_iterations = jsp.sparse.linalg.cg(func_left_term, right_member.ravel(), x0=initial_guess.ravel(), 
-        #                                                             tol=self.tolerance_CG, atol=self.tolerance_CG, maxiter=self.limit_iter_cg)
-
         func_lineax = lx.FunctionLinearOperator(func_left_term, jax.ShapeDtypeStruct((self.nstokes*self.npix,),jnp.float64), tags=(lx.symmetric_tag,lx.positive_semidefinite_tag))
 
-        # mask_binary = jnp.copy(self.mask)
-        # if mask_binary is None:
-        #     mask_binary = jnp.ones_like(self.mask)
-        # mask_to_use = jnp.repeat(mask_binary[:].ravel(order='C'), self.nstokes).reshape((self.nstokes,self.npix), order='F').ravel()
-        # Maybe try directly the ravel order='F' ?
-
-        # func_norm = lambda x : jnp.sqrt(jnp.sum((x.reshape((self.nstokes,self.npix))*self.mask)**2))
-        # func_norm = lambda x : jnp.sqrt(jnp.sum((x*mask_to_use)**2))
-        # func_norm = lambda x : jnp.linalg.norm((x.reshape((self.nstokes,self.npix))*self.mask).ravel(),ord=2)
         func_norm = lambda x : jnp.linalg.norm(x,ord=2)
-        # func_norm = lambda x : jnp.linalg.norm((x*mask_to_use).ravel(),ord=2)
-
-        # func_norm = lambda x : jnp.sqrt(jnp.sum((x.reshape((self.nstokes,self.npix)))**2))
 
 
         # precond_lineax = lx.FunctionLinearOperator(precond_func, jax.ShapeDtypeStruct((self.nstokes*self.npix,),jnp.float64), tags=(lx.symmetric_tag,lx.positive_semidefinite_tag))
@@ -761,56 +738,20 @@ class Sampling_functions(object):
         transform_func = lambda x : first_part_term_left(second_part_term_left(first_part_term_left(x).ravel()))
 
         # Full operator to inverse : C^{-1} + (E^t (B^t N^{-1} B) E)
-        # func_left_term = lambda x : first_term_left(x).ravel() + second_term_left(x).ravel()
         func_left_term = lambda x : x.ravel() + transform_func(x).ravel()
 
         # Initial guess for the CG
         if jnp.size(initial_guess) == 0:
             initial_guess = jnp.zeros_like(s_cML)
-        # else:
-        #     initial_guess = maps_x_red_covariance_cell_JAX(initial_guess.reshape((self.nstokes,self.npix)), red_cov_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
-
-        # inv_first_part_term_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), jnp.linalg.pinv(red_cov_matrix_sqrt), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
-        # inv_first_part_term_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), jnp.linalg.pinv(red_cov_matrix), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
-        # inv_first_part_term_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), red_cov_matrix, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
-        #         # Second left member pixel operator : (E^t (B^t N^{-1} B)^{-1} E) x
-        # def inv_second_part_term_left(x):
-        #     # return jnp.einsum('sp,p->sp',x.reshape((self.nstokes,self.npix)),invBtinvNB[0,0,...]*jhp.nside2resol(self.nside)**2)
-        #     return x*N_c_repeat
-        # # def inv_second_part_term_left(x):
-        # #     return jnp.einsum('sp,p->sp',x.reshape((self.nstokes,self.npix)),N_c_inv)
-
-        # precond_func = lambda x : x.ravel() -  inv_first_part_term_left(inv_second_part_term_left(inv_first_part_term_left(x))).ravel()/(N_c_inv).sum()
-        # precond_func = lambda x : inv_first_part_term_left(x).ravel() + inv_second_part_term_left(x).ravel()
-        # precond_func = lambda x : inv_first_part_term_left(x).ravel() + inv_second_part_term_left(x).ravel()
-        # precond_func = lambda x : inv_second_part_term_left(x).ravel()
         # precond_func = lambda x : inv_first_part_term_left(x).ravel()
 
 
         # Actual start of the CG
-        # wiener_filter_term_z, number_iterations = jsp.sparse.linalg.cg(func_left_term, right_member.ravel(), x0=initial_guess.ravel(), tol=self.tolerance_CG, atol=self.tolerance_CG, maxiter=self.limit_iter_cg)
-        # wiener_filter_term_z, number_iterations = jsp.sparse.linalg.cg(func_left_term, right_member.ravel(), x0=initial_guess.ravel(), 
-        #                                                                 tol=self.tolerance_CG, maxiter=self.limit_iter_cg, M=precond_func)
         func_lineax = lx.FunctionLinearOperator(func_left_term, jax.ShapeDtypeStruct((self.nstokes*self.npix,),jnp.float64), tags=(lx.symmetric_tag,lx.positive_semidefinite_tag))
 
         # precond_lineax = lx.FunctionLinearOperator(precond_func, jax.ShapeDtypeStruct((self.nstokes*self.npix,),jnp.float64), tags=(lx.symmetric_tag,lx.positive_semidefinite_tag))
 
-        # mask_binary = jnp.copy(self.mask)
-        # if mask_binary is None:
-        #     mask_binary = jnp.ones_like(self.mask)
-        # mask_to_use = jnp.repeat(mask_binary[:].ravel(order='C'), self.nstokes).reshape((self.nstokes,self.npix), order='F').ravel()
-
-
-        # func_norm = lambda x : jnp.sqrt(jnp.sum((x.reshape((self.nstokes,self.npix))*self.mask)**2))
-        # func_norm = lambda x : jnp.sqrt(jnp.sum((x*mask_to_use)**2))
-        # func_norm = lambda x : jnp.linalg.norm(x*mask_to_use,ord=2)
-        # func_norm = lambda x : jnp.linalg.norm((x.reshape((self.nstokes,self.npix))*self.mask).ravel(),ord=2)
         func_norm = lambda x : jnp.linalg.norm(x,ord=2)
-        # func_norm = lambda x : jnp.linalg.norm((x*mask_to_use).ravel(),ord=2)
-        # def func_norm(x, _mask_to_use=mask_to_use):
-        #     # return jnp.sqrt(jnp.sum((x*_mask_to_use)**2))
-        #     return jnp.sqrt(jnp.sum((x[_mask_to_use!=0])**2))
-        # func_norm = lambda x : jnp.sqrt(jnp.sum((x.reshape((self.nstokes,self.npix))**2)))
 
         CG_obj = lx.CG(rtol=self.tolerance_CG, atol=self.atol_CG, max_steps=self.limit_iter_cg, norm=func_norm)
         # CG_obj = lx.CG(rtol=self.tolerance_CG, atol=1e-8, max_steps=self.limit_iter_cg)
@@ -831,7 +772,7 @@ class Sampling_functions(object):
         return wiener_filter_term.reshape((self.nstokes, self.npix))
 
 
-    def get_inverse_wishart_sampling_from_c_ells(self, sigma_ell, PRNGKey):
+    def get_inverse_wishart_sampling_from_c_ells(self, sigma_ell, PRNGKey, old_sample=None, acceptance_posdef=False):
         """ Solve sampling step 3 : inverse Wishart distribution with C
 
             sigma_ell is expected to be exactly the parameter of the inverse Wishart (so it should NOT be multiplied by 2*ell+1 if it is thought as a power spectrum)
@@ -877,7 +818,15 @@ class Sampling_functions(object):
         # Map over PRNGKeys and ells to create samples of the Wishart distribution, of dimension [lmax+1-lmin,nstokes,nstokes]
 
         # sampling_Wishart = sampling_Wishart.at[self.lmin:].set(sampling_Wishart_map)
-        return jnp.linalg.pinv(sampling_Wishart)
+        # return jnp.linalg.pinv(sampling_Wishart)
+        if acceptance_posdef:
+            print("Only positive definite matrices are accepted for inv Wishart !")
+            reconstructed_spectra = jnp.linalg.pinv(sampling_Wishart)
+            eigen_prod = jnp.prod(jnp.linalg.eigvalsh(reconstructed_spectra), axis=(1))
+            acceptance = jnp.where(eigen_prod<0, 0, acceptance)
+            new_sample = jnp.copy(old_sample)
+            new_sample = new_sample.at[acceptance==1,...].set(reconstructed_spectra[acceptance==1,...])
+        return new_sample
 
     def get_conditional_proba_C_from_previous_sample(self, red_sigma_ell, red_cov_matrix_sampled):
         """ Compute log-proba of C parametrized by r_param. The associated log proba is :
@@ -931,13 +880,13 @@ class Sampling_functions(object):
         sampling_Gamma = jnp.zeros_like(red_c_ell_Gamma_b_factor)
 
         def map_sampling_Gamma(ell_PNRGKey, ell):
-            """ Compute the sampling of the Wishart distribution for a given ell
+            """ Compute the sampling of the Gamma distribution for a given ell
             """
             return jnp.diag(jnp.diag(red_c_ell_Gamma_b_factor[ell])/random.gamma(ell_PNRGKey, a=(2*ell+1-2)/2, shape=(1,)))
 
         PRNGKey_map = random.split(PRNGKey, self.lmax-self.lmin+1) # Prepare lmax+1-lmin PRNGKeys to be used
         sampling_Gamma_map = jax.vmap(map_sampling_Gamma)(PRNGKey_map, jnp.arange(self.lmin,self.lmax+1)) 
-        # Map over PRNGKeys and ells to create samples of the Wishart distribution, of dimension [lmax+1-lmin,nstokes,nstokes]
+        # Map over PRNGKeys and ells to create samples of the Gamma distribution, of dimension [lmax+1-lmin,nstokes,nstokes]
 
         sampling_Gamma = sampling_Gamma.at[self.lmin:].set(sampling_Gamma_map)
         return sampling_Gamma
@@ -972,7 +921,7 @@ class Sampling_functions(object):
         return binned_red_c_ells
 
 
-    def get_binned_inverse_wishart_sampling_from_c_ells_v2(self, sigma_ell, PRNGKey):
+    def get_binned_inverse_wishart_sampling_from_c_ells_v2(self, sigma_ell, PRNGKey, old_sample=None, acceptance_posdef=False):
         """ Solve sampling step 3 : inverse Wishart distribution with C
 
             sigma_ell is expected to be exactly the parameter of the inverse Wishart (so it should NOT be multiplied by 2*ell+1 if it is thought as a power spectrum)
@@ -1039,7 +988,15 @@ class Sampling_functions(object):
             return jnp.einsum('lij,l->ij',sampling_invWishart,bin_contribution)/(ell*(ell+1))
         
         reconstructed_spectra = jax.vmap(reconstruct_spectra)(jnp.arange(self.lmin,self.lmax+1))
-        return reconstructed_spectra
+
+        if acceptance_posdef:
+            print("Only positive definite matrices are accepted for inv Wishart !")
+            eigen_prod = jnp.prod(jnp.linalg.eigvalsh(reconstructed_spectra), axis=(1))
+            acceptance = jnp.where(eigen_prod<0, 0, acceptance)
+            new_sample = jnp.copy(old_sample)
+            new_sample = new_sample.at[acceptance==1,...].set(reconstructed_spectra[acceptance==1,...])
+        return new_sample
+        # return reconstructed_spectra
 
 
     def get_conditional_proba_C_from_r(self, r_param, red_sigma_ell, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total):
@@ -1059,12 +1016,13 @@ class Sampling_functions(object):
         """
 
         # Getting the covariance matrix parametrized by r_param
-        red_cov_matrix_sampled = r_param * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
+        red_cov_matrix_sampled = r_param * theoretical_red_cov_r1_tensor[self.lmin_r:self.lmax_r] + theoretical_red_cov_r0_total[self.lmin_r:self.lmax_r]
 
         # Getting determinant of the covariance matrix
-        sum_dets = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(jnp.linalg.det(red_cov_matrix_sampled)) ).sum()
+        sum_dets = ( (2*jnp.arange(self.lmin_r, self.lmax_r+1) +1) * jnp.log(jnp.linalg.det(red_cov_matrix_sampled)) ).sum()
         
-        return -( jnp.einsum('lij,lji->l', red_sigma_ell, jnp.linalg.pinv(red_cov_matrix_sampled)).sum() + sum_dets)/2
+        return -( jnp.einsum('lij,lji->l', red_sigma_ell[self.lmin_r:self.lmax_r], jnp.linalg.pinv(red_cov_matrix_sampled)).sum() + sum_dets)/2
+
 
     def get_conditional_proba_spectral_likelihood_JAX(self, complete_mixing_matrix, full_data_without_CMB, suppress_low_modes=True):
         """ Get conditional probability of spectral likelihood from the full mixing matrix
@@ -1203,11 +1161,6 @@ class Sampling_functions(object):
         right_member = jnp.copy(component_eta_maps)
         inverse_term, number_iterations = jsp.sparse.linalg.cg(func_left_term, right_member.ravel(), x0=initial_guess.ravel(), tol=self.tolerance_CG, atol=self.atol_CG, maxiter=self.limit_iter_cg_eta)
 
-        ## Computation of C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta
-        # component_eta_maps_3 = maps_x_red_covariance_cell_JAX(inverse_term.reshape(self.nstokes,self.npix), red_cov_approx_matrix_msqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
-
-        # And finally eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta
-        # second_term_complete = jnp.einsum('sk,sk', component_eta_maps, inverse_term.reshape(self.nstokes,self.npix))
         if self.restrict_to_mask:
             central_term = self.mask
         else:
@@ -1269,23 +1222,9 @@ class Sampling_functions(object):
     
         func_lineax = lx.FunctionLinearOperator(func_left_term, jax.ShapeDtypeStruct((self.nstokes*self.npix,),jnp.float64), tags=(lx.symmetric_tag,lx.positive_semidefinite_tag))
 
-        # mask_binary = jnp.copy(self.mask)
-        # if mask_binary is None:
-        #     mask_binary = jnp.ones_like(self.mask)
-        # mask_to_use = jnp.repeat(mask_binary[:].ravel(order='C'), self.nstokes).reshape((self.nstokes,self.npix), order='F').ravel()
-
-        # func_norm = lambda x : jnp.linalg.norm((x.reshape((self.nstokes,self.npix))*self.mask).ravel(),ord=2)
-        # func_norm = lambda x : jnp.linalg.norm((x*mask_to_use).ravel(),ord=2)
-        # func_norm = lambda x : jnp.sqrt(jnp.sum((x.reshape((self.nstokes,self.npix)))**2))
         func_norm = lambda x : jnp.linalg.norm(x,ord=2)
 
-        # def inv_sqrt_second_part_left(x):
-        #     # return x.reshape((self.nstokes,self.npix))*N_c_inv
-        #     return x*jnp.sqrt(N_c_repeat)
-
-        # precond_func = lambda x : x.ravel() - third_part_term_left(second_part_left(first_part_left(x))).ravel()
         # precond_func = lambda x : inv_sqrt_second_part_left(inv_first_part_term_left(x).ravel()).ravel()
-
         # precond_lineax = lx.FunctionLinearOperator(precond_func, jax.ShapeDtypeStruct((self.nstokes*self.npix,),jnp.float64), tags=(lx.symmetric_tag,lx.positive_semidefinite_tag))
 
         CG_obj = lx.CG(rtol=self.tolerance_CG, atol=self.atol_CG, max_steps=self.limit_iter_cg_eta, norm=func_norm)
@@ -1294,16 +1233,11 @@ class Sampling_functions(object):
         options_dict = {"y0":initial_guess.ravel()}
         # options_dict = {"y0":initial_guess.ravel(), "precond":precond_lineax}
         
-        # inverse_term, number_iterations = jsp.sparse.linalg.cg(func_left_term, right_member.ravel(), x0=initial_guess.ravel(), tol=self.tolerance_CG, atol=self.tolerance_CG, maxiter=self.limit_iter_cg_eta)
         solution = lx.linear_solve(func_lineax, right_member.ravel(), solver=CG_obj, throw=False, options=options_dict)
 
         inverse_term = solution.value
         print("CG-Python-0 Fluct finished with ", solution.result, solution.stats)
-        ## Computation of C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta
-        # component_eta_maps_3 = maps_x_red_covariance_cell_JAX(inverse_term.reshape(self.nstokes,self.npix), red_cov_approx_matrix_msqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
-
-        # And finally eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta
-        # second_term_complete = jnp.einsum('sk,sk', component_eta_maps, inverse_term.reshape(self.nstokes,self.npix))
+        
         if self.restrict_to_mask:
             central_term = self.mask
         else:
@@ -1663,6 +1597,7 @@ def separate_single_MH_step_index_accelerated(random_PRNGKey, old_sample, step_s
 #     """ Return log proba proposal distribution MALA
 #     """
 #     return -1/(4*step_size)*jnp.linalg.norm(new_sample - old_sample - step_size*grad_proba(x, **model_kwargs),ord=2)**2
+
 
 # def get_MALA_step(random_PRNGKey, old_sample, step_size, log_proba, grad_proba, indexes_Bf, **model_kwargs):
 #     """ Compute Metropolis-adjusted Langevin (MALA) step for a given log-probability function and its gradient.

@@ -55,3 +55,47 @@ def get_empirical_covariance_JAX(samples):
     mean_samples = jnp.mean(samples, axis=0)
 
     return (jnp.einsum('ti,tj->tij',samples,samples).sum(axis=0) - number_samples*jnp.einsum('i,j->ij',mean_samples,mean_samples))/(number_samples-1)
+
+def loading_params(directory_save_file, file_ver, MICMAC_sampler_obj):
+    dict_all_params = dict()
+    # Loading all files
+    initial_freq_maps_path = directory_save_file+file_ver+'_initial_data.npy'
+    initial_freq_maps = np.load(initial_freq_maps_path)
+    dict_all_params['initial_freq_maps'] = initial_freq_maps
+
+    initial_cmb_maps_path = directory_save_file+file_ver+'_initial_cmb_data.npy'
+    input_cmb_maps = np.load(initial_cmb_maps_path)
+    dict_all_params['input_cmb_maps'] = input_cmb_maps
+
+    if not(MICMAC_sampler_obj.cheap_save):
+        all_eta_maps_path = directory_save_file+file_ver+'_all_eta_maps.npy'
+        all_eta_maps = np.load(all_eta_maps_path)
+        dict_all_params['all_eta_maps'] = all_eta_maps
+
+        all_s_c_WF_maps_path = directory_save_file+file_ver+'_all_s_c_WF_maps.npy'
+        all_s_c_WF_maps = np.load(all_s_c_WF_maps_path)
+        dict_all_params['all_s_c_WF_maps'] = all_s_c_WF_maps
+
+        all_s_c_fluct_maps_path = directory_save_file+file_ver+'_all_s_c_fluct_maps.npy'
+        all_s_c_fluct_maps = np.load(all_s_c_fluct_maps_path)
+        dict_all_params['all_s_c_fluct_maps'] = all_s_c_fluct_maps
+
+
+    elif not(MICMAC_sampler_obj.very_cheap_save):
+        all_s_c_path = directory_save_file+file_ver+'_all_s_c.npy'
+        all_s_c_samples = np.load(all_s_c_path)
+        dict_all_params['all_s_c_samples'] = all_s_c_samples
+    if MICMAC_sampler_obj.sample_r_Metropolis:
+        all_r_samples_path = directory_save_file+file_ver+'_all_r_samples.npy'
+        all_r_samples = np.load(all_r_samples_path)
+        dict_all_params['all_r_samples'] = all_r_samples
+    elif MICMAC_sampler_obj.sample_C_inv_Wishart:
+        all_cell_samples_path = directory_save_file+file_ver+'_all_cell_samples.npy'
+        all_cell_samples = np.load(all_cell_samples_path)
+        dict_all_params['all_cell_samples'] = all_cell_samples
+
+    all_params_mixing_matrix_samples_path = directory_save_file+file_ver+'_all_params_mixing_matrix_samples.npy'
+    all_params_mixing_matrix_samples = np.load(all_params_mixing_matrix_samples_path)
+    dict_all_params['all_params_mixing_matrix_samples'] = all_params_mixing_matrix_samples
+
+    return dict_all_params

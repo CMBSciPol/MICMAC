@@ -18,6 +18,7 @@ from jax import config
 config.update("jax_enable_x64", True)
 
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1c' # -> corr d7s0 + r=1e-2 + 2000 iterations + corr_v1c + w/o restrict_to_mask + mask ; C_approx only lensing
+file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1cb' # -> corr d7s0 + r=1e-2 + 2000 iterations + corr_v1cb + lmin=30 + w/o restrict_to_mask + mask ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -45,6 +46,7 @@ working_directory_path = current_path + '/'#'/validation_chain_v6_JZ/'
 directory_toml_file = working_directory_path + 'toml_params/'
 
 path_toml_file = directory_toml_file + 'corr_v1c.toml'
+path_toml_file = directory_toml_file + 'corr_v1cb.toml'
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
 

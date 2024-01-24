@@ -18,10 +18,11 @@ from jax import config
 config.update("jax_enable_x64", True)
 
 file_ver = 'biased_masked_full_v102_Gchain_SO_64_v1d' # -> biased inhomogeneous + r=1e-2 + 2000 iterations + biased_v1c + w/o restrict_to_mask + mask ; C_approx only lensing
+file_ver = 'biased_masked_full_v102_Gchain_SO_64_v1db' # -> biased inhomogeneous + r=0 + 2000 iterations + biased_v1ab + w/o restrict_to_mask + mask ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
-relative_treshold = 1e-3
+relative_treshold = 1e-1
 
 perso_repo_path = "/gpfswork/rech/nih/ube74zo/MICMAC_save/validation_chain_v7_JZ/"
 path_home_test_playground = '/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/'
@@ -53,6 +54,7 @@ directory_toml_file = working_directory_path + 'toml_params/'
 path_toml_file = directory_toml_file + 'biased_v1a.toml'
 path_toml_file = directory_toml_file + 'biased_v1b.toml'
 path_toml_file = directory_toml_file + 'biased_v1c.toml'
+path_toml_file = directory_toml_file + 'biased_v1ab.toml'
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
@@ -72,19 +74,33 @@ instrument = get_instrument(instr_name)
 
 instrument['depth_p'] /= reduction_noise
 # get input freq maps
-np.random.seed(noise_seed)
+# np.random.seed(noise_seed)
 # freq_maps = get_observation(instrument, model, nside=NSIDE, noise=noise)[:, 1:, :]   # keep only Q and U
-freq_maps_fgs = get_observation(instrument, fgs_model, nside=MICMAC_obj.nside, noise=noise)[:, 1:, :]   # keep only Q and U
+# freq_maps_fgs = get_observation(instrument, fgs_model, nside=MICMAC_obj.nside, noise=noise)[:, 1:, :]   # keep only Q and U
+np.random.seed(noise_seed)
+freq_maps_fgs_noised = get_observation(instrument, fgs_model, nside=MICMAC_sampler_obj.nside, noise=True)[:, 1:, :]   # keep only Q and U
+np.random.seed(noise_seed)
+freq_maps_fgs_denoised = get_observation(instrument, fgs_model, nside=MICMAC_sampler_obj.nside, noise=False)[:, 1:, :]   # keep only Q and U
+
+noise_map = freq_maps_fgs_noised - freq_maps_fgs_denoised
+# reweighted_noise_map = noise_map / nhits_mask
+reweighted_noise_map = noise_map * jnp.sqrt(inverse_nhits_mask)
+
+freq_maps_fgs = freq_maps_fgs_denoised + reweighted_noise_map
 print("Shape for input frequency maps :", freq_maps_fgs.shape)
 
 
 # Mask initialization
 apod_mask = hp.ud_grade(hp.read_map(path_mask),nside_out=MICMAC_obj.nside)
-mask = np.copy(apod_mask)
-mask[apod_mask>0] = 1
 
 nhits_mask = np.copy(apod_mask)
 nhits_mask[nhits_mask<relative_treshold] = 0
+
+
+mask = np.copy(nhits_mask)
+mask[nhits_mask>0] = 1
+mask[nhits_mask==0] = 0
+
 
 # mask = np.ones_like(apod_mask)
 

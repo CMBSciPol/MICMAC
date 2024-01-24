@@ -30,6 +30,7 @@ class MICMAC_Sampler(Sampling_functions):
     def __init__(self, nside, lmax, nstokes, 
                  frequency_array, freq_inverse_noise, pos_special_freqs=[0,-1], 
                  number_components=3, lmin=2,
+                 lmin_r=-1, lmax_r=-1,
                  n_iter=8, limit_iter_cg=2000, tolerance_CG=1e-10, atol_CG=1e-8,
                  limit_iter_cg_eta=200,
                  mask=None,
@@ -40,6 +41,7 @@ class MICMAC_Sampler(Sampling_functions):
                  bin_ell_distribution=None,
                  use_old_s_c_sampling=False,
                  perturbation_eta_covariance=False,
+                 acceptance_posdef=False,
 
                  use_binning=False,
                  cheap_save=True, very_cheap_save=False,
@@ -57,6 +59,7 @@ class MICMAC_Sampler(Sampling_functions):
         """
 
         super(MICMAC_Sampler,self).__init__(nside=nside,lmax=lmax,nstokes=nstokes,lmin=lmin,
+                                            lmin_r=lmin_r, lmax_r=lmax_r,
                                             frequency_array=frequency_array,freq_inverse_noise=freq_inverse_noise, 
                                             pos_special_freqs=pos_special_freqs,number_components=number_components,
                                             n_iter=n_iter, limit_iter_cg=limit_iter_cg, limit_iter_cg_eta=limit_iter_cg_eta, 
@@ -77,6 +80,7 @@ class MICMAC_Sampler(Sampling_functions):
         # self.fixed_eta_covariance = bool(fixed_eta_covariance)
         self.perturbation_eta_covariance = bool(perturbation_eta_covariance)
         self.use_binning = bool(use_binning)
+        self.acceptance_posdef = bool(acceptance_posdef)
 
         # CMB parameters
         self.r_true = float(r_true)
@@ -490,7 +494,10 @@ class MICMAC_Sampler(Sampling_functions):
 
 
         ## Preparing the step-size for Metropolis-within-Gibbs of B_f sampling
-        initial_step_size_Bf = jnp.array(jnp.diag(jsp.linalg.sqrtm(self.covariance_step_size_B_f)), dtype=jnp.float64)
+        try :
+            initial_step_size_Bf = jnp.array(jnp.diag(jsp.linalg.sqrtm(self.covariance_step_size_B_f)), dtype=jnp.float64)
+        except:
+            initial_step_size_Bf = jnp.array(jnp.diag(jnp.sqrt(self.covariance_step_size_B_f)), dtype=jnp.float64)
         print('Step-size B_f', initial_step_size_Bf, flush=True)
 
         ## Few prints to re-check the toml parameters chosen
@@ -628,7 +635,9 @@ class MICMAC_Sampler(Sampling_functions):
                 # red_cov_matrix_sample = jitted_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_modified, PRNGKey=new_subPRNGKey_2)
                 # red_cov_matrix_sample = func_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_modified, PRNGKey=new_subPRNGKey_2)
                 # red_cov_matrix_sample = func_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_, PRNGKey=new_subPRNGKey_2)
-                red_cov_matrix_sample = func_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_[:,self.lmin:], PRNGKey=new_subPRNGKey_2)
+                # red_cov_matrix_sample = func_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_[:,self.lmin:], PRNGKey=new_subPRNGKey_2)
+                red_cov_matrix_sample = func_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_[:,self.lmin:], PRNGKey=new_subPRNGKey_2, 
+                                                                    old_sample=red_cov_matrix_sample, acceptance_posdef=self.acceptance_posdef)
 
             elif self.sample_r_Metropolis:
                 # Sampling r which will parametrize C(r) = C_scalar + r*C_tensor
@@ -745,7 +754,7 @@ class MICMAC_Sampler(Sampling_functions):
         # Saving the samples as attributes of the Sampler object
         self.update_samples(all_samples)
         self.number_iterations_done = self.number_iterations_sampling
-    
+
     def continue_sampling(self,input_freq_maps, c_ell_approx, CMB_c_ell, init_params_mixing_matrix, 
                          initial_guess_r=0, initial_wiener_filter_term=jnp.empty(0), initial_fluctuation_maps=jnp.empty(0),
                          theoretical_r0_total=jnp.empty(0), theoretical_r1_tensor=jnp.empty(0)):

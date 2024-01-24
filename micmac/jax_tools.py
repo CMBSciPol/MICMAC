@@ -105,6 +105,44 @@ def get_c_ells_from_red_covariance_matrix_JAX(red_cov_mat, nstokes=0):
     return c_ells
 
 
+# def get_sqrt_reduced_matrix_from_matrix_jax(red_matrix):
+#     """Return square root matrix of red_matrix, assuming it's block diagonal
+
+#     The input matrix doesn't have to start from ell=0,
+#     and the output matrix will start from the same lmin as the input matrix
+
+#     The initial matrix HAVE to be positive semi-definite
+
+#     Parameters
+#     ----------
+#     :param red_matrix: reduced spectra of shape (lmax, nstokes, nstokes)
+
+#     Returns
+#     -------
+#     :return: reduced_sqrtm: array of shape (lmax, nstokes, nstokes)
+#     """
+
+#     red_matrix = jnp.array(red_matrix, dtype=jnp.float64)
+#     lmax = red_matrix.shape[0]
+#     nstokes = red_matrix.shape[1]
+
+#     reduced_sqrtm = jnp.zeros_like(red_matrix)
+
+#     # Building the square root matrix from the eigenvalues of the initial one
+#     def func_map(ell):
+#         eigvals, eigvect = jnp.linalg.eigh(red_matrix[ell, :, :])
+#         inv_eigvect = jnp.array(jnp.linalg.pinv(eigvect), dtype=jnp.float64)
+#         return jnp.einsum(
+#             "jk,km,m,mn->jn",
+#             eigvect,
+#             jnp.eye(nstokes),
+#             jnp.sqrt(jnp.abs(eigvals)),
+#             inv_eigvect,
+#         )
+
+#     reduced_sqrtm = jax.vmap(func_map, in_axes=0)(jnp.arange(lmax))
+#     return reduced_sqrtm
+
 def get_sqrt_reduced_matrix_from_matrix_jax(red_matrix):
     """Return square root matrix of red_matrix, assuming it's block diagonal
 
@@ -129,20 +167,18 @@ def get_sqrt_reduced_matrix_from_matrix_jax(red_matrix):
     reduced_sqrtm = jnp.zeros_like(red_matrix)
 
     # Building the square root matrix from the eigenvalues of the initial one
-    def func_map(ell):
-        eigvals, eigvect = jnp.linalg.eigh(red_matrix[ell, :, :])
-        inv_eigvect = jnp.array(jnp.linalg.pinv(eigvect), dtype=jnp.float64)
-        return jnp.einsum(
-            "jk,km,m,mn->jn",
-            eigvect,
-            jnp.eye(nstokes),
-            jnp.sqrt(jnp.abs(eigvals)),
-            inv_eigvect,
+    eigvals, eigvect = jnp.linalg.eigh(red_matrix)
+    inv_eigvect = jnp.linalg.pinv(eigvect)
+    reduced_sqrtm = jnp.einsum(
+        "ljk,km,lm,lmn->ljn",
+        eigvect,
+        jnp.eye(nstokes),
+        jnp.sqrt(jnp.abs(eigvals)),
+        inv_eigvect,
         )
 
-    reduced_sqrtm = jax.vmap(func_map, in_axes=0)(jnp.arange(lmax))
+    # reduced_sqrtm = jax.vmap(func_map, in_axes=0)(jnp.arange(lmax))
     return reduced_sqrtm
-
 
 def get_cell_from_map_jax(pixel_maps, lmax, n_iter=8):
     """Return c_ell from pixel_maps with an associated lmax and iteration number of harmonic operations

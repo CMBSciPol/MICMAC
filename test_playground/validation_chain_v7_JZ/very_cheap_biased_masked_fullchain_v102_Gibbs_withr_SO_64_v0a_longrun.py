@@ -112,8 +112,13 @@ initial_guess_r=10**(-3)
 
 # Generation step-size
 Fisher_matrix = np.loadtxt(path_Fisher)
-minimum_std_Fisher = scipy.linalg.sqrtm(np.linalg.inv(Fisher_matrix))
-minimum_std_Fisher_diag = np.diag(minimum_std_Fisher)
+# minimum_std_Fisher = scipy.linalg.sqrtm(np.linalg.inv(Fisher_matrix))
+# minimum_std_Fisher = jsp.linalg.sqrtm(np.linalg.inv(Fisher_matrix))
+try :
+    minimum_std_Fisher_diag = jnp.array(jnp.diag(jsp.linalg.sqrtm(np.linalg.inv(Fisher_matrix))), dtype=jnp.float64)
+except:
+    minimum_std_Fisher_diag = jnp.array(jnp.diag(jnp.sqrt(np.linalg.inv(Fisher_matrix))), dtype=jnp.float64)
+# minimum_std_Fisher_diag = np.diag(minimum_std_Fisher)
 
 col_dim_B_f = MICMAC_obj.number_frequencies-len(MICMAC_obj.pos_special_freqs)
 

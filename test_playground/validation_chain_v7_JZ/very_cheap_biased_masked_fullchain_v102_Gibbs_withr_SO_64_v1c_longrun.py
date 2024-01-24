@@ -18,6 +18,7 @@ from jax import config
 config.update("jax_enable_x64", True)
 
 file_ver = 'biased_masked_full_v102_Gchain_SO_64_v1c' # -> biased d7s0 + r=1e-2 + 2000 iterations + biased_v1c + w/o restrict_to_mask + mask ; C_approx only lensing
+file_ver = 'biased_masked_full_v102_Gchain_SO_64_v1cb' # -> biased d7s0 + r=1e-2 + 2000 iterations + lmin 30 + biased_v1c + w/o restrict_to_mask + mask ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -52,6 +53,7 @@ directory_toml_file = working_directory_path + 'toml_params/'
 path_toml_file = directory_toml_file + 'biased_v1a.toml'
 path_toml_file = directory_toml_file + 'biased_v1b.toml'
 path_toml_file = directory_toml_file + 'biased_v1c.toml'
+path_toml_file = directory_toml_file + 'biased_v1cb.toml'
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)

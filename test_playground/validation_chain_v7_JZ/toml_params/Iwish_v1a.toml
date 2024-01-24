@@ -12,6 +12,7 @@ use_old_s_c_sampling = false
 # fixed_eta_covariance = false
 perturbation_eta_covariance = true
 use_binning=true
+acceptance_posdef=true
 
 # [Instrument_parameters]
 instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_noise and frequency_array will be taken from fgbuster, 
