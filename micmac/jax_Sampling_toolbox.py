@@ -1021,7 +1021,7 @@ class Sampling_functions(object):
         # Getting determinant of the covariance matrix
         sum_dets = ( (2*jnp.arange(self.lmin_r, self.lmax_r+1) +1) * jnp.log(jnp.linalg.det(red_cov_matrix_sampled)) ).sum()
         
-        return -( jnp.einsum('lij,lji->l', red_sigma_ell[self.lmin_r:self.lmax_r], jnp.linalg.pinv(red_cov_matrix_sampled)).sum() + sum_dets)/2
+        return -( jnp.einsum('lij,lji->l', red_sigma_ell[self.lmin_r-self.lmin:self.lmax_r], jnp.linalg.pinv(red_cov_matrix_sampled)).sum() + sum_dets)/2
 
 
     def get_conditional_proba_spectral_likelihood_JAX(self, complete_mixing_matrix, full_data_without_CMB, suppress_low_modes=True):
