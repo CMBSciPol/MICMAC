@@ -18,7 +18,7 @@ from jax import config
 config.update("jax_enable_x64", True)
 
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1d' # -> corr inhomogeneous + r=1e-2 + 2000 iterations + corr_v1c + w/o restrict_to_mask + mask ; C_approx only lensing
-file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1db' # -> corr inhomogeneous + r=1e-2 + 2000 iterations + corr_v1cb + w/o restrict_to_mask + mask ; C_approx only lensing
+file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1db' # -> corr inhomogeneous + r=0 + 2000 iterations + corr_v1cb + w/o restrict_to_mask + mask ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -76,9 +76,9 @@ instrument['depth_p'] /= reduction_noise
 # freq_maps = get_observation(instrument, model, nside=NSIDE, noise=noise)[:, 1:, :]   # keep only Q and U
 # freq_maps_fgs = get_observation(instrument, fgs_model, nside=MICMAC_obj.nside, noise=noise)[:, 1:, :]   # keep only Q and U
 np.random.seed(noise_seed)
-freq_maps_fgs_noised = get_observation(instrument, fgs_model, nside=MICMAC_sampler_obj.nside, noise=True)[:, 1:, :]   # keep only Q and U
+freq_maps_fgs_noised = get_observation(instrument, fgs_model, nside=MICMAC_obj.nside, noise=True)[:, 1:, :]   # keep only Q and U
 np.random.seed(noise_seed)
-freq_maps_fgs_denoised = get_observation(instrument, fgs_model, nside=MICMAC_sampler_obj.nside, noise=False)[:, 1:, :]   # keep only Q and U
+freq_maps_fgs_denoised = get_observation(instrument, fgs_model, nside=MICMAC_obj.nside, noise=False)[:, 1:, :]   # keep only Q and U
 
 noise_map = freq_maps_fgs_noised - freq_maps_fgs_denoised
 # reweighted_noise_map = noise_map / nhits_mask

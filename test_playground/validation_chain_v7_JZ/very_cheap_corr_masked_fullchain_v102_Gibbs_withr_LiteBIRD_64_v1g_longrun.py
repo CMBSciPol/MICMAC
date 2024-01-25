@@ -17,10 +17,10 @@ import micmac as micmac
 from jax import config
 config.update("jax_enable_x64", True)
 
-former_file_ver = ''
+former_file_ver = '' # -> corr LiteBIRD + r=1e-2 + 2000 iterations + corr_v1d_LiteBIRD + w/o restrict_to_mask + unmasked ; C_approx only lensing
 
-file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1a' # -> corr r=0 + 2000 iterations + corr_v1a + w/o restrict_to_mask + mask ; C_approx only lensing
-file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1ab' # -> corr r=0 + 2000 iterations + lmin=30 + corr_v1ab + w/o restrict_to_mask + mask ; C_approx only lensing
+file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1f' # -> corr LiteBIRD + r=0 + 2000 iterations + corr_v1e_LiteBIRD + w/o restrict_to_mask + unmasked ; C_approx only lensing
+file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1g' # -> corr LiteBIRD + r=1e-3 + 2000 iterations + corr_v1f_LiteBIRD + w/o restrict_to_mask + unmasked ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -39,7 +39,6 @@ from micmac import *
 common_repo = "/gpfswork/rech/nih/commun/"
 path_mask = common_repo + "masks/mask_SO_SAT_apodized.fits"
 
-
 # perso_repo_path = "/gpfswork/rech/nih/ube74zo/MICMAC_save/validation_chain_v6_JZ/"
 directory_save_file = perso_repo_path + 'save_directory/'
 
@@ -48,8 +47,12 @@ working_directory_path = current_path + '/'#'/validation_chain_v6_JZ/'
 directory_toml_file = working_directory_path + 'toml_params/'
 
 
-path_toml_file = directory_toml_file + 'corr_v1a.toml'
-path_toml_file = directory_toml_file + 'corr_v1ab.toml'
+path_toml_file = directory_toml_file + 'biased_v1a.toml'
+path_toml_file = directory_toml_file + 'biased_v1b.toml'
+path_toml_file = directory_toml_file + 'biased_v1c.toml'
+path_toml_file = directory_toml_file + 'corr_v1d_LiteBIRD.toml'
+path_toml_file = directory_toml_file + 'corr_v1e_LiteBIRD.toml'
+path_toml_file = directory_toml_file + 'corr_v1f_LiteBIRD.toml'
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
@@ -86,8 +89,7 @@ apod_mask = hp.ud_grade(hp.read_map(path_mask),nside_out=MICMAC_obj.nside)
 mask = np.copy(apod_mask)
 mask[apod_mask>0] = 1
 
-# mask = np.ones_like(apod_mask)
-
+mask = np.ones_like(apod_mask)
 MICMAC_obj.mask = mask
 
 # delta_ell = 10
@@ -108,7 +110,9 @@ MICMAC_obj.freq_inverse_noise = freq_inverse_noise_masked
 initial_guess_r = MICMAC_obj.r_true
 initial_guess_r=10**(-2)
 initial_guess_r=10**(-3)
+# initial_guess_r=10**(-4)
 # initial_guess_r=10**(-8)
+
 
 
 # Generation step-size
@@ -204,7 +208,6 @@ print(f'Exact param matrix : {exact_params_mixing_matrix}')
 print(f'Initial param matrix : {init_params_mixing_matrix}')
 
 
-
 time_start_sampling = time.time()
 MICMAC_obj.perform_sampling(input_freq_maps_masked, c_ell_approx, CMB_c_ell, init_params_mixing_matrix, 
                          initial_guess_r=initial_guess_r, initial_wiener_filter_term=initial_wiener_filter_term, initial_fluctuation_maps=initial_fluctuation_maps,
@@ -254,7 +257,7 @@ if former_file_ver != '':
 # Saving all files
 initial_freq_maps_path = directory_save_file+file_ver+'_initial_data.npy'
 print("FINAL SAVE - #### params_mixing_matrix :", initial_freq_maps_path, flush=True)
-np.save(initial_freq_maps_path, input_freq_maps_masked)
+np.save(initial_freq_maps_path, input_freq_maps)
 
 initial_cmb_maps_path = directory_save_file+file_ver+'_initial_cmb_data.npy'
 print("FINAL SAVE - #### params_mixing_matrix :", initial_cmb_maps_path, flush=True)

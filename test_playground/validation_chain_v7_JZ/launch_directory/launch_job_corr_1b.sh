@@ -43,11 +43,13 @@ export OMP_PLACES=cores
 
 # export VER=corr_masked_full_v100_Gchain_SO_64_3ab
 # export VER=corr_unmasked_full_v101_Gchain_SO_64_v0a
-export VER=corr_masked_full_v102_Gchain_SO_64_v1b
+# export VER=corr_masked_full_v102_Gchain_SO_64_v1b
+export VER=corr_masked_full_v102_Gchain_SO_64_v1f
 
 export SRC_PATH=/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_v7_JZ
 # srun python $SRC_PATH/very_cheap_corr_unmasked_fullchain_v101_Gibbs_withr_SO_64_v0a_longrun.py  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
-srun python $SRC_PATH/very_cheap_corr_masked_fullchain_v102_Gibbs_withr_SO_64_v1b_longrun.py  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
+# srun python $SRC_PATH/very_cheap_corr_masked_fullchain_v102_Gibbs_withr_SO_64_v1b_longrun.py  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
+srun python $SRC_PATH/very_cheap_corr_masked_fullchain_v102_Gibbs_withr_LiteBIRD_64_v1f_longrun.py  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
 
 
 echo "Run finished !"

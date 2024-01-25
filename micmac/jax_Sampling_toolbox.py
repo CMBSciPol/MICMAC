@@ -823,7 +823,7 @@ class Sampling_functions(object):
             print("Only positive definite matrices are accepted for inv Wishart !")
             reconstructed_spectra = jnp.linalg.pinv(sampling_Wishart)
             eigen_prod = jnp.prod(jnp.linalg.eigvalsh(reconstructed_spectra), axis=(1))
-            acceptance = jnp.where(eigen_prod<0, 0, acceptance)
+            acceptance = jnp.where(eigen_prod<0, 0, 1)
             new_sample = jnp.copy(old_sample)
             new_sample = new_sample.at[acceptance==1,...].set(reconstructed_spectra[acceptance==1,...])
         return new_sample
@@ -992,7 +992,7 @@ class Sampling_functions(object):
         if acceptance_posdef:
             print("Only positive definite matrices are accepted for inv Wishart !")
             eigen_prod = jnp.prod(jnp.linalg.eigvalsh(reconstructed_spectra), axis=(1))
-            acceptance = jnp.where(eigen_prod<0, 0, acceptance)
+            acceptance = jnp.where(eigen_prod<0, 0, 1)
             new_sample = jnp.copy(old_sample)
             new_sample = new_sample.at[acceptance==1,...].set(reconstructed_spectra[acceptance==1,...])
         return new_sample
@@ -1016,7 +1016,7 @@ class Sampling_functions(object):
         """
 
         # Getting the covariance matrix parametrized by r_param
-        red_cov_matrix_sampled = r_param * theoretical_red_cov_r1_tensor[self.lmin_r:self.lmax_r] + theoretical_red_cov_r0_total[self.lmin_r:self.lmax_r]
+        red_cov_matrix_sampled = r_param * theoretical_red_cov_r1_tensor[self.lmin_r-self.lmin:self.lmax_r] + theoretical_red_cov_r0_total[self.lmin_r-self.lmin:self.lmax_r]
 
         # Getting determinant of the covariance matrix
         sum_dets = ( (2*jnp.arange(self.lmin_r, self.lmax_r+1) +1) * jnp.log(jnp.linalg.det(red_cov_matrix_sampled)) ).sum()

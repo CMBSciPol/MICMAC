@@ -17,10 +17,10 @@ import micmac as micmac
 from jax import config
 config.update("jax_enable_x64", True)
 
-former_file_ver = ''
-
-file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1a' # -> corr r=0 + 2000 iterations + corr_v1a + w/o restrict_to_mask + mask ; C_approx only lensing
-file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1ab' # -> corr r=0 + 2000 iterations + lmin=30 + corr_v1ab + w/o restrict_to_mask + mask ; C_approx only lensing
+file_ver = 'biased_masked_full_v102_Gchain_SO_64_v1c' # -> biased d7s0 + r=1e-2 + 2000 iterations + biased_v1c + w/o restrict_to_mask + mask ; C_approx only lensing
+file_ver = 'biased_masked_full_v102_Gchain_SO_64_v1e' # -> biased LiteBIRD + r=1e-2 + 2000 iterations + biased_v1d_LiteBIRD + w/o restrict_to_mask + unmasked ; C_approx only lensing
+file_ver = 'biased_masked_full_v102_Gchain_SO_64_v1f' # -> biased LiteBIRD + r=0 + 2000 iterations + biased_v1e_LiteBIRD + w/o restrict_to_mask + unmasked ; C_approx only lensing
+file_ver = 'biased_masked_full_v102_Gchain_SO_64_v1g' # -> biased LiteBIRD + r=0 + 2000 iterations + biased_v1f_LiteBIRD + w/o restrict_to_mask + unmasked ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -39,6 +39,11 @@ from micmac import *
 common_repo = "/gpfswork/rech/nih/commun/"
 path_mask = common_repo + "masks/mask_SO_SAT_apodized.fits"
 
+# path_home_test_playground = '/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/'
+# path_Fisher = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
+# path_Fisher = '../Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
+# path_Fisher = path_home_test_playground + 'Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
+path_Fisher = path_home_test_playground + 'Fisher_matrix_{}_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
 
 # perso_repo_path = "/gpfswork/rech/nih/ube74zo/MICMAC_save/validation_chain_v6_JZ/"
 directory_save_file = perso_repo_path + 'save_directory/'
@@ -48,17 +53,15 @@ working_directory_path = current_path + '/'#'/validation_chain_v6_JZ/'
 directory_toml_file = working_directory_path + 'toml_params/'
 
 
-path_toml_file = directory_toml_file + 'corr_v1a.toml'
-path_toml_file = directory_toml_file + 'corr_v1ab.toml'
+path_toml_file = directory_toml_file + 'biased_v1a.toml'
+path_toml_file = directory_toml_file + 'biased_v1b.toml'
+path_toml_file = directory_toml_file + 'biased_v1c.toml'
+path_toml_file = directory_toml_file + 'biased_v1d_LiteBIRD.toml'
+path_toml_file = directory_toml_file + 'biased_v1e_LiteBIRD.toml'
+path_toml_file = directory_toml_file + 'biased_v1f_LiteBIRD.toml'
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
-
-# path_home_test_playground = '/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/'
-# path_Fisher = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
-# path_Fisher = '../Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
-# path_Fisher = path_home_test_playground + 'Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
-path_Fisher = path_home_test_playground + 'Fisher_matrix_{}_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'.format(MICMAC_obj.instrument_name)
 
 
 # General parameters
@@ -86,7 +89,7 @@ apod_mask = hp.ud_grade(hp.read_map(path_mask),nside_out=MICMAC_obj.nside)
 mask = np.copy(apod_mask)
 mask[apod_mask>0] = 1
 
-# mask = np.ones_like(apod_mask)
+mask = np.ones_like(apod_mask)
 
 MICMAC_obj.mask = mask
 
@@ -108,11 +111,13 @@ MICMAC_obj.freq_inverse_noise = freq_inverse_noise_masked
 initial_guess_r = MICMAC_obj.r_true
 initial_guess_r=10**(-2)
 initial_guess_r=10**(-3)
+# initial_guess_r=10**(-4)
 # initial_guess_r=10**(-8)
 
 
+
 # Generation step-size
-Fisher_matrix = np.loadtxt(path_Fisher)
+Fisher_matrix = np.loadtxt(path_Fisher.format(MICMAC_obj.instrument_name))
 minimum_std_Fisher = scipy.linalg.sqrtm(np.linalg.inv(Fisher_matrix))
 minimum_std_Fisher_diag = np.diag(minimum_std_Fisher)
 
@@ -171,39 +176,13 @@ first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
     first_guess[MICMAC_obj.indexes_free_Bf] + minimum_std_Fisher_diag[:-1]*np.random.uniform(low=-5,high=5, size=(dimension_free_param_B_f)))
 init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
 
-CMB_c_ell = np.zeros_like(c_ell_approx)
-# CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + MICMAC_obj.r_true*theoretical_r1_tensor)
-CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + initial_guess_r*theoretical_r1_tensor)
-
-if former_file_ver != '':
-    print("### Continuing from previous run !", former_file_ver, flush=True)
-    dict_params = loading_params(directory_save_file, former_file_ver, MICMAC_obj)
-
-    init_params_mixing_matrix = dict_params['all_params_mixing_matrix_samples'][-1,:,:]
-
-    if not(MICMAC_obj.cheap_save):
-        initial_wiener_filter_term = dict_params['all_s_c_WF_maps'][-1,:,:]
-        initial_fluctuation_maps = dict_params['all_s_c_fluct_maps'][-1,:,:]
-    
-    if MICMAC_obj.sample_r_Metropolis:
-        initial_guess_r = dict_params['all_r_samples'][-1]
-    elif MICMAC_obj.sample_C_inv_Wishart:
-        CMB_c_ell = dict_params['all_cell_samples'][-1,:,:]
-    
-
-    input_cmb_maps = dict_params['input_cmb_maps']
-    input_freq_maps_masked = dict_params['initial_freq_maps']*MICMAC_obj.mask
-
-    # MICMAC_obj.number_iterations_done = MICMAC_obj.number_iterations_sampling
-
-    MICMAC_obj.seed = MICMAC_obj.seed + MICMAC_obj.number_iterations_sampling
-
-
-
 print(f'Exact param matrix : {exact_params_mixing_matrix}')
 print(f'Initial param matrix : {init_params_mixing_matrix}')
 
 
+CMB_c_ell = np.zeros_like(c_ell_approx)
+# CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + MICMAC_obj.r_true*theoretical_r1_tensor)
+CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + initial_guess_r*theoretical_r1_tensor)
 
 time_start_sampling = time.time()
 MICMAC_obj.perform_sampling(input_freq_maps_masked, c_ell_approx, CMB_c_ell, init_params_mixing_matrix, 
@@ -227,34 +206,10 @@ if MICMAC_obj.sample_r_Metropolis:
 
 all_params_mixing_matrix_samples = MICMAC_obj.all_params_mixing_matrix_samples
 
-if former_file_ver != '':
-    if not(MICMAC_obj.cheap_save):
-        all_eta = np.hstack([dict_all_params['all_eta_maps'], all_eta])
-
-        all_s_c_WF_maps = np.hstack([all_s_c_WF_maps, dict_all_params['all_s_c_WF_maps']])
-        
-        all_s_c_fluct_maps = np.hstack([dict_all_params['all_s_c_fluct_maps'], all_s_c_fluct_maps])
-
-
-    elif not(MICMAC_obj.very_cheap_save):
-        all_s_c = np.hstack([dict_all_params['all_s_c_samples'], all_s_c])
-    if MICMAC_obj.sample_r_Metropolis:
-        all_r_samples = np.hstack([dict_all_params['all_r_samples'], all_r_samples])
-    elif MICMAC_obj.sample_C_inv_Wishart:
-        all_cell_samples = np.hstack([dict_all_params['all_cell_samples'], all_cell_samples])
-
-    all_params_mixing_matrix_samples_path = directory_save_file+file_ver+'_all_params_mixing_matrix_samples.npy'
-    all_params_mixing_matrix_samples = np.load(all_params_mixing_matrix_samples_path)
-    dict_all_params['all_params_mixing_matrix_samples'] = all_params_mixing_matrix_samples
-
-    all_params_mixing_matrix_samples = np.vstack([dict_all_params['all_params_mixing_matrix_samples'], all_params_mixing_matrix_samples])
-
-    
-
 # Saving all files
 initial_freq_maps_path = directory_save_file+file_ver+'_initial_data.npy'
 print("FINAL SAVE - #### params_mixing_matrix :", initial_freq_maps_path, flush=True)
-np.save(initial_freq_maps_path, input_freq_maps_masked)
+np.save(initial_freq_maps_path, input_freq_maps)
 
 initial_cmb_maps_path = directory_save_file+file_ver+'_initial_cmb_data.npy'
 print("FINAL SAVE - #### params_mixing_matrix :", initial_cmb_maps_path, flush=True)

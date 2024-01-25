@@ -78,9 +78,9 @@ instrument['depth_p'] /= reduction_noise
 # freq_maps = get_observation(instrument, model, nside=NSIDE, noise=noise)[:, 1:, :]   # keep only Q and U
 # freq_maps_fgs = get_observation(instrument, fgs_model, nside=MICMAC_obj.nside, noise=noise)[:, 1:, :]   # keep only Q and U
 np.random.seed(noise_seed)
-freq_maps_fgs_noised = get_observation(instrument, fgs_model, nside=MICMAC_sampler_obj.nside, noise=True)[:, 1:, :]   # keep only Q and U
+freq_maps_fgs_noised = get_observation(instrument, fgs_model, nside=MICMAC_obj.nside, noise=True)[:, 1:, :]   # keep only Q and U
 np.random.seed(noise_seed)
-freq_maps_fgs_denoised = get_observation(instrument, fgs_model, nside=MICMAC_sampler_obj.nside, noise=False)[:, 1:, :]   # keep only Q and U
+freq_maps_fgs_denoised = get_observation(instrument, fgs_model, nside=MICMAC_obj.nside, noise=False)[:, 1:, :]   # keep only Q and U
 
 noise_map = freq_maps_fgs_noised - freq_maps_fgs_denoised
 # reweighted_noise_map = noise_map / nhits_mask
