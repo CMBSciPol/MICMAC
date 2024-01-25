@@ -651,8 +651,10 @@ class Sampling_functions(object):
             reconstructed_spectra = jnp.linalg.pinv(sampling_Wishart)
             eigen_prod = jnp.prod(jnp.linalg.eigvalsh(reconstructed_spectra), axis=(1))
             acceptance = jnp.where(eigen_prod<0, 0, 1)
-            new_sample = jnp.copy(old_sample)
-            new_sample = new_sample.at[acceptance==1,...].set(reconstructed_spectra[acceptance==1,...])
+            acceptance_reversed = jnp.where(eigen_prod<0, 1, 0)
+            # new_sample = jnp.copy(old_sample)
+            # new_sample = new_sample.at[acceptance==1,...].set(reconstructed_spectra[acceptance==1,...])
+            new_sample = jnp.einsum('lik,l->lik', reconstructed_spectra, acceptance) + jnp.einsum('lik,l->lik', old_sample, acceptance_reversed)
         return new_sample
 
     def get_conditional_proba_C_from_previous_sample(self, red_sigma_ell, red_cov_matrix_sampled):
@@ -820,8 +822,10 @@ class Sampling_functions(object):
             print("Only positive definite matrices are accepted for inv Wishart !")
             eigen_prod = jnp.prod(jnp.linalg.eigvalsh(reconstructed_spectra), axis=(1))
             acceptance = jnp.where(eigen_prod<0, 0, 1)
-            new_sample = jnp.copy(old_sample)
-            new_sample = new_sample.at[acceptance==1,...].set(reconstructed_spectra[acceptance==1,...])
+            acceptance_reversed = jnp.where(eigen_prod<0, 1, 0)
+            # new_sample = jnp.copy(old_sample)
+            # new_sample = new_sample.at[acceptance==1,...].set(reconstructed_spectra[acceptance==1,...])
+            new_sample = jnp.einsum('lik,l->lik', reconstructed_spectra, acceptance) + jnp.einsum('lik,l->lik', old_sample, acceptance_reversed)
         return new_sample
         # return reconstructed_spectra
 
