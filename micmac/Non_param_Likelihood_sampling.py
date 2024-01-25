@@ -449,8 +449,8 @@ class MICMAC_Sampler(Sampling_functions):
         sampling_func_WF = self.solve_generalized_wiener_filter_term_v2c
         sampling_func_Fluct = self.get_fluctuating_term_maps_v2c
         if self.use_old_s_c_sampling:
-            sampling_func_WF = self.solve_generalized_wiener_filter_term_v2c
-            sampling_func_Fluct = self.get_fluctuating_term_maps_v2
+            sampling_func_WF = self.solve_generalized_wiener_filter_term
+            sampling_func_Fluct = self.get_fluctuating_term_maps
 
 
         # jitted_get_inverse_wishart_sampling_from_c_ells = jax.jit(self.get_inverse_wishart_sampling_from_c_ells, static_argnames=['q_prior', 'option_ell_2', 'tol'])
