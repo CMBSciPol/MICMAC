@@ -71,6 +71,25 @@ instr_name = MICMAC_obj.instrument_name #'SO_SAT'
 instrument = get_instrument(instr_name)
 
 instrument['depth_p'] /= reduction_noise
+
+
+
+# Mask initialization
+apod_mask = hp.ud_grade(hp.read_map(path_mask),nside_out=MICMAC_obj.nside)
+
+nhits_mask = np.copy(apod_mask)
+nhits_mask[nhits_mask<relative_treshold] = 0
+inverse_nhits_mask = np.copy(nhits_mask)
+inverse_nhits_mask[nhits_mask>0] = 1/nhits_mask[nhits_mask>0]
+
+mask = np.copy(nhits_mask)
+mask[nhits_mask>0] = 1
+mask[nhits_mask==0] = 0
+
+# mask = np.ones_like(apod_mask)
+
+MICMAC_obj.mask = mask
+
 # get input freq maps
 # np.random.seed(noise_seed)
 # freq_maps = get_observation(instrument, model, nside=NSIDE, noise=noise)[:, 1:, :]   # keep only Q and U
@@ -87,22 +106,6 @@ reweighted_noise_map = noise_map * jnp.sqrt(inverse_nhits_mask)
 freq_maps_fgs = freq_maps_fgs_denoised + reweighted_noise_map
 
 print("Shape for input frequency maps :", freq_maps_fgs.shape)
-
-
-# Mask initialization
-apod_mask = hp.ud_grade(hp.read_map(path_mask),nside_out=MICMAC_obj.nside)
-
-nhits_mask = np.copy(apod_mask)
-nhits_mask[nhits_mask<relative_treshold] = 0
-
-
-mask = np.copy(nhits_mask)
-mask[nhits_mask>0] = 1
-mask[nhits_mask==0] = 0
-
-# mask = np.ones_like(apod_mask)
-
-MICMAC_obj.mask = mask
 
 # delta_ell = 10
 # nb_bin = (MICMAC_obj.lmax-MICMAC_obj.lmin+1)//delta_ell
