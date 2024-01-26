@@ -22,6 +22,7 @@ file_ver = 'Iwish_bin_masked_full_v102_Gchain_SO_64_v1ab' # -> classical binning
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
+sigma_Fisher_gap = 0
 
 perso_repo_path = "/gpfswork/rech/nih/ube74zo/MICMAC_save/validation_chain_v7_JZ/"
 path_home_test_playground = '/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/'
@@ -165,7 +166,7 @@ first_guess = jnp.copy(jnp.ravel(exact_params_mixing_matrix,order='F'))
 # init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
 print("First guess from 5 $\sigma$ Fisher !", flush=True)
 first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
-    first_guess[MICMAC_obj.indexes_free_Bf] + minimum_std_Fisher_diag[:-1]*np.random.uniform(low=-5,high=5, size=(dimension_free_param_B_f)))
+    first_guess[MICMAC_obj.indexes_free_Bf] + minimum_std_Fisher_diag[:-1]*np.random.uniform(low=-sigma_Fisher_gap,high=sigma_Fisher_gap, size=(dimension_free_param_B_f)))
 init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
 
 print(f'Exact param matrix : {exact_params_mixing_matrix}')

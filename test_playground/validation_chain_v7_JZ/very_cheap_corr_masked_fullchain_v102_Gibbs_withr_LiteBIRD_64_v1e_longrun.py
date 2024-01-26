@@ -19,7 +19,7 @@ config.update("jax_enable_x64", True)
 
 former_file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1e' # -> corr LiteBIRD + r=1e-2 + 2000 iterations + corr_v1d_LiteBIRD + w/o restrict_to_mask + unmasked ; C_approx only lensing
 
-file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1eb' # -> corr LiteBIRD + r=1e-2 + 2000 iterations + corr_v1db_LiteBIRD + w/o restrict_to_mask + unmasked ; C_approx only lensing
+file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1eb' # -> corr LiteBIRD + r=1e-2 + 2000 iterations + corr_v1dc_LiteBIRD + w/o restrict_to_mask + unmasked ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -50,6 +50,7 @@ path_toml_file = directory_toml_file + 'biased_v1a.toml'
 path_toml_file = directory_toml_file + 'biased_v1b.toml'
 path_toml_file = directory_toml_file + 'biased_v1c.toml'
 path_toml_file = directory_toml_file + 'corr_v1d_LiteBIRD.toml'
+path_toml_file = directory_toml_file + 'corr_v1db_LiteBIRD.toml'
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
