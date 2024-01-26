@@ -19,6 +19,7 @@ config.update("jax_enable_x64", True)
 
 file_ver = 'Iwish_bin_masked_full_v102_Gchain_SO_64_v1a' # -> classical binning delta_ell=10 + 2000 iterations + Iwish_v1a + w/o restrict_to_mask + mask + perturbation_eta ; C_approx only lensing
 file_ver = 'Iwish_bin_masked_full_v102_Gchain_SO_64_v1ab' # -> classical binning delta_ell=10 + 2000 iterations + Iwish_v1a + acceptance_posdef=True+ w/o restrict_to_mask + mask + perturbation_eta ; C_approx only lensing
+file_ver = 'Iwish_bin_masked_full_v102_Gchain_SO_64_v1abb' # -> not cheap + classical binning delta_ell=10 + 20 iterations + Iwish_v1ab + acceptance_posdef=True+ w/o restrict_to_mask + mask + perturbation_eta ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -52,6 +53,7 @@ directory_toml_file = working_directory_path + 'toml_params/'
 
 
 path_toml_file = directory_toml_file + 'Iwish_v1a.toml'
+path_toml_file = directory_toml_file + 'Iwish_v1ab.toml'
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
