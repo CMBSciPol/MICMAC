@@ -17,6 +17,8 @@ import micmac as micmac
 from jax import config
 config.update("jax_enable_x64", True)
 
+former_file_ver = ''
+
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1c' # -> corr d7s0 + r=1e-2 + 2000 iterations + corr_v1c + w/o restrict_to_mask + mask ; C_approx only lensing
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1cb' # -> corr d7s0 + r=0 + 2000 iterations + corr_v1cb + lmin=30 + w/o restrict_to_mask + mask ; C_approx only lensing
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1hb' # -> corr d1s1 + r=0 + 2000 iterations + corr_v1cb + lmin=30 + w/o restrict_to_mask + mask ; C_approx only lensing
