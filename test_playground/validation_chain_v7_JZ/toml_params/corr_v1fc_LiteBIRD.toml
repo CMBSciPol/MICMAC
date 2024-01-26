@@ -20,7 +20,7 @@ instrument_name = 'LiteBIRD' # Either provide instrument name, then freq_inverse
 # frequency_array = []
 
 # [CMB_parameters]
-r_true = 0
+r_true = 1e-3
 sample_r_Metropolis = true
 sample_C_inv_Wishart = false
 
@@ -48,6 +48,6 @@ epsilon_cov = 1e-20
 
 # [Sampling_parameters]
 # overrelax = 0 #-0.995 # Overrelaxation parameter for the sampling
-number_iterations_sampling = 1500 # Maximum number of iterations for the sampling
+number_iterations_sampling = 3200 # Maximum number of iterations for the sampling
 number_iterations_done = 0 # Number of iterations already accomplished, in case the chain is resuming from a previous run
 seed = 42

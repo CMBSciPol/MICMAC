@@ -17,10 +17,11 @@ import micmac as micmac
 from jax import config
 config.update("jax_enable_x64", True)
 
-former_file_ver = '' # -> corr LiteBIRD + r=1e-2 + 2000 iterations + corr_v1d_LiteBIRD + w/o restrict_to_mask + unmasked ; C_approx only lensing
+former_file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1g' # -> corr LiteBIRD + r=1e-2 + 2000 iterations + corr_v1d_LiteBIRD + w/o restrict_to_mask + unmasked ; C_approx only lensing
 
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1f' # -> corr LiteBIRD + r=0 + 2000 iterations + corr_v1e_LiteBIRD + w/o restrict_to_mask + unmasked ; C_approx only lensing
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1g' # -> corr LiteBIRD + r=1e-3 + 2000 iterations + corr_v1f_LiteBIRD + w/o restrict_to_mask + unmasked ; C_approx only lensing
+file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1gb' # -> corr LiteBIRD + r=1e-3 + 3200 iterations + corr_v1fc_LiteBIRD + w/o restrict_to_mask + unmasked ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -53,6 +54,7 @@ path_toml_file = directory_toml_file + 'biased_v1c.toml'
 path_toml_file = directory_toml_file + 'corr_v1d_LiteBIRD.toml'
 path_toml_file = directory_toml_file + 'corr_v1e_LiteBIRD.toml'
 path_toml_file = directory_toml_file + 'corr_v1f_LiteBIRD.toml'
+path_toml_file = directory_toml_file + 'corr_v1fb_LiteBIRD.toml'
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
@@ -61,7 +63,7 @@ MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
 # path_Fisher = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
 # path_Fisher = '../Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
 # path_Fisher = path_home_test_playground + 'Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
-path_Fisher = path_home_test_playground + 'Fisher_matrix_{}_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'.format(MICMAC_obj.instrument_name)
+# path_Fisher = path_home_test_playground + 'Fisher_matrix_{}_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'.format(MICMAC_obj.instrument_name)
 
 
 # General parameters
@@ -72,6 +74,13 @@ noise = True
 # noise = False
 noise_seed = 42
 instr_name = MICMAC_obj.instrument_name #'SO_SAT'
+
+# path_home_test_playground = '/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/'
+# path_Fisher = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
+# path_Fisher = '../Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
+# path_Fisher = path_home_test_playground + 'Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
+# path_Fisher = path_home_test_playground + f'Fisher_matrix_{MICMAC_obj.instrument_name}_EB_model_{fgs_model}_noise_True_seed_42_lmin2_lmax128.txt'
+path_Fisher = path_home_test_playground + f'Fisher_matrix_{MICMAC_obj.instrument_name}_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
 
 # get instrument from public database
 instrument = get_instrument(instr_name)
