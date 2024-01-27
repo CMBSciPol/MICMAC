@@ -178,22 +178,22 @@ CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + initial_guess_r*theoreti
 
 if former_file_ver != '':
     print("### Continuing from previous run !", former_file_ver, flush=True)
-    dict_params = loading_params(directory_save_file, former_file_ver, MICMAC_obj)
+    dict_all_params = loading_params(directory_save_file, former_file_ver, MICMAC_obj)
 
-    init_params_mixing_matrix = dict_params['all_params_mixing_matrix_samples'][-1,:,:]
+    init_params_mixing_matrix = dict_all_params['all_params_mixing_matrix_samples'][-1,:,:]
 
     if not(MICMAC_obj.cheap_save):
-        initial_wiener_filter_term = dict_params['all_s_c_WF_maps'][-1,:,:]
-        initial_fluctuation_maps = dict_params['all_s_c_fluct_maps'][-1,:,:]
+        initial_wiener_filter_term = dict_all_params['all_s_c_WF_maps'][-1,:,:]
+        initial_fluctuation_maps = dict_all_params['all_s_c_fluct_maps'][-1,:,:]
     
     if MICMAC_obj.sample_r_Metropolis:
-        initial_guess_r = dict_params['all_r_samples'][-1]
+        initial_guess_r = dict_all_params['all_r_samples'][-1]
     elif MICMAC_obj.sample_C_inv_Wishart:
-        CMB_c_ell = dict_params['all_cell_samples'][-1,:,:]
+        CMB_c_ell = dict_all_params['all_cell_samples'][-1,:,:]
     
 
-    input_cmb_maps = dict_params['input_cmb_maps']
-    input_freq_maps_masked = dict_params['initial_freq_maps']*MICMAC_obj.mask
+    input_cmb_maps = dict_all_params['input_cmb_maps']
+    input_freq_maps_masked = dict_all_params['initial_freq_maps']*MICMAC_obj.mask
 
     # MICMAC_obj.number_iterations_done = MICMAC_obj.number_iterations_sampling
 
