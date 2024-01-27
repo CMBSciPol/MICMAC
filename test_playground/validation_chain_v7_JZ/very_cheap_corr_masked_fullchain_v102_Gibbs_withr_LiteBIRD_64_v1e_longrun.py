@@ -231,25 +231,25 @@ all_params_mixing_matrix_samples = MICMAC_obj.all_params_mixing_matrix_samples
 
 if former_file_ver != '':
     if not(MICMAC_obj.cheap_save):
-        all_eta = np.hstack([dict_all_params['all_eta_maps'], all_eta])
+        all_eta = np.hstack([dict_all_params['all_eta_maps'], all_eta[1:]])
 
-        all_s_c_WF_maps = np.hstack([all_s_c_WF_maps, dict_all_params['all_s_c_WF_maps']])
+        all_s_c_WF_maps = np.hstack([dict_all_params['all_s_c_WF_maps'], all_s_c_WF_maps[1:]])
         
-        all_s_c_fluct_maps = np.hstack([dict_all_params['all_s_c_fluct_maps'], all_s_c_fluct_maps])
+        all_s_c_fluct_maps = np.hstack([dict_all_params['all_s_c_fluct_maps'], all_s_c_fluct_maps[1:]])
 
 
     elif not(MICMAC_obj.very_cheap_save):
-        all_s_c = np.hstack([dict_all_params['all_s_c_samples'], all_s_c])
+        all_s_c = np.hstack([dict_all_params['all_s_c_samples'], all_s_c[1:]])
     if MICMAC_obj.sample_r_Metropolis:
-        all_r_samples = np.hstack([dict_all_params['all_r_samples'], all_r_samples])
+        all_r_samples = np.hstack([dict_all_params['all_r_samples'], all_r_samples[1:]])
     elif MICMAC_obj.sample_C_inv_Wishart:
-        all_cell_samples = np.hstack([dict_all_params['all_cell_samples'], all_cell_samples])
+        all_cell_samples = np.hstack([dict_all_params['all_cell_samples'], all_cell_samples[1:]])
 
     # all_params_mixing_matrix_samples_path = directory_save_file+former_file_ver+'_all_params_mixing_matrix_samples.npy'
     # all_params_mixing_matrix_samples = np.load(all_params_mixing_matrix_samples_path)
     # dict_all_params['all_params_mixing_matrix_samples'] = all_params_mixing_matrix_samples
 
-    all_params_mixing_matrix_samples = np.vstack([dict_all_params['all_params_mixing_matrix_samples'], all_params_mixing_matrix_samples])
+    all_params_mixing_matrix_samples = np.vstack([dict_all_params['all_params_mixing_matrix_samples'], all_params_mixing_matrix_samples[1:]])
 
     
 

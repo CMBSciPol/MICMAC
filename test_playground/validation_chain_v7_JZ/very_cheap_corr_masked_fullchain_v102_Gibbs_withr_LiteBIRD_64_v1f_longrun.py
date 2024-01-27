@@ -17,9 +17,10 @@ import micmac as micmac
 from jax import config
 config.update("jax_enable_x64", True)
 
-former_file_ver = '' # -> corr LiteBIRD + r=1e-2 + 2000 iterations + corr_v1d_LiteBIRD + w/o restrict_to_mask + unmasked ; C_approx only lensing
+former_file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1f' # -> corr LiteBIRD + r=1e-2 + 2000 iterations + corr_v1d_LiteBIRD + w/o restrict_to_mask + unmasked ; C_approx only lensing
 
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1f' # -> corr LiteBIRD + r=0 + 2000 iterations + corr_v1e_LiteBIRD + w/o restrict_to_mask + unmasked ; C_approx only lensing
+file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1fb' # -> corr LiteBIRD + r=0 + 3100 iterations + corr_v1ec_LiteBIRD + w/o restrict_to_mask + unmasked ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -51,6 +52,7 @@ path_toml_file = directory_toml_file + 'biased_v1b.toml'
 path_toml_file = directory_toml_file + 'biased_v1c.toml'
 path_toml_file = directory_toml_file + 'corr_v1d_LiteBIRD.toml'
 path_toml_file = directory_toml_file + 'corr_v1e_LiteBIRD.toml'
+path_toml_file = directory_toml_file + 'corr_v1eb_LiteBIRD.toml'
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
@@ -230,25 +232,25 @@ all_params_mixing_matrix_samples = MICMAC_obj.all_params_mixing_matrix_samples
 
 if former_file_ver != '':
     if not(MICMAC_obj.cheap_save):
-        all_eta = np.hstack([dict_all_params['all_eta_maps'], all_eta])
+        all_eta = np.hstack([dict_all_params['all_eta_maps'], all_eta[1:]])
 
-        all_s_c_WF_maps = np.hstack([all_s_c_WF_maps, dict_all_params['all_s_c_WF_maps']])
+        all_s_c_WF_maps = np.hstack([dict_all_params['all_s_c_WF_maps'], all_s_c_WF_maps[1:]])
         
-        all_s_c_fluct_maps = np.hstack([dict_all_params['all_s_c_fluct_maps'], all_s_c_fluct_maps])
+        all_s_c_fluct_maps = np.hstack([dict_all_params['all_s_c_fluct_maps'], all_s_c_fluct_maps[1:]])
 
 
     elif not(MICMAC_obj.very_cheap_save):
-        all_s_c = np.hstack([dict_all_params['all_s_c_samples'], all_s_c])
+        all_s_c = np.hstack([dict_all_params['all_s_c_samples'], all_s_c[1:]])
     if MICMAC_obj.sample_r_Metropolis:
-        all_r_samples = np.hstack([dict_all_params['all_r_samples'], all_r_samples])
+        all_r_samples = np.hstack([dict_all_params['all_r_samples'], all_r_samples[1:]])
     elif MICMAC_obj.sample_C_inv_Wishart:
-        all_cell_samples = np.hstack([dict_all_params['all_cell_samples'], all_cell_samples])
+        all_cell_samples = np.hstack([dict_all_params['all_cell_samples'], all_cell_samples[1:]])
 
-    all_params_mixing_matrix_samples_path = directory_save_file+file_ver+'_all_params_mixing_matrix_samples.npy'
-    all_params_mixing_matrix_samples = np.load(all_params_mixing_matrix_samples_path)
-    dict_all_params['all_params_mixing_matrix_samples'] = all_params_mixing_matrix_samples
+    # all_params_mixing_matrix_samples_path = directory_save_file+file_ver+'_all_params_mixing_matrix_samples.npy'
+    # all_params_mixing_matrix_samples = np.load(all_params_mixing_matrix_samples_path)
+    # dict_all_params['all_params_mixing_matrix_samples'] = all_params_mixing_matrix_samples
 
-    all_params_mixing_matrix_samples = np.vstack([dict_all_params['all_params_mixing_matrix_samples'], all_params_mixing_matrix_samples])
+    all_params_mixing_matrix_samples = np.vstack([dict_all_params['all_params_mixing_matrix_samples'], all_params_mixing_matrix_samples[1:]])
 
     
 

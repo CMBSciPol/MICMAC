@@ -38,9 +38,6 @@ export OMP_PLACES=cores
 
 
 
-# srun python /linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_v6_JZ/very_cheap_biased_unmasked_fullchain_v100_Gibbs_withr_SO_64_v1a_longrun.py  1> logs/log_biased_unmasked_full_v101_Gchain_SO_64_v2a.log 2> errs/err_biased_unmasked_full_v101_Gchain_SO_64_v2a.log
-# srun python /linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_v6_JZ/very_cheap_biased_unmasked_fullchain_v100_Gibbs_withr_SO_64_v1a_longrun.py  1> logs/log_biased_unmasked_full_v101_Gchain_SO_64_v2c.log 2> errs/err_biased_unmasked_full_v101_Gchain_SO_64_v2c.log
-
 # export VER=corr_masked_full_v100_Gchain_SO_64_3ab
 # export VER=corr_unmasked_full_v101_Gchain_SO_64_v0a
 export VER=corr_masked_full_v102_Gchain_SO_64_v1abb
