@@ -23,6 +23,7 @@ file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1eb' # -> corr LiteBIRD + r=1e-2
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
+sigma_gap = 5
 
 perso_repo_path = "/gpfswork/rech/nih/ube74zo/MICMAC_save/validation_chain_v7_JZ/"
 path_home_test_playground = '/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/'
@@ -168,9 +169,9 @@ first_guess = jnp.copy(jnp.ravel(exact_params_mixing_matrix,order='F'))
 # first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
 #     first_guess[MICMAC_obj.indexes_free_Bf]*np.random.uniform(low=.99,high=1.01, size=(dimension_free_param_B_f)))
 # init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
-print("First guess from 5 $\sigma$ Fisher !", flush=True)
+print(f"First guess from {sigma_gap} $\sigma$ Fisher !", flush=True)
 first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
-    first_guess[MICMAC_obj.indexes_free_Bf] + minimum_std_Fisher_diag[:-1]*np.random.uniform(low=-5,high=5, size=(dimension_free_param_B_f)))
+    first_guess[MICMAC_obj.indexes_free_Bf] + minimum_std_Fisher_diag[:-1]*np.random.uniform(low=-sigma_gap,high=sigma_gap, size=(dimension_free_param_B_f)))
 init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
 
 CMB_c_ell = np.zeros_like(c_ell_approx)
@@ -244,9 +245,9 @@ if former_file_ver != '':
     elif MICMAC_obj.sample_C_inv_Wishart:
         all_cell_samples = np.hstack([dict_all_params['all_cell_samples'], all_cell_samples])
 
-    all_params_mixing_matrix_samples_path = directory_save_file+file_ver+'_all_params_mixing_matrix_samples.npy'
-    all_params_mixing_matrix_samples = np.load(all_params_mixing_matrix_samples_path)
-    dict_all_params['all_params_mixing_matrix_samples'] = all_params_mixing_matrix_samples
+    # all_params_mixing_matrix_samples_path = directory_save_file+former_file_ver+'_all_params_mixing_matrix_samples.npy'
+    # all_params_mixing_matrix_samples = np.load(all_params_mixing_matrix_samples_path)
+    # dict_all_params['all_params_mixing_matrix_samples'] = all_params_mixing_matrix_samples
 
     all_params_mixing_matrix_samples = np.vstack([dict_all_params['all_params_mixing_matrix_samples'], all_params_mixing_matrix_samples])
 

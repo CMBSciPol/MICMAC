@@ -19,10 +19,12 @@ config.update("jax_enable_x64", True)
 
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1d' # -> corr inhomogeneous + r=1e-2 + 2000 iterations + corr_v1c + w/o restrict_to_mask + mask ; C_approx only lensing
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1db' # -> corr inhomogeneous + r=0 + 2000 iterations + corr_v1cb + w/o restrict_to_mask + mask ; C_approx only lensing
+file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1dc' # -> corr inhom + start 10 sigma + seed 0 + r=0 + 2000 iterations + corr_v1cbc + w/o restrict_to_mask + mask ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
 relative_treshold = 1e-1
+sigma_gap = 10
 
 perso_repo_path = "/gpfswork/rech/nih/ube74zo/MICMAC_save/validation_chain_v7_JZ/"
 path_home_test_playground = '/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/'
@@ -53,6 +55,7 @@ directory_toml_file = working_directory_path + 'toml_params/'
 
 path_toml_file = directory_toml_file + 'corr_v1c.toml'
 path_toml_file = directory_toml_file + 'corr_v1cb.toml'
+path_toml_file = directory_toml_file + 'corr_v1cbc.toml'
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
@@ -128,7 +131,7 @@ initial_guess_r = MICMAC_obj.r_true
 initial_guess_r=10**(-2)
 initial_guess_r=10**(-3)
 # initial_guess_r=10**(-4)
-# initial_guess_r=10**(-8)
+initial_guess_r=10**(-8)
 
 
 
@@ -187,9 +190,9 @@ first_guess = jnp.copy(jnp.ravel(exact_params_mixing_matrix,order='F'))
 # first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
 #     first_guess[MICMAC_obj.indexes_free_Bf]*np.random.uniform(low=.99,high=1.01, size=(dimension_free_param_B_f)))
 # init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
-print("First guess from 5 $\sigma$ Fisher !", flush=True)
+print(f"First guess from {sigma_gap} $\sigma$ Fisher !", flush=True)
 first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
-    first_guess[MICMAC_obj.indexes_free_Bf] + minimum_std_Fisher_diag[:-1]*np.random.uniform(low=-5,high=5, size=(dimension_free_param_B_f)))
+    first_guess[MICMAC_obj.indexes_free_Bf] + minimum_std_Fisher_diag[:-1]*np.random.uniform(low=-sigma_gap,high=sigma_gap, size=(dimension_free_param_B_f)))
 init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
 
 print(f'Exact param matrix : {exact_params_mixing_matrix}')

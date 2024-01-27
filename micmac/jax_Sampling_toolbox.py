@@ -1370,7 +1370,8 @@ def single_lognormal_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_si
         accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(u_proposal, **model_kwargs)) - diff_lognormal
         new_sample = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, u_proposal, jnp.ravel(old_sample,order='F'))
 
-        return new_sample.reshape(old_sample.shape,order='F')
+        # return new_sample.reshape(old_sample.shape,order='F')
+        return jnp.reshape(new_sample, old_sample.shape, order='F')
 
 def separate_single_MH_step_index(random_PRNGKey, old_sample, step_size, log_proba, indexes_Bf, **model_kwargs):
     
@@ -1393,7 +1394,8 @@ def separate_single_MH_step_index(random_PRNGKey, old_sample, step_size, log_pro
     new_sample = jnp.copy(jnp.ravel(old_sample,order='F'))
     new_sample = new_sample.at[indexes_Bf].set(new_params)
     latest_PRNGKey = carry[0]
-    return latest_PRNGKey, new_sample.reshape(old_sample.shape,order='F')
+    # return latest_PRNGKey, new_sample.reshape(old_sample.shape,order='F')
+    return latest_PRNGKey, jnp.reshape(new_sample, old_sample.shape,order='F')
 
 def separate_single_MH_step_index_accelerated(random_PRNGKey, old_sample, step_size, log_proba, indexes_Bf, previous_inverse, **model_kwargs):
     
