@@ -393,7 +393,7 @@ class Sampling_functions(object):
         return wiener_filter_term.reshape((self.nstokes, self.npix))
 
 
-    def get_fluctuating_term_maps_v2c(self, red_cov_matrix, invBtinvNB, BtinvN_sqrt, jax_key_PNRG, map_random_realization_xi=None, map_random_realization_chi=None, initial_guess=jnp.empty(0)):
+    def get_fluctuating_term_maps_v2c(self, red_cov_matrix_sqrt, invBtinvNB, BtinvN_sqrt, jax_key_PNRG, map_random_realization_xi=None, map_random_realization_chi=None, initial_guess=jnp.empty(0)):
         """ Sampling step 2 : fluctuating term
 
             Solve fluctuation term with formulation (C^-1 + N^-1) for the left member :
@@ -418,7 +418,7 @@ class Sampling_functions(object):
         """
 
         # Chex test for arguments
-        chx.assert_axis_dimension(red_cov_matrix, 0, self.lmax + 1 - self.lmin)
+        chx.assert_axis_dimension(red_cov_matrix_sqrt, 0, self.lmax + 1 - self.lmin)
         chx.assert_axis_dimension(invBtinvNB, 2, self.npix)
         chx.assert_axis_dimension(BtinvN_sqrt, 1, self.number_frequencies)
         chx.assert_axis_dimension(BtinvN_sqrt, 2, self.npix)
@@ -444,7 +444,7 @@ class Sampling_functions(object):
         # Computation of the right side member of the CG
         # red_inverse_cov_matrix = jnp.linalg.pinv(red_cov_matrix)
         # red_inv_cov_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_inverse_cov_matrix)
-        red_cov_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_cov_matrix)
+        # red_cov_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_cov_matrix)
 
         # First right member : C^{-1/2} xi
         # right_member_1 = maps_x_red_covariance_cell_JAX(map_random_realization_xi, red_inv_cov_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
@@ -460,7 +460,8 @@ class Sampling_functions(object):
         right_member_2_part = jnp.einsum('kcp,cfp,fsp->ksp', invBtinvNB, BtinvN_sqrt, map_random_realization_chi)[0]*N_c_inv # [0] for selecting CMB component of the random variable
         right_member_2 = maps_x_red_covariance_cell_JAX(right_member_2_part, red_cov_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
 
-        right_member = (right_member_1 + right_member_2).ravel()
+        # right_member = (right_member_1 + right_member_2).ravel()
+        right_member = self.get_band_limited_maps(right_member).ravel()
 
         # Computation of the left side member of the CG
 
@@ -516,7 +517,7 @@ class Sampling_functions(object):
         return fluctuating_map.reshape((self.nstokes, self.npix))
 
 
-    def solve_generalized_wiener_filter_term_v2c(self, s_cML, red_cov_matrix, invBtinvNB, initial_guess=jnp.empty(0)):
+    def solve_generalized_wiener_filter_term_v2c(self, s_cML, red_cov_matrix_sqrt, invBtinvNB, initial_guess=jnp.empty(0)):
         """ 
             Solve Wiener filter term with CG : (C^{-1} + N_c^-1) s_c,WF = N_c^{-1} s_c,ML
 
@@ -534,13 +535,13 @@ class Sampling_functions(object):
         """
 
         # Chex test for arguments
-        chx.assert_axis_dimension(red_cov_matrix, 0, self.lmax + 1 - self.lmin)
+        chx.assert_axis_dimension(red_cov_matrix_sqrt, 0, self.lmax + 1 - self.lmin)
         if self.nstokes != 1:
             chx.assert_axis_dimension(s_cML, 0, self.nstokes)
             chx.assert_axis_dimension(s_cML, 1, self.npix)
         chx.assert_axis_dimension(invBtinvNB, 2, self.npix)
 
-        red_cov_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_cov_matrix)
+        # red_cov_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_cov_matrix)
 
         # Computation of the right side member of the CG : N_c^{-1} s_c,ML
         ## First, comutation of N_c^{-1} (putting it to 0 outside the mask)

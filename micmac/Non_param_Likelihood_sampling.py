@@ -448,9 +448,9 @@ class MICMAC_Sampler(Sampling_functions):
 
         sampling_func_WF = self.solve_generalized_wiener_filter_term_v2c
         sampling_func_Fluct = self.get_fluctuating_term_maps_v2c
-        if self.use_old_s_c_sampling:
-            sampling_func_WF = self.solve_generalized_wiener_filter_term
-            sampling_func_Fluct = self.get_fluctuating_term_maps
+        # if self.use_old_s_c_sampling:
+        #     sampling_func_WF = self.solve_generalized_wiener_filter_term
+        #     sampling_func_Fluct = self.get_fluctuating_term_maps
 
 
         # jitted_get_inverse_wishart_sampling_from_c_ells = jax.jit(self.get_inverse_wishart_sampling_from_c_ells, static_argnames=['q_prior', 'option_ell_2', 'tol'])
@@ -581,11 +581,13 @@ class MICMAC_Sampler(Sampling_functions):
             # Sampling step 2 : sampling of Gaussian variable s_c, contrained CMB map realization
 
             ## Geting the Wiener filter term, mean of the variable s_c
+            red_cov_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_cov_matrix_sample)
             # wiener_filter_term = self.solve_generalized_wiener_filter_term(s_cML, red_cov_matrix_sample, invBtinvNB, initial_guess=jnp.copy(WF_term_maps))
             # wiener_filter_term = self.solve_generalized_wiener_filter_term_v2(s_cML, red_cov_matrix_sample, invBtinvNB, initial_guess=jnp.copy(WF_term_maps))
             # wiener_filter_term = self.solve_generalized_wiener_filter_term_v2c(s_cML, red_cov_matrix_sample, invBtinvNB, initial_guess=jnp.copy(WF_term_maps))
             # wiener_filter_term = jitted_solve_wiener_filter_term(s_cML, red_cov_matrix_sample, invBtinvNB, initial_guess=jnp.copy(WF_term_maps))
-            wiener_filter_term = sampling_func_WF(s_cML, red_cov_matrix_sample, invBtinvNB, initial_guess=jnp.copy(WF_term_maps))
+            initial_guess_WF = maps_x_red_covariance_cell_JAX(WF_term_maps, jnp.linalg.pinv(red_cov_matrix_sqrt), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
+            wiener_filter_term = sampling_func_WF(s_cML, red_cov_matrix_sqrt, invBtinvNB, initial_guess=initial_guess_WF)
 
             ## Preparing the random variables for the fluctuation term
             PRNGKey, new_subPRNGKey = random.split(PRNGKey)
@@ -604,10 +606,10 @@ class MICMAC_Sampler(Sampling_functions):
             # fluctuation_maps = jitted_get_fluctuating_term(red_cov_matrix_sample, invBtinvNB, BtinvN_sqrt, new_subPRNGKey, 
             #                                                   map_random_realization_xi=map_random_realization_xi, map_random_realization_chi=map_random_realization_chi, 
             #                                                   initial_guess=jnp.copy(fluct_maps))
-
-            fluctuation_maps = sampling_func_Fluct(red_cov_matrix_sample, invBtinvNB, BtinvN_sqrt, new_subPRNGKey, 
+            initial_guess_Fluct = maps_x_red_covariance_cell_JAX(fluct_maps, jnp.linalg.pinv(red_cov_matrix_sqrt), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
+            fluctuation_maps = sampling_func_Fluct(red_cov_matrix_sqrt, invBtinvNB, BtinvN_sqrt, new_subPRNGKey, 
                                                               map_random_realization_xi=map_random_realization_xi, map_random_realization_chi=map_random_realization_chi, 
-                                                              initial_guess=jnp.copy(fluct_maps))
+                                                              initial_guess=initial_guess_Fluct)
 
             s_c_sample = fluctuation_maps + wiener_filter_term
 
