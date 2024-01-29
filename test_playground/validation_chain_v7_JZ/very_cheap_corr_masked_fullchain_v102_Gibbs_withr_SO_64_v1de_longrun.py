@@ -17,12 +17,14 @@ import micmac as micmac
 from jax import config
 config.update("jax_enable_x64", True)
 
-former_file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1db' # -> corr LiteBIRD + r=1e-2 + 2000 iterations + corr_v1d_LiteBIRD + w/o restrict_to_mask + unmasked ; C_approx only lensing
+former_file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1db' # -> corr inhomogeneous + r=0 + 2000 iterations + corr_v1cb + w/o restrict_to_mask + mask ; C_approx only lensing
+former_file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1dbb' # -> corr inhomogeneous + r=0 + 2000 iterations + corr_v1cb + w/o restrict_to_mask + mask ; C_approx only lensing
 
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1d' # -> corr inhomogeneous + r=1e-2 + 2000 iterations + corr_v1c + w/o restrict_to_mask + mask ; C_approx only lensing
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1db' # -> corr inhomogeneous + r=0 + 2000 iterations + corr_v1cb + w/o restrict_to_mask + mask ; C_approx only lensing
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1dc' # -> corr inhom + start 10 sigma + seed 0 + r=0 + 2000 iterations + corr_v1cbc + w/o restrict_to_mask + mask ; C_approx only lensing
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1dbb' # -> corr inhomogeneous + r=0 + 2000 iterations + corr_v1cb + w/o restrict_to_mask + mask ; C_approx only lensing
+file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1dbbb' # -> corr inhomogeneous + r=0 + 2000 iterations + corr_v1ccb + w/o restrict_to_mask + mask ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -60,6 +62,7 @@ path_toml_file = directory_toml_file + 'corr_v1c.toml'
 path_toml_file = directory_toml_file + 'corr_v1cb.toml'
 path_toml_file = directory_toml_file + 'corr_v1cbc.toml'
 path_toml_file = directory_toml_file + 'corr_v1cbb.toml'
+path_toml_file = directory_toml_file + 'corr_v1cbc.toml'
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)

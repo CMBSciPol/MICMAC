@@ -18,10 +18,12 @@ from jax import config
 config.update("jax_enable_x64", True)
 
 former_file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1cb'
+former_file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1cbb'
 
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1c' # -> corr d7s0 + r=1e-2 + 2000 iterations + corr_v1c + w/o restrict_to_mask + mask ; C_approx only lensing
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1cb' # -> corr d7s0 + r=1e-2 + 2000 iterations + corr_v1cb + lmin=30 + w/o restrict_to_mask + mask ; C_approx only lensing
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1cbb' # -> corr d7s0 + r=1e-2 + 4400 iterations + corr_v1cc + lmin=30 + w/o restrict_to_mask + mask ; C_approx only lensing
+file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1cbbb' # -> corr d7s0 + r=1e-2 + 4400 iterations + corr_v1ccb + lmin=30 + w/o restrict_to_mask + mask ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -52,6 +54,8 @@ directory_toml_file = working_directory_path + 'toml_params/'
 path_toml_file = directory_toml_file + 'corr_v1c.toml'
 path_toml_file = directory_toml_file + 'corr_v1cb.toml'
 path_toml_file = directory_toml_file + 'corr_v1cbb.toml'
+path_toml_file = directory_toml_file + 'corr_v1cbb.toml'
+path_toml_file = directory_toml_file + 'corr_v1cbc.toml'
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
 
@@ -233,7 +237,7 @@ if former_file_ver != '':
         all_eta = np.hstack([dict_all_params['all_eta_maps'], all_eta[1:]])
 
         all_s_c_WF_maps = np.hstack([dict_all_params['all_s_c_WF_maps'], all_s_c_WF_maps[1:]])
-        
+
         all_s_c_fluct_maps = np.hstack([dict_all_params['all_s_c_fluct_maps'], all_s_c_fluct_maps[1:]])
 
 
