@@ -46,7 +46,7 @@ class Sampling_functions(MixingMatrix):
         """
 
         # Inheritance from MixingMatrix
-        super(MICMAC_Sampler,self).__init__(frequency_array=frequency_array, number_components=number_components, 
+        super(Sampling_functions,self).__init__(frequency_array=frequency_array, number_components=number_components, 
                                                 params=None, pos_special_freqs=pos_special_freqs)
 
         # Tests parameters
