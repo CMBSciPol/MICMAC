@@ -19,11 +19,13 @@ config.update("jax_enable_x64", True)
 
 former_file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1cb'
 former_file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1cbb'
+former_file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1cbbb'
 
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1c' # -> corr d7s0 + r=1e-2 + 2000 iterations + corr_v1c + w/o restrict_to_mask + mask ; C_approx only lensing
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1cb' # -> corr d7s0 + r=1e-2 + 2000 iterations + corr_v1cb + lmin=30 + w/o restrict_to_mask + mask ; C_approx only lensing
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1cbb' # -> corr d7s0 + r=1e-2 + 4400 iterations + corr_v1cc + lmin=30 + w/o restrict_to_mask + mask ; C_approx only lensing
 file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1cbbb' # -> corr d7s0 + r=1e-2 + 4400 iterations + corr_v1ccb + lmin=30 + w/o restrict_to_mask + mask ; C_approx only lensing
+file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1cbbbb' # -> corr d7s0 + r=1e-2 + 4400 iterations + corr_v1ccbb + lmin=30 + w/o restrict_to_mask + mask ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -56,6 +58,7 @@ path_toml_file = directory_toml_file + 'corr_v1cb.toml'
 path_toml_file = directory_toml_file + 'corr_v1cbb.toml'
 path_toml_file = directory_toml_file + 'corr_v1cbb.toml'
 path_toml_file = directory_toml_file + 'corr_v1cbc.toml'
+path_toml_file = directory_toml_file + 'corr_v1cbcb.toml'
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
 
