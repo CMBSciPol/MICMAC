@@ -165,4 +165,4 @@ print('GMRES time :', t1_GMRES-t0_GMRES, flush=True)
 solution_lineax_CG = solution_CG.value.reshape((MICMAC_sampler_obj.nstokes,MICMAC_sampler_obj.npix))
 solution_lineax_GMRES = solution_GMRES.value.reshape((MICMAC_sampler_obj.nstokes,MICMAC_sampler_obj.npix))
 
-print("Difference -> max :", jnp.abs(solution_5_hp-solution_5b_hp).max(), "mean :", (solution_5_hp-solution_5b_hp).mean(), flush=True)
+print("Difference -> max :", jnp.abs(solution_lineax_CG-solution_lineax_GMRES).max(), "mean :", (solution_lineax_CG-solution_lineax_GMRES).mean(), flush=True)
