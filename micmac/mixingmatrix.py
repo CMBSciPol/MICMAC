@@ -164,32 +164,3 @@ class MixingMatrix():
             B_db.append(B_db_i)
         
         return B_db
-
-
-
-# # @partial(jax.jit, static_argnames=['number_components', 'number_frequencies'])
-# def create_mixing_matrix_jax(params_mixing_matrix, number_components, number_frequencies, pos_special_freqs=[0,-1]):
-#     # number_frequencies = params_mixing_matrix.shape[0] + 2
-#     # number_components = params_mixing_matrix.shape[1] + 1
-
-#     new_mixing_matrix = jnp.zeros((number_frequencies,number_components))
-#     new_mixing_matrix = new_mixing_matrix.at[:,0].set(1)
-#     # new_mixing_matrix[0,1] = 0
-#     # new_mixing_matrix[-1,-1] = 0
-#     # new_mixing_matrix[1:,1:-1] = jnp.array(params_mixing_matrix.reshape((param_dict['number_frequencies']-2,param_dict['number_components']-1)))
-    
-#     for c in range(1,number_components):
-#         # print("Test :", pos_special_freqs[c-1],c)
-#         new_mixing_matrix = new_mixing_matrix.at[pos_special_freqs[c-1],c].set(1)
-#     # new_mixing_matrix = new_mixing_matrix.at[0,1].set(0)
-#     # new_mixing_matrix = new_mixing_matrix.at[-1,-1].set(0)
-
-#     all_indexes_bool = jnp.ones(number_frequencies, dtype=bool)
-#     # all_indexes_bool[pos_special_freqs] = False
-
-#     all_indexes_bool = all_indexes_bool.at[jnp.array(pos_special_freqs)].set(False)
-    
-#     # TODO: put special frequencies not hardcoded
-#     new_mixing_matrix = new_mixing_matrix.at[1:-1,1:].set(jnp.array(params_mixing_matrix.reshape((number_frequencies-number_components+1,number_components-1),order='F')))
-#     # new_mixing_matrix = new_mixing_matrix.at[all_indexes_bool,1:].set(jnp.array(params_mixing_matrix.reshape((number_frequencies-2,number_components-1),order='F')))
-#     return new_mixing_matrix
