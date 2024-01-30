@@ -104,11 +104,11 @@ class Sampling_functions(MixingMatrix):
         """
         return int(jnp.ceil(self.nstokes**2/2) + jnp.floor(self.nstokes/2))
 
-    @property
-    def number_frequencies(self):
-        """ Return number of frequencies
-        """
-        return jnp.size(self.frequency_array)
+    # @property
+    # def number_frequencies(self):
+    #     """ Return number of frequencies
+    #     """
+    #     return jnp.size(self.frequency_array)
     
     @property
     def number_bins(self):
