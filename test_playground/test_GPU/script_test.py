@@ -26,7 +26,7 @@ repo_mask = "/gpfswork/rech/nih/commun/masks/"
 path_mask = repo_mask + "mask_SO_SAT_apodized.fits"
 
 # working_directory_path = os.path.abspath('') + '/'
-working_directory_path = current_path + '../validation_chain_v7_JZ/'
+working_directory_path = current_path + '/validation_chain_v7_JZ/'
 directory_toml_file = working_directory_path + 'toml_params/'
 
 path_toml_file = directory_toml_file + 'corr_v1cbcb.toml'
