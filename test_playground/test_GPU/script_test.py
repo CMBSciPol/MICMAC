@@ -14,7 +14,7 @@ import lineax as lx
 
 import micmac as micmac
 
-current_path = os.path.dirname(os.path.abspath(''))
+current_path = os.path.dirname(os.path.abspath('')) + '/'
 sys.path.append(current_path)
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath('')))+'/tutorials/')
 from func_tools_for_tests import *
