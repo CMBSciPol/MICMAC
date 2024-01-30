@@ -28,7 +28,7 @@ class MixingMatrix():
 
         ### checks on pos_special_freqs
         # check no duplicates
-        assert jnp.size(pos_special_freqs) == jnp.size(set(pos_special_freqs))
+        assert len(pos_special_freqs) == len(set(pos_special_freqs))
         # make pos_special_freqs only positive
         for i, val_i in enumerate(pos_special_freqs):
             if val_i < 0:
