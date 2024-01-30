@@ -15,13 +15,19 @@ from micmac import *
 from fgbuster.observation_helpers import *
 # from mcmc_tools import *
 
+from mpi4py import MPI
+
+
 from jax import config
 sys.path.append(os.path.dirname(os.path.abspath('')))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath('')))+'/tutorials/')
 
-
 config.update("jax_enable_x64", True)
-former_file_ver = 'corr_masked_full_v102_Gchain_SO_64_v1dcb'
+
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+
+former_file_ver = ''
 
 file_ver = 'corr_masked_full_v104_Gchain_SO_64_v1a' # -> corr inhom + start 10 sigma + seed 0 + r=0 + 7300 iterations + corr_v1ccd + w/o restrict_to_mask + mask ; C_approx only lensing
 # -> TODO !!!

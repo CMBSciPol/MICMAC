@@ -142,7 +142,7 @@ right_member_2 = maps_x_red_covariance_cell_JAX(right_member_2_part, red_cov_mat
 
 right_member_b = (right_member_1 + right_member_2)#.ravel()
 # options_dict = {'preconditoner':attempt_precond_lineax}
-right_member_b = MICMAC_sampler_obj.get_band_limited_maps(right_member)
+right_member_b = MICMAC_sampler_obj.get_band_limited_maps(right_member_b)
 
 
 GMRES_solver = lx.GMRES(rtol=MICMAC_sampler_obj.tolerance_CG, atol=MICMAC_sampler_obj.atol_CG, max_steps=MICMAC_sampler_obj.limit_iter_cg, norm=func_norm)
