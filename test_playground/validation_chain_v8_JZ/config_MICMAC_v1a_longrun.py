@@ -36,7 +36,9 @@ factor_Fisher = 1
 relative_treshold = 1e-1
 sigma_gap = 10
 fgs_model = 'd0s0'
-
+initial_guess_r=10**(-3)
+use_nhits = False
+name_mask = "mask_SO_SAT_apodized"
 
 
 current_repo = 'validation_chain_v8_JZ/'
@@ -50,7 +52,7 @@ path_home_test_playground = MICMAC_repo + '/test_playground/'
 current_path = path_home_test_playground + current_repo
 
 
-path_mask = repo_mask + "mask_SO_SAT_apodized.fits"
+path_mask = repo_mask + name_mask + ".fits"
 
 directory_save_file = perso_repo_path + 'save_directory/'
 
@@ -67,7 +69,7 @@ MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
 
 # General parameters
 # cmb_model = 'c1'
-fgs_model = fgs_model
+fgs_model_ = fgs_model
 # model = cmb_model+fgs_model
 noise = True
 # noise = False
@@ -79,7 +81,7 @@ instr_name = MICMAC_obj.instrument_name #'SO_SAT'
 # path_Fisher = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
 # path_Fisher = '../Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
 # path_Fisher = path_home_test_playground + 'Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
-path_Fisher = path_home_test_playground + f'Fisher_matrix_{MICMAC_obj.instrument_name}_EB_model_{fgs_model}_noise_True_seed_42_lmin2_lmax128.txt'
+path_Fisher = path_home_test_playground + f'Fisher_matrix_{MICMAC_obj.instrument_name}_EB_model_{fgs_model_}_noise_True_seed_42_lmin2_lmax128.txt'
 
 # get instrument from public database
 instrument = get_instrument(instr_name)
@@ -91,14 +93,20 @@ instrument['depth_p'] /= reduction_noise
 # Mask initialization
 apod_mask = hp.ud_grade(hp.read_map(path_mask),nside_out=MICMAC_obj.nside)
 
-nhits_mask = np.copy(apod_mask)
-nhits_mask[nhits_mask<relative_treshold] = 0
-inverse_nhits_mask = np.copy(nhits_mask)
-inverse_nhits_mask[nhits_mask>0] = 1/nhits_mask[nhits_mask>0]
+template_mask = np.copy(apod_mask)
+if use_nhits:
+    template_mask[template_mask<relative_treshold] = 0
+    inverse_nhits_mask = np.copy(template_mask)
+    inverse_nhits_mask[template_mask>0] = 1/template_mask[template_mask>0]
 
-mask = np.copy(nhits_mask)
-mask[nhits_mask>0] = 1
-mask[nhits_mask==0] = 0
+    mask = np.copy(template_mask)
+    mask[template_mask>0] = 1
+    mask[template_mask==0] = 0
+else:
+    mask = np.copy(apod_mask)
+    mask[apod_mask>0] = 1
+    mask[apod_mask==0] = 0
+    template_mask = mask
 
 # mask = np.ones_like(apod_mask)
 
@@ -109,40 +117,32 @@ MICMAC_obj.mask = mask
 # freq_maps = get_observation(instrument, model, nside=NSIDE, noise=noise)[:, 1:, :]   # keep only Q and U
 # freq_maps_fgs = get_observation(instrument, fgs_model, nside=MICMAC_obj.nside, noise=noise)[:, 1:, :]   # keep only Q and U
 np.random.seed(noise_seed)
-freq_maps_fgs_noised = get_observation(instrument, fgs_model, nside=MICMAC_obj.nside, noise=True)[:, 1:, :]   # keep only Q and U
+freq_maps_fgs_noised = get_observation(instrument, fgs_model_, nside=MICMAC_obj.nside, noise=True)[:, 1:, :]   # keep only Q and U
 np.random.seed(noise_seed)
-freq_maps_fgs_denoised = get_observation(instrument, fgs_model, nside=MICMAC_obj.nside, noise=False)[:, 1:, :]   # keep only Q and U
+freq_maps_fgs_denoised = get_observation(instrument, fgs_model_, nside=MICMAC_obj.nside, noise=False)[:, 1:, :]   # keep only Q and U
 
 noise_map = freq_maps_fgs_noised - freq_maps_fgs_denoised
-# reweighted_noise_map = noise_map / nhits_mask
-reweighted_noise_map = noise_map * jnp.sqrt(inverse_nhits_mask)
 
-freq_maps_fgs = freq_maps_fgs_denoised + reweighted_noise_map
+if use_nhits:
+    new_noise_map = noise_map * jnp.sqrt(inverse_nhits_mask)
+else:
+    new_noise_map = noise_map
+
+
+freq_maps_fgs = freq_maps_fgs_denoised + new_noise_map
 
 print("Shape for input frequency maps :", freq_maps_fgs.shape)
 
-# delta_ell = 10
-# nb_bin = (MICMAC_obj.lmax-MICMAC_obj.lmin+1)//delta_ell
 
-# MICMAC_obj.bin_ell_distribution = MICMAC_obj.lmin + jnp.arange(nb_bin+1)*delta_ell
-
-# MICMAC_obj.freq_inverse_noise = micmac.get_noise_covar(instrument['depth_p'], MICMAC_obj.nside)
 freq_inverse_noise = micmac.get_noise_covar(instrument['depth_p'], MICMAC_obj.nside) #MICMAC_obj.freq_inverse_noise
 
 freq_inverse_noise_masked = np.zeros((MICMAC_obj.number_frequencies,MICMAC_obj.number_frequencies,MICMAC_obj.npix))
 
-nb_pixels_mask = int(mask.sum())
-freq_inverse_noise_masked[:,:,mask!=0] = np.repeat(freq_inverse_noise.ravel(order='F'), nb_pixels_mask).reshape((MICMAC_obj.number_frequencies,MICMAC_obj.number_frequencies,nb_pixels_mask), order='C')
+nb_pixels_mask = int(template_mask.sum())
+freq_inverse_noise_masked[:,:,template_mask!=0] = np.repeat(freq_inverse_noise.ravel(order='F'), nb_pixels_mask).reshape((MICMAC_obj.number_frequencies,MICMAC_obj.number_frequencies,nb_pixels_mask), order='C')
 
-# MICMAC_obj.freq_inverse_noise = freq_inverse_noise_masked
-MICMAC_obj.freq_inverse_noise = freq_inverse_noise_masked*nhits_mask
-#### INHOMOGENEOUS NOISE !!!! ####
+MICMAC_obj.freq_inverse_noise = freq_inverse_noise_masked*template_mask
 
-initial_guess_r = MICMAC_obj.r_true
-initial_guess_r=10**(-2)
-initial_guess_r=10**(-3)
-# initial_guess_r=10**(-4)
-initial_guess_r=10**(-8)
 
 
 

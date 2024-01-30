@@ -33,7 +33,7 @@ module load python
 conda activate /gpfswork/rech/nih/commun/micmac_soft/micmac_env_gpu
 # source /linkhome/rech/genkqu01/ube74zo/MICMAC/.bash_profile
 
-# export PYSM_LOCAL_DATA=/gpfswork/rech/nih/commun/micmac_soft/pysm-data
+export PYSM_LOCAL_DATA=/gpfswork/rech/nih/commun/micmac_soft/pysm-data
 
 echo $PYSM_LOCAL_DATA
 
@@ -50,7 +50,6 @@ export OMP_PLACES=cores
 export VER=test
 
 export SRC_PATH=/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/test_GPU
-# srun python $SRC_PATH/very_cheap_corr_unmasked_fullchain_v101_Gibbs_withr_SO_64_v0a_longrun.py  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
 srun python $SRC_PATH/script_test.py  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
 
 
