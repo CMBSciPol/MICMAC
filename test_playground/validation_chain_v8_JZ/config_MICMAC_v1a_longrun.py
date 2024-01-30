@@ -24,12 +24,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath('')))+'/tutorial
 
 config.update("jax_enable_x64", True)
 
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
+MPI_comm = MPI.COMM_WORLD
+MPI_rank = comm.Get_rank()
+MPI_size = comm.Get_size()
 
 former_file_ver = ''
 
-file_ver = 'corr_masked_full_v104_Gchain_SO_64_v1a' # -> corr inhom + start 10 sigma + seed 0 + r=0 + 7300 iterations + corr_v1ccd + w/o restrict_to_mask + mask ; C_approx only lensing
+file_ver = f"corr_masked_v104_v1a_{MPI_rank}_{MPI_size}" # -> corr inhom + start 10 sigma + 2400 iterations + corr_v1ccd + mask ; C_approx only lensing
 # -> TODO !!!
 reduction_noise = 1
 factor_Fisher = 1
@@ -39,6 +40,7 @@ fgs_model = 'd0s0'
 initial_guess_r=10**(-3)
 use_nhits = False
 name_mask = "mask_SO_SAT_apodized"
+use_mask = True
 
 
 current_repo = 'validation_chain_v8_JZ/'
@@ -74,7 +76,7 @@ fgs_model_ = fgs_model
 noise = True
 # noise = False
 # noise_seed = 42
-noise_seed = MICMAC_obj.seed
+noise_seed = MICMAC_obj.seed + MPI_rank
 instr_name = MICMAC_obj.instrument_name #'SO_SAT'
 
 # path_home_test_playground = '/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/'
@@ -94,21 +96,22 @@ instrument['depth_p'] /= reduction_noise
 apod_mask = hp.ud_grade(hp.read_map(path_mask),nside_out=MICMAC_obj.nside)
 
 template_mask = np.copy(apod_mask)
-if use_nhits:
-    template_mask[template_mask<relative_treshold] = 0
-    inverse_nhits_mask = np.copy(template_mask)
-    inverse_nhits_mask[template_mask>0] = 1/template_mask[template_mask>0]
+if use_mask:
+    if use_nhits:
+        template_mask[template_mask<relative_treshold] = 0
+        inverse_nhits_mask = np.copy(template_mask)
+        inverse_nhits_mask[template_mask>0] = 1/template_mask[template_mask>0]
 
-    mask = np.copy(template_mask)
-    mask[template_mask>0] = 1
-    mask[template_mask==0] = 0
+        mask = np.copy(template_mask)
+        mask[template_mask>0] = 1
+        mask[template_mask==0] = 0
+    else:
+        mask = np.copy(apod_mask)
+        mask[apod_mask>0] = 1
+        mask[apod_mask==0] = 0
+        template_mask = mask
 else:
-    mask = np.copy(apod_mask)
-    mask[apod_mask>0] = 1
-    mask[apod_mask==0] = 0
-    template_mask = mask
-
-# mask = np.ones_like(apod_mask)
+    mask = np.ones_like(apod_mask)
 
 MICMAC_obj.mask = mask
 
