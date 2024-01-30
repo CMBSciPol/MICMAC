@@ -15,7 +15,7 @@ from .noisecovar import *
 from .mixingmatrix import *
 
 
-class Sampling_functions(object):
+class Sampling_functions(MixingMatrix):
     def __init__(self, nside, lmax, nstokes, 
                  frequency_array, freq_inverse_noise, pos_special_freqs=[0,-1],
                  mask=None,
@@ -44,12 +44,17 @@ class Sampling_functions(object):
             :param limit_iter_cg: maximum number of iterations for the CG (default 2000)
             :param tolerance_CG: CG tolerance (default 10**(-12))
         """
+
+        # Inheritance from MixingMatrix
+        super(MICMAC_Sampler,self).__init__(frequency_array=frequency_array, number_components=number_components, 
+                                                params=None, pos_special_freqs=pos_special_freqs)
+
         # Tests parameters
         self.restrict_to_mask = bool(restrict_to_mask)
 
         # Problem parameters
         self.freq_inverse_noise = freq_inverse_noise
-        self.frequency_array = frequency_array
+        # self.frequency_array = frequency_array
         chx.assert_scalar_in(nstokes, 1, 3)
         self.nstokes = int(nstokes)
         self.nside = int(nside)
@@ -62,8 +67,8 @@ class Sampling_functions(object):
         if lmax_r == -1:
             lmax_r = lmax
         self.lmax_r = int(lmax_r)
-        self.number_components = int(number_components)
-        self.pos_special_freqs = pos_special_freqs
+        # self.number_components = int(number_components)
+        # self.pos_special_freqs = pos_special_freqs
         if mask is None:
             self.mask = jnp.ones(12*self.nside**2)
         else:
@@ -83,8 +88,8 @@ class Sampling_functions(object):
         self.limit_iter_cg_eta = float(limit_iter_cg_eta) # Maximum number of iterations for the CG of eta
 
         # Tools
-        fake_params = jnp.zeros((self.number_frequencies-jnp.size(self.pos_special_freqs),self.number_correlations-1))
-        self._fake_mixing_matrix = MixingMatrix(self.frequency_array, self.number_components, fake_params, pos_special_freqs=self.pos_special_freqs)
+        # fake_params = jnp.zeros((self.number_frequencies-jnp.size(self.pos_special_freqs),self.number_correlations-1))
+        # self._fake_mixing_matrix = MixingMatrix(self.frequency_array, self.number_components, fake_params, pos_special_freqs=self.pos_special_freqs)
 
     @property
     def npix(self):
@@ -1098,11 +1103,17 @@ class Sampling_functions(object):
             :return: computation of correction term to the likelihood
         """
 
-        self._fake_mixing_matrix.update_params(old_params_mixing_matrix, jax_use=True)
-        old_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+        # self._fake_mixing_matrix.update_params(old_params_mixing_matrix, jax_use=True)
+        # old_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
 
-        self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape(old_params_mixing_matrix.shape,order='F'), jax_use=True)
-        new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+        # self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape(old_params_mixing_matrix.shape,order='F'), jax_use=True)
+        # new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+
+        self.update_params(old_params_mixing_matrix, jax_use=True)
+        old_mixing_matrix = self.get_B(jax_use=True)
+
+        self.update_params(new_params_mixing_matrix.reshape(old_params_mixing_matrix.shape,order='F'), jax_use=True)
+        new_mixing_matrix = self.get_B(jax_use=True)
 
 
         ## Preparing the mixing matrix and C_approx^{-1/2}
@@ -1160,12 +1171,17 @@ class Sampling_functions(object):
             :return: computation of correction term to the likelihood
         """
 
-        self._fake_mixing_matrix.update_params(old_params_mixing_matrix, jax_use=True)
-        old_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+        # self._fake_mixing_matrix.update_params(old_params_mixing_matrix, jax_use=True)
+        # old_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
 
-        self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape(old_params_mixing_matrix.shape,order='F'), jax_use=True)
-        new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+        # self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape(old_params_mixing_matrix.shape,order='F'), jax_use=True)
+        # new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
 
+        self.update_params(old_params_mixing_matrix, jax_use=True)
+        old_mixing_matrix = self.get_B(jax_use=True)
+
+        self.update_params(new_params_mixing_matrix.reshape(old_params_mixing_matrix.shape,order='F'), jax_use=True)
+        new_mixing_matrix = self.get_B(jax_use=True)
 
         ## Preparing the mixing matrix and C_approx^{-1/2}
         old_invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, old_mixing_matrix, jax_use=True)*jhp.nside2resol(self.nside)**2
@@ -1234,8 +1250,11 @@ class Sampling_functions(object):
             :return: computation of the conditional probability of the mixing matrix
         """
 
-        self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
-        new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+        # self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+        # new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+
+        self.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+        new_mixing_matrix = self.get_B(jax_use=True)
         
         # Compute spectral likelihood : (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
         log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(new_mixing_matrix, jnp.array(full_data_without_CMB))
@@ -1263,8 +1282,11 @@ class Sampling_functions(object):
             :return: computation of the conditional probability of the mixing matrix
         """
 
-        self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
-        new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+        # self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+        # new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+
+        self.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+        new_mixing_matrix = self.get_B(jax_use=True)
         
         # Compute spectral likelihood : (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
         log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(new_mixing_matrix, jnp.array(full_data_without_CMB))
@@ -1293,8 +1315,11 @@ class Sampling_functions(object):
             :return: computation of the conditional probability of the mixing matrix
         """
 
-        self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
-        new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+        # self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+        # new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+
+        self.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+        new_mixing_matrix = self.get_B(jax_use=True)
         
         # Compute spectral likelihood : (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
         log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(new_mixing_matrix, jnp.array(full_data_without_CMB))
@@ -1324,8 +1349,11 @@ class Sampling_functions(object):
             -------
             :return: computation of the conditional probability of the mixing matrix
         """
-        self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
-        new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+        # self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+        # new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+
+        self.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+        new_mixing_matrix = self.get_B(jax_use=True)
         
         # Compute spectral likelihood : (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
         log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))

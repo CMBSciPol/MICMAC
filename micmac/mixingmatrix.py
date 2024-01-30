@@ -8,28 +8,31 @@ from functools import partial
 # Note: the mixing matrix is supposed to be the same 
 # for Q and U Stokes params and all pixels.
 # (also we supposed that I is never used)
-# Thus it has dimensions (nfreq*ncomp).
+# Thus it has dimensions (number_frequencies*number_components).
 
 
 
 class MixingMatrix():
-    def __init__(self, freqs, ncomp, params, pos_special_freqs):
+    def __init__(self, frequency_array, number_components, params=None, pos_special_freqs=[0,-1]):
         """
         Note: units are K_CMB.
         """
-        self.freqs = freqs
-        self.nfreq = len(freqs)    # all input freq bands
-        self.ncomp = ncomp         # all comps (also cmb)
-        assert np.shape(params) == (self.nfreq-self.ncomp+1, self.ncomp-1)
-        self.params = params
+        self.frequency_array = frequency_array
+        self.number_frequencies = jnp.size(frequency_array)    # all input freq bands
+        self.number_components = number_components         # all comps (also cmb)
+        if params is None:
+            params = np.zeros((self.number_frequencies-self.number_components+1, self.number_components-1))
+        else:
+            assert np.shape(params) == (self.number_frequencies-self.number_components+1, self.number_components-1)
+            self.params = params
 
         ### checks on pos_special_freqs
         # check no duplicates
-        assert len(pos_special_freqs) == len(set(pos_special_freqs))
+        assert jnp.size(pos_special_freqs) == jnp.size(set(pos_special_freqs))
         # make pos_special_freqs only positive
         for i, val_i in enumerate(pos_special_freqs):
             if val_i < 0:
-                pos_special_freqs[i] = self.nfreq + pos_special_freqs[i]
+                pos_special_freqs[i] = self.number_frequencies + pos_special_freqs[i]
         self.pos_special_freqs = pos_special_freqs
 
 
@@ -38,10 +41,10 @@ class MixingMatrix():
         Update values of the params in the mixing matrix.
         """
         if jax_use:
-            chx.assert_shape(new_params,(self.nfreq-self.ncomp+1, self.ncomp-1))
+            chx.assert_shape(new_params,(self.number_frequencies-self.number_components+1, self.number_components-1))
             self.params = new_params
             return
-        assert np.shape(new_params) == (self.nfreq-self.ncomp+1, self.ncomp-1)
+        assert np.shape(new_params) == (self.number_frequencies-self.number_components+1, self.number_components-1)
         self.params = new_params
 
         return
@@ -51,16 +54,16 @@ class MixingMatrix():
         """
         fgs part of the mixing matrix.
         """
-        ncomp_fgs = self.ncomp - 1
+        ncomp_fgs = self.number_components - 1
         if jax_use:
-            B_fgs = jnp.zeros((self.nfreq, ncomp_fgs))
+            B_fgs = jnp.zeros((self.number_frequencies, ncomp_fgs))
             # insert all the ones given by the pos_special_freqs
             for c in range(ncomp_fgs):
                 # B_fgs[self.pos_special_freqs[c]][c] = 1
                 B_fgs = B_fgs.at[self.pos_special_freqs[c],c].set(1)
             # insert all the parameters values
             f = 0 
-            for i in range(self.nfreq):
+            for i in range(self.number_frequencies):
                 if i not in self.pos_special_freqs:
                     # B_fgs[i, :] = self.params[f, :]
                     B_fgs = B_fgs.at[i, :].set(self.params[f, :])
@@ -68,16 +71,16 @@ class MixingMatrix():
             return B_fgs
 
         if ncomp_fgs != 0:
-            assert self.params.shape == ((self.nfreq - ncomp_fgs),ncomp_fgs)
+            assert self.params.shape == ((self.number_frequencies - ncomp_fgs),ncomp_fgs)
             assert len(self.pos_special_freqs) == ncomp_fgs
         
-        B_fgs = np.zeros((self.nfreq, ncomp_fgs))
+        B_fgs = np.zeros((self.number_frequencies, ncomp_fgs))
         # insert all the ones given by the pos_special_freqs
         for c in range(ncomp_fgs):
             B_fgs[self.pos_special_freqs[c]][c] = 1
         # insert all the parameters values
         f = 0 
-        for i in range(self.nfreq):
+        for i in range(self.number_frequencies):
             if i not in self.pos_special_freqs:
                 B_fgs[i, :] = self.params[f, :]
                 f += 1
@@ -90,10 +93,10 @@ class MixingMatrix():
         CMB column of the mixing matrix.
         """
         if jax_use:
-            B_cmb = jnp.ones((self.nfreq))
+            B_cmb = jnp.ones((self.number_frequencies))
             return B_cmb[:, np.newaxis]
 
-        B_cmb = np.ones((self.nfreq))
+        B_cmb = np.ones((self.number_frequencies))
         B_cmb = B_cmb[:, np.newaxis]
         
         return B_cmb
@@ -101,7 +104,7 @@ class MixingMatrix():
 
     def get_B(self, jax_use=False):
         """
-        Full mixing matrix, (nfreq*ncomp).
+        Full mixing matrix, (number_frequencies*number_components).
         cmb is given as the first component.
         """
         if jax_use:
@@ -117,8 +120,8 @@ class MixingMatrix():
         (wrt to each entry of first comp and then each entry of second comp)
         Note: w/o pixel dimension
         """
-        nrows = self.nfreq-self.ncomp+1
-        ncols = self.ncomp-1
+        nrows = self.number_frequencies-self.number_components+1
+        ncols = self.number_components-1
         if jax_use:
             def set_1(i):
                 params_dBi = jnp.zeros((nrows,ncols))
@@ -146,7 +149,7 @@ class MixingMatrix():
         """
         params_db = self.get_params_db(jax_use=jax_use)
         if jax_use:
-            B_db = jnp.zeros((params_db.shape[0],self.nfreq,self.ncomp))
+            B_db = jnp.zeros((params_db.shape[0],self.number_frequencies,self.number_components))
             relevant_indexes = jnp.arange(self.pos_special_freqs[0]+1,self.pos_special_freqs[-1])
             B_db = B_db.at[:,relevant_indexes,1:].set(params_db)
             return B_db
@@ -155,9 +158,9 @@ class MixingMatrix():
         for B_db_i in params_db:
             # add the zeros of special positions
             for i in self.pos_special_freqs:
-                B_db_i = np.insert(B_db_i, i, np.zeros(self.ncomp-1), axis=0)
+                B_db_i = np.insert(B_db_i, i, np.zeros(self.number_components-1), axis=0)
             # add the zeros of CMB
-            B_db_i = np.column_stack((np.zeros(self.nfreq), B_db_i))
+            B_db_i = np.column_stack((np.zeros(self.number_frequencies), B_db_i))
             B_db.append(B_db_i)
         
         return B_db

@@ -293,10 +293,13 @@ class MICMAC_Sampler(Sampling_functions):
         per each spectral parameter
         """
 
-        self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+        # self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+        self.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
 
-        new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
-        new_mixing_matrix_dB = self._fake_mixing_matrix.get_B_db(jax_use=True)
+        # new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+        # new_mixing_matrix_dB = self._fake_mixing_matrix.get_B_db(jax_use=True)
+        new_mixing_matrix = self.get_B(jax_use=True)
+        new_mixing_matrix_dB = self.get_B_db(jax_use=True)
 
         invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, new_mixing_matrix, jax_use=True)
         BtinvN = get_BtinvN(self.freq_inverse_noise, new_mixing_matrix, jax_use=True)
@@ -315,10 +318,13 @@ class MICMAC_Sampler(Sampling_functions):
         per each spectral parameter
         """
 
-        self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+        # self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+        self.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
 
-        new_mixing_matrix_fg = self._fake_mixing_matrix.get_B(jax_use=True)[:,1:]
-        new_mixing_matrix_dB_fg = self._fake_mixing_matrix.get_B_db(jax_use=True)[:,:,1:]
+        # new_mixing_matrix_fg = self._fake_mixing_matrix.get_B(jax_use=True)[:,1:]
+        # new_mixing_matrix_dB_fg = self._fake_mixing_matrix.get_B_db(jax_use=True)[:,:,1:]
+        new_mixing_matrix_fg = self.get_B(jax_use=True)[:,1:]
+        new_mixing_matrix_dB_fg = self.get_B_db(jax_use=True)[:,:,1:]
 
         invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, new_mixing_matrix_fg, jax_use=True)
         BtinvN = get_BtinvN(self.freq_inverse_noise, new_mixing_matrix_fg, jax_use=True)
