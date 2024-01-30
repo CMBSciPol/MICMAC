@@ -34,7 +34,7 @@ class MICMAC_Sampler(Sampling_functions):
                  n_iter=8, limit_iter_cg=2000, tolerance_CG=1e-10, atol_CG=1e-8,
                  limit_iter_cg_eta=200,
                  mask=None,
-                 use_automatic_step_size=False, num_sample_AM = 1000, 
+                 use_automatic_step_size=False, num_sample_AM = 100000000, 
                  epsilon_cov = 1e-20, scale_param = 2.38**2,
 
                  restrict_to_mask=False,

@@ -56,10 +56,7 @@ current_path = path_home_test_playground + current_repo
 
 path_mask = repo_mask + name_mask + ".fits"
 
-directory_save_file = perso_repo_path + 'save_directory/'
-
-# working_directory_path = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/validation_chain_v5/'
-working_directory_path = current_path + '/'#'/validation_chain_v6_JZ/'
+working_directory_path = current_path + '/'
 directory_toml_file = working_directory_path + 'toml_params/'
 
 
@@ -68,6 +65,7 @@ path_toml_file = directory_toml_file + 'corr_v1a.toml'
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
 
+MICMAC_obj.seed = MICMAC_obj.seed + MPI_rank
 
 # General parameters
 # cmb_model = 'c1'
@@ -119,9 +117,9 @@ MICMAC_obj.mask = mask
 # np.random.seed(noise_seed)
 # freq_maps = get_observation(instrument, model, nside=NSIDE, noise=noise)[:, 1:, :]   # keep only Q and U
 # freq_maps_fgs = get_observation(instrument, fgs_model, nside=MICMAC_obj.nside, noise=noise)[:, 1:, :]   # keep only Q and U
-np.random.seed(noise_seed)
+np.random.seed(noise_seed + MPI_rank)
 freq_maps_fgs_noised = get_observation(instrument, fgs_model_, nside=MICMAC_obj.nside, noise=True)[:, 1:, :]   # keep only Q and U
-np.random.seed(noise_seed)
+np.random.seed(noise_seed + MPI_rank)
 freq_maps_fgs_denoised = get_observation(instrument, fgs_model_, nside=MICMAC_obj.nside, noise=False)[:, 1:, :]   # keep only Q and U
 
 noise_map = freq_maps_fgs_noised - freq_maps_fgs_denoised
@@ -204,7 +202,7 @@ first_guess = jnp.copy(jnp.ravel(exact_params_mixing_matrix,order='F'))
 # first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
 #     first_guess[MICMAC_obj.indexes_free_Bf]*np.random.uniform(low=.99,high=1.01, size=(dimension_free_param_B_f)))
 # init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
-print(f"First guess from {sigma_gap} $\sigma$ Fisher !", flush=True)
+print(f"First guess from {sigma_gap} $\sigma$ Fisher !", f"rank {MPI_rank} over {MPI_size}", flush=True)
 first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
     first_guess[MICMAC_obj.indexes_free_Bf] + minimum_std_Fisher_diag[:-1]*np.random.uniform(low=-sigma_gap,high=sigma_gap, size=(dimension_free_param_B_f)))
 init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
@@ -214,7 +212,7 @@ CMB_c_ell = np.zeros_like(c_ell_approx)
 CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + initial_guess_r*theoretical_r1_tensor)
 
 if former_file_ver != '':
-    print("### Continuing from previous run !", former_file_ver, flush=True)
+    print("### Continuing from previous run !", former_file_ver, f"rank {MPI_rank} over {MPI_size}", flush=True)
     dict_all_params = loading_params(directory_save_file, former_file_ver, MICMAC_obj)
 
     init_params_mixing_matrix = dict_all_params['all_params_mixing_matrix_samples'][-1,:,:]
@@ -248,7 +246,7 @@ MICMAC_obj.perform_sampling(input_freq_maps_masked, c_ell_approx, CMB_c_ell, ini
                          theoretical_r0_total=theoretical_r0_total, theoretical_r1_tensor=theoretical_r1_tensor)
 
 time_full_chain = (time.time()-time_start_sampling)/60
-print("End of iterations in {} minutes, saving all files !".format(time_full_chain), flush=True)
+print("End of iterations in {} minutes, saving all files !".format(time_full_chain), f"rank {MPI_rank} over {MPI_size}", flush=True)
 
 if not(MICMAC_obj.cheap_save):
     all_eta  = MICMAC_obj.all_samples_eta
@@ -289,40 +287,40 @@ if former_file_ver != '':
 
 # Saving all files
 initial_freq_maps_path = directory_save_file+file_ver+'_initial_data.npy'
-print("FINAL SAVE - #### params_mixing_matrix :", initial_freq_maps_path, flush=True)
+print("FINAL SAVE - #### params_mixing_matrix :", initial_freq_maps_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
 np.save(initial_freq_maps_path, input_freq_maps)
 
 initial_cmb_maps_path = directory_save_file+file_ver+'_initial_cmb_data.npy'
-print("FINAL SAVE - #### params_mixing_matrix :", initial_cmb_maps_path, flush=True)
+print("FINAL SAVE - #### params_mixing_matrix :", initial_cmb_maps_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
 np.save(initial_cmb_maps_path, input_cmb_maps)
 
 if not(MICMAC_obj.cheap_save):
     all_eta_maps_path = directory_save_file+file_ver+'_all_eta_maps.npy'
-    print("FINAL SAVE - #### params_mixing_matrix :", all_eta_maps_path, flush=True)
+    print("FINAL SAVE - #### params_mixing_matrix :", all_eta_maps_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
     np.save(all_eta_maps_path, all_eta)
 
     all_s_c_WF_maps_path = directory_save_file+file_ver+'_all_s_c_WF_maps.npy'
-    print("FINAL SAVE - #### params_mixing_matrix :", all_s_c_WF_maps_path, flush=True)
+    print("FINAL SAVE - #### params_mixing_matrix :", all_s_c_WF_maps_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
     np.save(all_s_c_WF_maps_path, all_s_c_WF_maps)
 
     all_s_c_fluct_maps_path = directory_save_file+file_ver+'_all_s_c_fluct_maps.npy'
-    print("FINAL SAVE - #### params_mixing_matrix :", all_s_c_fluct_maps_path, flush=True)
+    print("FINAL SAVE - #### params_mixing_matrix :", all_s_c_fluct_maps_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
     np.save(all_s_c_fluct_maps_path, all_s_c_fluct_maps)
 
 elif not(MICMAC_obj.very_cheap_save):
     all_s_c_path = directory_save_file+file_ver+'_all_s_c.npy'
-    print("FINAL SAVE - #### params_mixing_matrix :", all_s_c_path, flush=True)
+    print("FINAL SAVE - #### params_mixing_matrix :", all_s_c_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
     np.save(all_s_c_path, all_s_c)
 
 if MICMAC_obj.sample_C_inv_Wishart:
     all_cell_samples_path = directory_save_file+file_ver+'_all_cell_samples.npy'
-    print("FINAL SAVE - #### params_mixing_matrix :", all_cell_samples_path, flush=True)
+    print("FINAL SAVE - #### params_mixing_matrix :", all_cell_samples_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
     np.save(all_cell_samples_path, all_cell_samples)
 if MICMAC_obj.sample_r_Metropolis:
     all_r_samples_path = directory_save_file+file_ver+'_all_r_samples.npy'
-    print("FINAL SAVE - #### params_mixing_matrix :", all_r_samples_path, flush=True)
+    print("FINAL SAVE - #### params_mixing_matrix :", all_r_samples_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
     np.save(all_r_samples_path, all_r_samples)
 
 all_params_mixing_matrix_samples_path = directory_save_file+file_ver+'_all_params_mixing_matrix_samples.npy'
-print("FINAL SAVE - #### params_mixing_matrix :", all_params_mixing_matrix_samples_path, flush=True)
+print("FINAL SAVE - #### params_mixing_matrix :", all_params_mixing_matrix_samples_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
 np.save(all_params_mixing_matrix_samples_path, all_params_mixing_matrix_samples)
