@@ -26,8 +26,8 @@ config.update("jax_enable_x64", True)
 
 print("Starting MPI !!!", flush=True)
 MPI_comm = MPI.COMM_WORLD
-MPI_rank = comm.Get_rank()
-MPI_size = comm.Get_size()
+MPI_rank = MPI_comm.Get_rank()
+MPI_size = MPI_comm.Get_size()
 
 print("r{} of {} -- Launch".format(MPI_rank, MPI_size), flush=True)
 
