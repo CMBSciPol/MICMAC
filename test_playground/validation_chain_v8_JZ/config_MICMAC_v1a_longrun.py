@@ -28,6 +28,8 @@ MPI_comm = MPI.COMM_WORLD
 MPI_rank = comm.Get_rank()
 MPI_size = comm.Get_size()
 
+print("r{} of {} -- Launch".format(MPI_rank, MPI_size), flush=True)
+
 former_file_ver = ''
 
 file_ver = f"corr_masked_v104_v1a_{MPI_rank}_{MPI_size}" # -> corr inhom + start 10 sigma + 2400 iterations + corr_v1ccd + mask ; C_approx only lensing
