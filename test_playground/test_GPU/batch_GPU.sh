@@ -31,7 +31,7 @@ module purge
 # load python modules
 module load python
 conda activate /gpfswork/rech/nih/commun/micmac_soft/micmac_env_gpu
-# source /linkhome/rech/genkqu01/ube74zo/MICMAC/.bash_profile
+# source /linkhome/rech/genkqu01/ube74zo/MICMAC/.bash_env
 
 export PYSM_LOCAL_DATA=/gpfswork/rech/nih/commun/micmac_soft/pysm-data
 
