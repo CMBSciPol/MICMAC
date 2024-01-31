@@ -71,13 +71,14 @@ class MixingMatrix():
             return B_fgs
 
         if ncomp_fgs != 0:
-            assert self.params.shape == ((self.number_frequencies - ncomp_fgs),ncomp_fgs)
-            assert len(self.pos_special_freqs) == ncomp_fgs
-        
+            assert self.params.shape == ((self.number_frequencies - len(self.pos_special_freqs)),ncomp_fgs)
+            assert len(self.pos_special_freqs) <= ncomp_fgs
+
         B_fgs = np.zeros((self.number_frequencies, ncomp_fgs))
-        # insert all the ones given by the pos_special_freqs
-        for c in range(ncomp_fgs):
-            B_fgs[self.pos_special_freqs[c]][c] = 1
+        if len(self.pos_special_freqs) != 0:
+            # insert all the ones given by the pos_special_freqs
+            for c in range(len(self.pos_special_freqs)):
+                B_fgs[self.pos_special_freqs[c]][c] = 1
         # insert all the parameters values
         f = 0 
         for i in range(self.number_frequencies):

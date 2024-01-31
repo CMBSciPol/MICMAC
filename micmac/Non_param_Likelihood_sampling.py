@@ -476,18 +476,15 @@ class MICMAC_Sampler(Sampling_functions):
         
         jitted_single_Metropolis_Hasting_step_r = jax.jit(single_Metropolis_Hasting_step, static_argnames=['log_proba'])
 
-        # jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v2_JAX)
         jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v2b_JAX)
         sampling_func = separate_single_MH_step_index_accelerated
 
-        if self.biased_version:
-            print("Using biased version of mixing matrix sampling !!!", flush=True)
-            jitted_Bf_func_sampling = jax.jit(self.get_biased_conditional_proba_mixing_matrix_v2_JAX)
-            sampling_func = separate_single_MH_step_index
-        elif self.perturbation_eta_covariance:
-            print("Using perturbation of eta covariance !!!", flush=True)
+        if self.biased_version or self.perturbation_eta_covariance:
+            print("Using biased version or perturbation version of mixing matrix sampling !!!", flush=True)
+            # jitted_Bf_func_sampling = jax.jit(self.get_biased_conditional_proba_mixing_matrix_v2_JAX)
             jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_JAX)
             sampling_func = separate_single_MH_step_index
+
 
         ## Preparing the scalar quantities
         PRNGKey = random.PRNGKey(self.seed)
@@ -699,13 +696,8 @@ class MICMAC_Sampler(Sampling_functions):
                 #     step_size_Bf = jnp.array(jnp.diag(jsp.linalg.sqrtm(covariance_matrix_B_f)), dtype=jnp.float64)
 
                 # Sampling B_f
-                if self.biased_version:
-                    new_subPRNGKey_3, params_mixing_matrix_sample = sampling_func(random_PRNGKey=new_subPRNGKey_3, old_sample=params_mixing_matrix_sample, 
-                                                            step_size=step_size_Bf, indexes_Bf=self.indexes_free_Bf,
-                                                            log_proba=jitted_Bf_func_sampling,
-                                                            full_data_without_CMB=full_data_without_CMB, component_eta_maps=eta_maps_sample, 
-                                                            red_cov_approx_matrix=red_cov_approx_matrix)
-                elif self.perturbation_eta_covariance:
+
+                if self.perturbation_eta_covariance or self.biased_version:
                     inverse_term_x_Capprox_root = maps_x_red_covariance_cell_JAX(inverse_term.reshape(self.nstokes,self.npix), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
                     new_subPRNGKey_3, params_mixing_matrix_sample = sampling_func(random_PRNGKey=new_subPRNGKey_3, old_sample=params_mixing_matrix_sample, 
                                                             step_size=step_size_Bf, indexes_Bf=self.indexes_free_Bf,
@@ -713,14 +705,16 @@ class MICMAC_Sampler(Sampling_functions):
                                                             full_data_without_CMB=full_data_without_CMB, component_eta_maps=eta_maps_sample, 
                                                             red_cov_approx_matrix=red_cov_approx_matrix, previous_inverse=inverse_term,
                                                             previous_inverse_x_Capprox_root=inverse_term_x_Capprox_root,
-                                                            old_params_mixing_matrix=params_mixing_matrix_sample)
+                                                            old_params_mixing_matrix=params_mixing_matrix_sample,
+                                                            biased_bool=self.biased_version)
                 else:
                     new_subPRNGKey_3, params_mixing_matrix_sample, inverse_term = sampling_func(random_PRNGKey=new_subPRNGKey_3, old_sample=params_mixing_matrix_sample, 
                                                             step_size=step_size_Bf, indexes_Bf=self.indexes_free_Bf,
                                                             log_proba=jitted_Bf_func_sampling,
                                                             full_data_without_CMB=full_data_without_CMB, component_eta_maps=eta_maps_sample, 
                                                             red_cov_approx_matrix=red_cov_approx_matrix,
-                                                            previous_inverse=inverse_term)
+                                                            previous_inverse=inverse_term,
+                                                            biased_bool=self.biased_version)
 
                 # Checking the shape of the resulting mixing matrix
                 chx.assert_axis_dimension(params_mixing_matrix_sample, 0, self.number_frequencies-len_pos_special_freqs)

@@ -899,113 +899,6 @@ class Sampling_functions(MixingMatrix):
         return -(-first_term_complete + 0)/2.
 
 
-    def get_conditional_proba_correction_likelihood_JAX_v2(self, complete_mixing_matrix, component_eta_maps, red_cov_approx_matrix):
-        """ Get conditional probability of correction term in the likelihood from the full mixing matrix
-
-            The associated conditional probability is given by : - (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta
-            Or :
-            - (eta^t C_approx^{-1/2} ( C_approx^{-1} + (E^t (B^t N^{-1} B)^{-1} E) ^{-1}) C_approx^{-1/2} \eta
-
-            Parameters
-            ----------
-            :param complete_mixing_matrix: full mixing matrix of dimension [component, frequencies]
-            :param component_eta_maps: set of eta maps of dimension [component, npix]
-            :param red_cov_approx_matrix: covariance matrice approx (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-
-            Returns
-            -------
-            :return: computation of correction term to the likelihood
-        """
-
-        # Building the correction term to the likelihood : - (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} \eta
-
-        ## Preparing the mixing matrix and C_approx^{-1/2}
-        invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, complete_mixing_matrix, jax_use=True)*jhp.nside2resol(self.nside)**2
-        red_cov_approx_matrix_msqrt = jnp.linalg.pinv(get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix))
-
-        ## Computation of C_approx^{-1/2} eta
-        component_eta_maps_2 = maps_x_red_covariance_cell_JAX(component_eta_maps, red_cov_approx_matrix_msqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
-
-        ## Preparing the operator ( C_approx^{-1} + N_c^{-1} )^{-1}
-        N_c_inv = jnp.copy(invBtinvNB[0,0])
-        # N_c_inv = N_c_inv.at[...,self.mask!=0].set(1/invBtinvNB[0,0,self.mask!=0]/jhp.nside2resol(self.nside)**2)
-        N_c_inv = N_c_inv.at[...,self.mask!=0].set(1/invBtinvNB[0,0,self.mask!=0])
-
-        operator_harmonic = jnp.linalg.pinv(red_cov_approx_matrix)
-        operator_pixel = N_c_inv
-        
-        first_term_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), operator_harmonic, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
-        def second_term_left(x):
-            return x.reshape((self.nstokes,self.npix))*operator_pixel
-
-        func_left_term = lambda x : (first_term_left(x) + second_term_left(x)).ravel()
-
-        ## Computation of ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta
-        initial_guess = jnp.zeros((self.nstokes,self.npix))
-        right_member = jnp.copy(component_eta_maps_2)
-        inverse_term, number_iterations = jsp.sparse.linalg.cg(func_left_term, right_member.ravel(), x0=initial_guess.ravel(), tol=self.tolerance_CG, atol=self.atol_CG, maxiter=self.limit_iter_cg)
-
-        ## Computation of C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta
-        component_eta_maps_3 = maps_x_red_covariance_cell_JAX(inverse_term.reshape(self.nstokes,self.npix), red_cov_approx_matrix_msqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
-
-        # And finally eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta
-        second_term_complete = jnp.einsum('sk,sk', component_eta_maps, component_eta_maps_3)
-        return -(-0 + second_term_complete)/2.*jhp.nside2resol(self.nside)**2
-
-    def get_conditional_proba_correction_likelihood_JAX_v2b(self, complete_mixing_matrix, component_eta_maps, red_cov_approx_matrix, previous_inverse=jnp.empty(0), return_inverse=False):
-        """ Get conditional probability of correction term in the likelihood from the full mixing matrix
-
-            The associated conditional probability is given by : - (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta
-            Or :
-            - (eta^t C_approx^{-1/2} ( C_approx^{-1} + (E^t (B^t N^{-1} B)^{-1} E) ^{-1}) C_approx^{-1/2} \eta
-
-            Parameters
-            ----------
-            :param complete_mixing_matrix: full mixing matrix of dimension [component, frequencies]
-            :param component_eta_maps: set of eta maps of dimension [component, npix]
-            :param red_cov_approx_matrix: covariance matrice approx (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-
-            Returns
-            -------
-            :return: computation of correction term to the likelihood
-        """
-
-        # Building the correction term to the likelihood : - (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} \eta
-
-        ## Preparing the mixing matrix and C_approx^{-1/2}
-        invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, complete_mixing_matrix, jax_use=True)*jhp.nside2resol(self.nside)**2        
-        red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix)
-
-        ## Preparing the operator ( C_approx^{-1} + N_c^{-1} )^{-1}
-        N_c_inv = jnp.zeros_like(invBtinvNB[0,0])
-        N_c_inv = N_c_inv.at[...,self.mask!=0].set(1/invBtinvNB[0,0,self.mask!=0])
-        
-        first_part_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
-        
-        def second_part_left(x):
-            return x.reshape((self.nstokes,self.npix))*N_c_inv
-
-        third_part_term_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
-
-        func_left_term = lambda x : x.ravel() + third_part_term_left(second_part_left(first_part_left(x))).ravel()
-
-        ## Computation of ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta
-        initial_guess = jnp.copy(component_eta_maps)
-
-        if previous_inverse.size != 0:
-            initial_guess = jnp.copy(previous_inverse)
-
-        right_member = jnp.copy(component_eta_maps)
-        inverse_term, number_iterations = jsp.sparse.linalg.cg(func_left_term, right_member.ravel(), x0=initial_guess.ravel(), tol=self.tolerance_CG, atol=self.atol_CG, maxiter=self.limit_iter_cg_eta)
-
-        if self.restrict_to_mask:
-            central_term = self.mask
-        else:
-            central_term = jnp.ones_like(self.mask)
-        second_term_complete = jnp.einsum('sp,p,sp', component_eta_maps, central_term, inverse_term.reshape(self.nstokes,self.npix))
-        if return_inverse:
-            return -(-0 + second_term_complete)/2.*jhp.nside2resol(self.nside)**2, inverse_term.reshape(self.nstokes,self.npix)
-        return -(-0 + second_term_complete)/2.*jhp.nside2resol(self.nside)**2
 
     def get_conditional_proba_correction_likelihood_JAX_v2c(self, complete_mixing_matrix, component_eta_maps, red_cov_approx_matrix, previous_inverse=jnp.empty(0), return_inverse=False):
         """ Get conditional probability of correction term in the likelihood from the full mixing matrix
@@ -1084,74 +977,6 @@ class Sampling_functions(MixingMatrix):
             return -(-0 + second_term_complete)/2.*jhp.nside2resol(self.nside)**2, inverse_term.reshape(self.nstokes,self.npix)
         return -(-0 + second_term_complete)/2.*jhp.nside2resol(self.nside)**2
 
-
-    def get_conditional_proba_correction_likelihood_JAX_v2d(self, old_params_mixing_matrix, new_params_mixing_matrix, inverse_term, component_eta_maps, red_cov_approx_matrix):
-        """ Get conditional probability of correction term in the likelihood from the full mixing matrix
-
-            The associated conditional probability is given by : - (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta
-            Or :
-            - (eta^t C_approx^{-1/2} ( C_approx^{-1} + (E^t (B^t N^{-1} B)^{-1} E) ^{-1}) C_approx^{-1/2} \eta
-
-            Parameters
-            ----------
-            :param complete_mixing_matrix: full mixing matrix of dimension [component, frequencies]
-            :param component_eta_maps: set of eta maps of dimension [component, npix]
-            :param red_cov_approx_matrix: covariance matrice approx (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-
-            Returns
-            -------
-            :return: computation of correction term to the likelihood
-        """
-
-        # self._fake_mixing_matrix.update_params(old_params_mixing_matrix, jax_use=True)
-        # old_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
-
-        # self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape(old_params_mixing_matrix.shape,order='F'), jax_use=True)
-        # new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
-
-        self.update_params(old_params_mixing_matrix, jax_use=True)
-        old_mixing_matrix = self.get_B(jax_use=True)
-
-        self.update_params(new_params_mixing_matrix.reshape(old_params_mixing_matrix.shape,order='F'), jax_use=True)
-        new_mixing_matrix = self.get_B(jax_use=True)
-
-
-        ## Preparing the mixing matrix and C_approx^{-1/2}
-        old_invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, old_mixing_matrix, jax_use=True)*jhp.nside2resol(self.nside)**2
-        new_invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, new_mixing_matrix, jax_use=True)*jhp.nside2resol(self.nside)**2
-
-        red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix)
-
-        old_N_c_inv = jnp.zeros_like(old_invBtinvNB[0,0])
-        old_N_c_inv = old_N_c_inv.at[...,self.mask!=0].set(1/old_invBtinvNB[0,0,self.mask!=0])
-        old_N_c_inv_repeat = jnp.repeat(old_N_c_inv.ravel(order='C'), self.nstokes).reshape((self.nstokes,self.npix), order='F').ravel()
-
-        new_N_c_inv = jnp.zeros_like(new_invBtinvNB[0,0])
-        new_N_c_inv = new_N_c_inv.at[...,self.mask!=0].set(1/new_invBtinvNB[0,0,self.mask!=0])
-        new_N_c_inv_repeat = jnp.repeat(new_N_c_inv.ravel(order='C'), self.nstokes).reshape((self.nstokes,self.npix), order='F').ravel()
-
-        first_part_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
-
-        def second_part_left(x):
-            return x*(new_N_c_inv_repeat-old_N_c_inv_repeat)
-
-        func_to_apply = lambda x : first_part_left(second_part_left(first_part_left(x))).ravel()
-
-        ## Getting new inverse
-        if self.restrict_to_mask:
-            central_term = self.mask
-        else:
-            central_term = jnp.ones_like(self.mask)
-
-        perturbation_term = func_to_apply(inverse_term).reshape(self.nstokes,self.npix)
-        previous_inverse_x_eta = inverse_term.reshape(self.nstokes,self.npix)
-
-        # new_log_proba = jnp.einsum('sp,p,sp', component_eta_maps, central_term, previous_inverse_x_eta) - jnp.einsum('sp,p,sp', previous_inverse_x_eta, central_term, perturbation_term)
-        new_log_proba = jnp.einsum('sp,p,sp', component_eta_maps - perturbation_term, central_term, previous_inverse_x_eta)
-        print("First order :", jnp.einsum('sp,p,sp', component_eta_maps, central_term, previous_inverse_x_eta))
-        print("Perturbation :", -jnp.einsum('sp,p,sp', perturbation_term, central_term, previous_inverse_x_eta))
-
-        return -(-0 + new_log_proba)/2.*jhp.nside2resol(self.nside)**2
 
     def get_conditional_proba_correction_likelihood_JAX_v2db(self, old_params_mixing_matrix, new_params_mixing_matrix, inverse_term, component_eta_maps, red_cov_approx_matrix, inverse_term_x_Capprox_root=None):
         """ Get conditional probability of correction term in the likelihood from the full mixing matrix
@@ -1232,39 +1057,7 @@ class Sampling_functions(MixingMatrix):
 
 
 
-    def get_conditional_proba_mixing_matrix_v2_JAX(self, new_params_mixing_matrix, full_data_without_CMB, component_eta_maps, red_cov_approx_matrix):
-        """ Get conditional probability of the conditional probability associated with the B_f parameters
-            
-            The associated conditional probability is given by : 
-                - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c) + eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta
-            
-            Parameters
-            ----------
-            :param new_params_mixing_matrix: new B_f parameters of the mixing matrix to compute the log-proba, dimensions [nfreq-len(pos_special_frequencies), ncomp-1]
-            :param full_data_without_CMB: data without from which the CMB (sample) was substracted, of dimension [frequencies, npix]
-            :param component_eta_maps: set of eta maps of dimension [component, npix]
-            :param red_cov_approx_matrix: covariance matrice approx (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-
-            Returns
-            -------
-            :return: computation of the conditional probability of the mixing matrix
-        """
-
-        # self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
-        # new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
-
-        self.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
-        new_mixing_matrix = self.get_B(jax_use=True)
-        
-        # Compute spectral likelihood : (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
-        log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(new_mixing_matrix, jnp.array(full_data_without_CMB))
-
-        # Compute correction term to the likelihood : (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta)
-        log_proba_perturbation_likelihood = self.get_conditional_proba_correction_likelihood_JAX_v2(new_mixing_matrix, component_eta_maps, red_cov_approx_matrix)
-
-        return (log_proba_spectral_likelihood + log_proba_perturbation_likelihood)
-
-    def get_conditional_proba_mixing_matrix_v2b_JAX(self, new_params_mixing_matrix, full_data_without_CMB, component_eta_maps, red_cov_approx_matrix, previous_inverse):
+    def get_conditional_proba_mixing_matrix_v2b_JAX(self, new_params_mixing_matrix, full_data_without_CMB, component_eta_maps, red_cov_approx_matrix, previous_inverse, biased_bool=False):
         """ Get conditional probability of the conditional probability associated with the B_f parameters
             
             The associated conditional probability is given by : 
@@ -1293,11 +1086,15 @@ class Sampling_functions(MixingMatrix):
 
         # Compute correction term to the likelihood : (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta)
         # log_proba_perturbation_likelihood, inverse_term = self.get_conditional_proba_correction_likelihood_JAX_v2b(new_mixing_matrix, component_eta_maps, red_cov_approx_matrix,previous_inverse=previous_inverse,return_inverse=True)
-        log_proba_perturbation_likelihood, inverse_term = self.get_conditional_proba_correction_likelihood_JAX_v2c(new_mixing_matrix, component_eta_maps, red_cov_approx_matrix,previous_inverse=previous_inverse,return_inverse=True)
+        if biased_bool:
+            log_proba_perturbation_likelihood = 0
+            inverse_term = 0
+        else:
+            log_proba_perturbation_likelihood, inverse_term = self.get_conditional_proba_correction_likelihood_JAX_v2c(new_mixing_matrix, component_eta_maps, red_cov_approx_matrix,previous_inverse=previous_inverse,return_inverse=True)
 
         return (log_proba_spectral_likelihood + log_proba_perturbation_likelihood), inverse_term
     
-    def get_conditional_proba_mixing_matrix_v3_JAX(self, new_params_mixing_matrix, old_params_mixing_matrix, full_data_without_CMB, component_eta_maps, red_cov_approx_matrix, previous_inverse, previous_inverse_x_Capprox_root=None):
+    def get_conditional_proba_mixing_matrix_v3_JAX(self, new_params_mixing_matrix, old_params_mixing_matrix, full_data_without_CMB, component_eta_maps, red_cov_approx_matrix, previous_inverse, previous_inverse_x_Capprox_root=None, biased_bool=False):
         """ Get conditional probability of the conditional probability associated with the B_f parameters
             
             The associated conditional probability is given by : 
@@ -1327,38 +1124,41 @@ class Sampling_functions(MixingMatrix):
         # Compute correction term to the likelihood : (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta)
         # log_proba_perturbation_likelihood, inverse_term = self.get_conditional_proba_correction_likelihood_JAX_v2b(new_mixing_matrix, component_eta_maps, red_cov_approx_matrix,previous_inverse=previous_inverse,return_inverse=True)
         # log_proba_perturbation_likelihood = self.get_conditional_proba_correction_likelihood_JAX_v2d(old_params_mixing_matrix, new_params_mixing_matrix, previous_inverse, component_eta_maps, red_cov_approx_matrix)
-        log_proba_perturbation_likelihood = self.get_conditional_proba_correction_likelihood_JAX_v2db(old_params_mixing_matrix, new_params_mixing_matrix, previous_inverse, component_eta_maps, red_cov_approx_matrix, inverse_term_x_Capprox_root=previous_inverse_x_Capprox_root)
+        if biased_bool:
+            log_proba_perturbation_likelihood = 0
+        else:    
+            log_proba_perturbation_likelihood = self.get_conditional_proba_correction_likelihood_JAX_v2db(old_params_mixing_matrix, new_params_mixing_matrix, previous_inverse, component_eta_maps, red_cov_approx_matrix, inverse_term_x_Capprox_root=previous_inverse_x_Capprox_root)
 
         return log_proba_spectral_likelihood + log_proba_perturbation_likelihood
 
- 
-    def get_biased_conditional_proba_mixing_matrix_v2_JAX(self, new_params_mixing_matrix, full_data_without_CMB, component_eta_maps, red_cov_approx_matrix):
-        """ Get biased conditional probability of the conditional probability associated with the B_f parameters, without the correction term
 
-            The associated conditional probability is given by :
-                - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
+    # def get_biased_conditional_proba_mixing_matrix_v2_JAX(self, new_params_mixing_matrix, full_data_without_CMB, component_eta_maps, red_cov_approx_matrix):
+    #     """ Get biased conditional probability of the conditional probability associated with the B_f parameters, without the correction term
+
+    #         The associated conditional probability is given by :
+    #             - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
             
-            Parameters
-            ----------
-            :param new_params_mixing_matrix: new B_f parameters of the mixing matrix to be tested, dimensions [nfreq-len(pos_special_frequencies), ncomp-1]
-            :param full_data_without_CMB: data without from which the CMB (sample) was substracted, of dimension [frequencies, npix]
-            :param component_eta_maps: set of eta maps of dimension [component, npix]
-            :param red_cov_approx_matrix: covariance matrice approx (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+    #         Parameters
+    #         ----------
+    #         :param new_params_mixing_matrix: new B_f parameters of the mixing matrix to be tested, dimensions [nfreq-len(pos_special_frequencies), ncomp-1]
+    #         :param full_data_without_CMB: data without from which the CMB (sample) was substracted, of dimension [frequencies, npix]
+    #         :param component_eta_maps: set of eta maps of dimension [component, npix]
+    #         :param red_cov_approx_matrix: covariance matrice approx (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
 
-            Returns
-            -------
-            :return: computation of the conditional probability of the mixing matrix
-        """
-        # self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
-        # new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+    #         Returns
+    #         -------
+    #         :return: computation of the conditional probability of the mixing matrix
+    #     """
+    #     # self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+    #     # new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
 
-        self.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
-        new_mixing_matrix = self.get_B(jax_use=True)
+    #     self.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+    #     new_mixing_matrix = self.get_B(jax_use=True)
         
-        # Compute spectral likelihood : (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
-        log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
+    #     # Compute spectral likelihood : (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
+    #     log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(jnp.copy(new_mixing_matrix), jnp.array(full_data_without_CMB))
 
-        return log_proba_spectral_likelihood
+    #     return log_proba_spectral_likelihood
 
 
 def single_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_size, log_proba, **model_kwargs):
