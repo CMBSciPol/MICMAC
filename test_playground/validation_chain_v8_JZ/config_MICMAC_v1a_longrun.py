@@ -140,10 +140,10 @@ print("Shape for input frequency maps :", freq_maps_fgs.shape)
 
 freq_inverse_noise = micmac.get_noise_covar(instrument['depth_p'], MICMAC_obj.nside) #MICMAC_obj.freq_inverse_noise
 
-freq_inverse_noise_masked = jnp.zeros((MICMAC_obj.number_frequencies,MICMAC_obj.number_frequencies,MICMAC_obj.npix))
+freq_inverse_noise_masked = np.zeros((MICMAC_obj.number_frequencies,MICMAC_obj.number_frequencies,MICMAC_obj.npix))
 
 nb_pixels_mask = int(template_mask.sum())
-freq_inverse_noise_masked[:,:,template_mask!=0] = jnp.repeat(freq_inverse_noise.ravel(order='F'), nb_pixels_mask).reshape((MICMAC_obj.number_frequencies,MICMAC_obj.number_frequencies,nb_pixels_mask), order='C')
+freq_inverse_noise_masked[:,:,template_mask!=0] = np.repeat(freq_inverse_noise.ravel(order='F'), nb_pixels_mask).reshape((MICMAC_obj.number_frequencies,MICMAC_obj.number_frequencies,nb_pixels_mask), order='C')
 
 MICMAC_obj.freq_inverse_noise = freq_inverse_noise_masked*template_mask
 
