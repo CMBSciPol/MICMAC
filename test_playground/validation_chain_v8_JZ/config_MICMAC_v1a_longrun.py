@@ -48,7 +48,7 @@ name_toml = 'corr_cutsky_v1a.toml'
 
 current_repo = 'validation_chain_v8_JZ/'
 
-MICMAC_repo = '/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/'
+MICMAC_repo = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/'
 repo_mask = "/gpfswork/rech/nih/commun/masks/"
 repo_save = "/gpfswork/rech/nih/ube74zo/MICMAC_save/"
 
@@ -80,7 +80,7 @@ noise = True
 noise_seed = MICMAC_obj.seed + MPI_rank
 instr_name = MICMAC_obj.instrument_name #'SO_SAT'
 
-# path_home_test_playground = '/linkhome/rech/genkqu01/ube74zo/MICMAC/MICMAC/test_playground/'
+# path_home_test_playground = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/'
 # path_Fisher = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
 # path_Fisher = '../Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
 # path_Fisher = path_home_test_playground + 'Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
