@@ -11,7 +11,7 @@ import jax.scipy as jsp
 import jax_healpy as jhp
 import numpyro
 from functools import partial
-from micmac import *
+import micmac
 from fgbuster.observation_helpers import *
 # from mcmc_tools import *
 
@@ -44,7 +44,7 @@ initial_guess_r=10**(-3)
 use_nhits = False
 name_mask = "mask_SO_SAT_apodized"
 use_mask = True
-name_toml = 'corr_v1a.toml'
+name_toml = 'corr_cutsky_v1a.toml'
 
 current_repo = 'validation_chain_v8_JZ/'
 
@@ -140,10 +140,10 @@ print("Shape for input frequency maps :", freq_maps_fgs.shape)
 
 freq_inverse_noise = micmac.get_noise_covar(instrument['depth_p'], MICMAC_obj.nside) #MICMAC_obj.freq_inverse_noise
 
-freq_inverse_noise_masked = np.zeros((MICMAC_obj.number_frequencies,MICMAC_obj.number_frequencies,MICMAC_obj.npix))
+freq_inverse_noise_masked = jnp.zeros((MICMAC_obj.number_frequencies,MICMAC_obj.number_frequencies,MICMAC_obj.npix))
 
 nb_pixels_mask = int(template_mask.sum())
-freq_inverse_noise_masked[:,:,template_mask!=0] = np.repeat(freq_inverse_noise.ravel(order='F'), nb_pixels_mask).reshape((MICMAC_obj.number_frequencies,MICMAC_obj.number_frequencies,nb_pixels_mask), order='C')
+freq_inverse_noise_masked[:,:,template_mask!=0] = jnp.repeat(freq_inverse_noise.ravel(order='F'), nb_pixels_mask).reshape((MICMAC_obj.number_frequencies,MICMAC_obj.number_frequencies,nb_pixels_mask), order='C')
 
 MICMAC_obj.freq_inverse_noise = freq_inverse_noise_masked*template_mask
 
@@ -162,8 +162,6 @@ step_size_B_f = np.zeros((col_dim_B_f,2))
 step_size_B_f[:,0] = minimum_std_Fisher_diag[:MICMAC_obj.number_frequencies-len_pos_special_freqs]
 step_size_B_f[:,1] = minimum_std_Fisher_diag[MICMAC_obj.number_frequencies-len_pos_special_freqs:2*(MICMAC_obj.number_frequencies-len_pos_special_freqs)]
 
-# MICMAC_obj.covariance_step_size_B_f = jnp.diag(step_size_B_f.ravel(order='F')**2)
-# MICMAC_obj.covariance_step_size_B_f = np.copy(step_size_B_f)[:-1,:-1]
 MICMAC_obj.covariance_step_size_B_f = np.copy(np.linalg.inv(Fisher_matrix))[:-1,:-1]/factor_Fisher
 
 MICMAC_obj.step_size_r = minimum_std_Fisher_diag[-1]
@@ -200,11 +198,6 @@ dimension_free_param_B_f = jnp.size(MICMAC_obj.indexes_free_Bf)
 
 first_guess = jnp.copy(jnp.ravel(exact_params_mixing_matrix,order='F'))
 
-# first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
-#     first_guess[MICMAC_obj.indexes_free_Bf]*np.random.uniform(low=.9,high=1.1, size=(dimension_free_param_B_f)))
-# first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
-#     first_guess[MICMAC_obj.indexes_free_Bf]*np.random.uniform(low=.99,high=1.01, size=(dimension_free_param_B_f)))
-# init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
 print(f"First guess from {sigma_gap} $\sigma$ Fisher !", f"rank {MPI_rank} over {MPI_size}", flush=True)
 first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
     first_guess[MICMAC_obj.indexes_free_Bf] + minimum_std_Fisher_diag[:-1]*np.random.uniform(low=-sigma_gap,high=sigma_gap, size=(dimension_free_param_B_f)))
