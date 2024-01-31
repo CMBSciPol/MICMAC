@@ -24,6 +24,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath('')))+'/tutorial
 
 config.update("jax_enable_x64", True)
 
+print("Starting MPI !!!", flush=True)
 MPI_comm = MPI.COMM_WORLD
 MPI_rank = comm.Get_rank()
 MPI_size = comm.Get_size()
