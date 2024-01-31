@@ -43,6 +43,6 @@ export VER=corr_masked_v104_v1a_
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_v8_JZ
 # srun python $SRC_PATH/very_cheap_corr_unmasked_fullchain_v101_Gibbs_withr_SO_64_v0a_longrun.py  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
 # srun -n 4 python $SRC_PATH/config_MICMAC_v1a_longrun.py  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
-srun python $SRC_PATH/config_MICMAC_v1a_longrun.py  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
+srun python $SRC_PATH/config_MICMAC_v1a_longrun.py add_corr_cutsky_v1a.toml  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
 
 echo "Run finished !"

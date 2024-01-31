@@ -1,4 +1,5 @@
 import os, sys, time
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy
@@ -9,13 +10,13 @@ import jax
 import jax.numpy as jnp
 import jax.scipy as jsp
 import jax_healpy as jhp
+import toml
 import numpyro
 from functools import partial
 import micmac
 from fgbuster.observation_helpers import *
 # from mcmc_tools import *
 
-from mpi4py import MPI
 
 
 from jax import config
@@ -24,6 +25,35 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath('')))+'/tutorial
 
 config.update("jax_enable_x64", True)
 
+parser = argparse.ArgumentParser(description='Process some integers.')
+parser.add_argument('additional_toml', metavar='N', type=str, nargs='+',
+                    help='a toml file path to be added to the config')
+args = parser.parse_args()
+path_additional_params = args.additional_toml[0]
+
+print("Parsing from :", path_additional_params, flush=True)
+
+if path_additional_params[0] != '/':
+    path_additional_params = os.path.dirname(os.path.abspath(__file__)) + '/additional_params/' + path_additional_params
+
+print("Effectively parsing from :", path_additional_params, flush=True)
+
+with open(path_additional_params) as f:
+    dictionary_additional_parameters = toml.load(f)
+f.close()
+
+reduction_noise = dictionary_additional_parameters['reduction_noise']
+factor_Fisher = dictionary_additional_parameters['factor_Fisher']
+relative_treshold = dictionary_additional_parameters['relative_treshold']
+sigma_gap = dictionary_additional_parameters['sigma_gap']
+fgs_model = dictionary_additional_parameters['fgs_model']
+initial_guess_r = dictionary_additional_parameters['initial_guess_r']
+use_nhits = dictionary_additional_parameters['use_nhits']
+name_mask = dictionary_additional_parameters['name_mask']
+use_mask = dictionary_additional_parameters['use_mask']
+name_toml = dictionary_additional_parameters['name_toml']
+
+from mpi4py import MPI
 print("Starting MPI !!!", flush=True)
 MPI_comm = MPI.COMM_WORLD
 MPI_rank = MPI_comm.Get_rank()
@@ -34,17 +64,7 @@ print("r{} of {} -- Launch".format(MPI_rank, MPI_size), flush=True)
 former_file_ver = ''
 
 file_ver = f"corr_masked_v104_v1a_{MPI_rank}_{MPI_size}" # -> corr inhom + start 10 sigma + 2400 iterations + corr_v1ccd + mask ; C_approx only lensing
-# -> TODO !!!
-reduction_noise = 1
-factor_Fisher = 1
-relative_treshold = 1e-1
-sigma_gap = 10
-fgs_model = 'd0s0'
-initial_guess_r=10**(-3)
-use_nhits = False
-name_mask = "mask_SO_SAT_apodized"
-use_mask = True
-name_toml = 'corr_cutsky_v1a.toml'
+
 
 current_repo = 'validation_chain_v8_JZ/'
 

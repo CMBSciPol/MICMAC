@@ -1,0 +1,10 @@
+reduction_noise = 1
+factor_Fisher = 1
+relative_treshold = 1e-1
+sigma_gap = 10
+fgs_model = 'd0s0'
+initial_guess_r=1e-3
+use_nhits = false
+name_mask = "mask_SO_SAT_apodized"
+use_mask = true
+name_toml = 'corr_cutsky_v1a.toml'
