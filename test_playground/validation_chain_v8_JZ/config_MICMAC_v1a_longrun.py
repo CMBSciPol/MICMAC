@@ -41,7 +41,7 @@ initial_guess_r=10**(-3)
 use_nhits = False
 name_mask = "mask_SO_SAT_apodized"
 use_mask = True
-
+name_toml = 'corr_v1a.toml'
 
 current_repo = 'validation_chain_v8_JZ/'
 
@@ -60,7 +60,7 @@ working_directory_path = current_path + '/'
 directory_toml_file = working_directory_path + 'toml_params/'
 
 
-path_toml_file = directory_toml_file + 'corr_v1a.toml'
+path_toml_file = directory_toml_file + name_toml
 
 
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
