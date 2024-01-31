@@ -61,9 +61,9 @@ MPI_size = MPI_comm.Get_size()
 
 print("r{} of {} -- Launch".format(MPI_rank, MPI_size), flush=True)
 
-former_file_ver = ''
+former_file_ver = dictionary_additional_parameters['former_file_ver'] + f"_{MPI_rank}_{MPI_size}"
 
-file_ver = f"corr_masked_v104_v1a_{MPI_rank}_{MPI_size}" # -> corr inhom + start 10 sigma + 2400 iterations + corr_v1ccd + mask ; C_approx only lensing
+file_ver = dictionary_additional_parameters['file_ver'] + f"_{MPI_rank}_{MPI_size}"
 
 
 current_repo = 'validation_chain_v8_JZ/'

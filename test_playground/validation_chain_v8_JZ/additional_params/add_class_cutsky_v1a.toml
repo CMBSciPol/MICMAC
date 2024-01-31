@@ -1,12 +1,12 @@
 reduction_noise = 1
 factor_Fisher = 1
 relative_treshold = 1e-1
-sigma_gap = 10
-fgs_model = 'd0s0'
+sigma_gap = 0
+fgs_model = ''
 initial_guess_r=1e-8
 use_nhits = false
 name_mask = "mask_SO_SAT_apodized"
 use_mask = true
-name_toml = 'corr_cutsky_v1a.toml'
+name_toml = 'classical_cutsky_v1a.toml'
 former_file_ver = ''
-file_ver = 'corr_cutsky_v104_v1a'
+file_ver = 'classical_cutsky_v104_v1a'
