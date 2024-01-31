@@ -41,6 +41,6 @@ export additional_config_file=corr_fullsky_LB_v2b.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_v8_JZ
 
-srun python $SRC_PATH/config_MICMAC_v1a_longrun.py additional_config_file  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
+srun python $SRC_PATH/config_MICMAC_v1a_longrun.py $additional_config_file  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
 
 echo "Run finished !"
