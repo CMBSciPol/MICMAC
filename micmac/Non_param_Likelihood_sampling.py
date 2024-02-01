@@ -559,7 +559,7 @@ class MICMAC_Sampler(Sampling_functions):
                 map_random_y = None
                 
                 # Sampling eta maps
-                new_eta_maps_sample = self.get_sampling_eta_v2(red_cov_approx_matrix, invBtinvNB, BtinvN_sqrt, 
+                new_eta_maps_sample = self.get_sampling_eta_v2(red_cov_approx_matrix_sqrt, invBtinvNB, BtinvN_sqrt, 
                                                                subPRNGKey, map_random_x=map_random_x, map_random_y=map_random_y, 
                                                                suppress_low_modes=True)
                 # new_eta_maps_sample = jitted_sample_eta(red_cov_approx_matrix, invBtinvNB, BtinvN_sqrt, 
@@ -578,7 +578,7 @@ class MICMAC_Sampler(Sampling_functions):
                 #     log_proba_perturbation = None
                 
                 if self.perturbation_eta_covariance:
-                    _, inverse_term = func_fixed_covariance_eta(mixing_matrix_sampled, eta_maps_sample, red_cov_approx_matrix, previous_inverse=inverse_term, return_inverse=True)
+                    _, inverse_term = func_fixed_covariance_eta(mixing_matrix_sampled, eta_maps_sample, red_cov_approx_matrix_sqrt, previous_inverse=inverse_term, return_inverse=True)
                 
 
             # Sampling step 2 : sampling of Gaussian variable s_c, contrained CMB map realization
@@ -703,7 +703,7 @@ class MICMAC_Sampler(Sampling_functions):
                                                             step_size=step_size_Bf, indexes_Bf=self.indexes_free_Bf,
                                                             log_proba=jitted_Bf_func_sampling,
                                                             full_data_without_CMB=full_data_without_CMB, component_eta_maps=eta_maps_sample, 
-                                                            red_cov_approx_matrix=red_cov_approx_matrix, previous_inverse=inverse_term,
+                                                            red_cov_approx_matrix_sqrt=red_cov_approx_matrix_sqrt, previous_inverse=inverse_term,
                                                             previous_inverse_x_Capprox_root=inverse_term_x_Capprox_root,
                                                             old_params_mixing_matrix=params_mixing_matrix_sample,
                                                             biased_bool=self.biased_version)
@@ -712,7 +712,7 @@ class MICMAC_Sampler(Sampling_functions):
                                                             step_size=step_size_Bf, indexes_Bf=self.indexes_free_Bf,
                                                             log_proba=jitted_Bf_func_sampling,
                                                             full_data_without_CMB=full_data_without_CMB, component_eta_maps=eta_maps_sample, 
-                                                            red_cov_approx_matrix=red_cov_approx_matrix,
+                                                            red_cov_approx_matrix_sqrt=red_cov_approx_matrix_sqrt,
                                                             previous_inverse=inverse_term,
                                                             biased_bool=self.biased_version)
 
