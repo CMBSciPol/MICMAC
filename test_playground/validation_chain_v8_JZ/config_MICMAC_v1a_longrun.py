@@ -140,11 +140,13 @@ if use_mask:
         mask[apod_mask>0] = 1
         mask[apod_mask==0] = 0
         template_mask = mask
-else:
-    mask = np.ones_like(MICMAC_obj.npix)
-    template_mask = mask
+    MICMAC_obj.mask = mask
 
-MICMAC_obj.mask = mask
+else:
+    # Then the mask have been initialized to 1 in the MICMAC_sampler object
+    # mask = np.ones(MICMAC_obj.npix)
+    template_mask = np.copy(MICMAC_obj.mask)
+
 
 # Generating foregrounds and noise maps
 np.random.seed(noise_seed + MPI_rank)
@@ -186,14 +188,15 @@ except:
     minimum_std_Fisher = np.sqrt(np.linalg.inv(Fisher_matrix))
 minimum_std_Fisher_diag = np.diag(minimum_std_Fisher)
 
-col_dim_B_f = MICMAC_obj.number_frequencies-len(MICMAC_obj.pos_special_freqs)
+if not(MICMAC_obj.sample_eta_B_f):
+    col_dim_B_f = MICMAC_obj.number_frequencies-len(MICMAC_obj.pos_special_freqs)
 
-len_pos_special_freqs = len(MICMAC_obj.pos_special_freqs)
-step_size_B_f = np.zeros((col_dim_B_f,2))
-step_size_B_f[:,0] = minimum_std_Fisher_diag[:MICMAC_obj.number_frequencies-len_pos_special_freqs]
-step_size_B_f[:,1] = minimum_std_Fisher_diag[MICMAC_obj.number_frequencies-len_pos_special_freqs:2*(MICMAC_obj.number_frequencies-len_pos_special_freqs)]
+    len_pos_special_freqs = len(MICMAC_obj.pos_special_freqs)
+    step_size_B_f = np.zeros((col_dim_B_f,2))
+    step_size_B_f[:,0] = minimum_std_Fisher_diag[:MICMAC_obj.number_frequencies-len_pos_special_freqs]
+    step_size_B_f[:,1] = minimum_std_Fisher_diag[MICMAC_obj.number_frequencies-len_pos_special_freqs:2*(MICMAC_obj.number_frequencies-len_pos_special_freqs)]
 
-MICMAC_obj.covariance_step_size_B_f = np.copy(np.linalg.inv(Fisher_matrix))[:-1,:-1]/factor_Fisher
+    MICMAC_obj.covariance_step_size_B_f = np.copy(np.linalg.inv(Fisher_matrix))[:-1,:-1]/factor_Fisher
 
 MICMAC_obj.step_size_r = minimum_std_Fisher_diag[-1]
 
