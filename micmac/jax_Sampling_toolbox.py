@@ -70,7 +70,7 @@ class Sampling_functions(MixingMatrix):
         # self.number_components = int(number_components)
         # self.pos_special_freqs = pos_special_freqs
         if mask is None:
-            self.mask = jnp.ones(12*self.nside**2)
+            self.mask = np.ones(12*self.nside**2)
         else:
             self.mask = mask
         if bin_ell_distribution is None:
