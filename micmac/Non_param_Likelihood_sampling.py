@@ -744,20 +744,8 @@ class MICMAC_Sampler(Sampling_functions):
                          PRNGKey)
         self.update_one_sample(initial_carry_0)
 
-        jitted_all_sampling_steps = jax.jit(all_sampling_steps)
+        # jitted_all_sampling_steps = jax.jit(all_sampling_steps)
 
-        # def my_scan(f, init, xs, length=None):
-        #     if xs is None:
-        #         xs = [None] * length
-        #     carry = init
-        #     ys = []
-        #     for x in xs:
-        #         time_iter = time.time()
-        #         carry, y = f(carry, x)
-        #         ys.append(y)
-        #         print("##### Iteration in {} seconds".format(time.time()-time_iter), flush=True)
-        #     return carry, jnp.stack(ys)
-        # jitted_scan = jax.jit(jlx.scan)
         time_start_sampling = time.time()
         # Start sampling !!!
         # last_sample, all_samples = jlx.scan(all_sampling_steps, initial_carry, jnp.arange(actual_number_of_iterations))

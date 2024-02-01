@@ -37,7 +37,7 @@ export OMP_PLACES=cores
 
 
 export VER=corr_fullsky_LB_v104_v2b
-export additional_config_file=corr_fullsky_LB_v2b.toml
+export additional_config_file=add_corr_fullsky_LB_v2b.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_v8_JZ
 

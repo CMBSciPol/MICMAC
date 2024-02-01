@@ -25,6 +25,14 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath('')))+'/tutorial
 
 config.update("jax_enable_x64", True)
 
+# Setting up the directory for saving and loading files as mask, etc.
+current_repo = 'validation_chain_v8_JZ/'
+
+MICMAC_repo = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/'
+repo_mask = "/gpfswork/rech/nih/commun/masks/"
+repo_save = "/gpfswork/rech/nih/ube74zo/MICMAC_save/"
+
+# Parsing additional arguments to prepare run
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('additional_toml', metavar='N', type=str, nargs='+',
                     help='a toml file path to be added to the config')
@@ -42,6 +50,7 @@ with open(path_additional_params) as f:
     dictionary_additional_parameters = toml.load(f)
 f.close()
 
+# Getting those additional arguments
 reduction_noise = dictionary_additional_parameters['reduction_noise']
 factor_Fisher = dictionary_additional_parameters['factor_Fisher']
 relative_treshold = dictionary_additional_parameters['relative_treshold']
@@ -53,6 +62,7 @@ name_mask = dictionary_additional_parameters['name_mask']
 use_mask = dictionary_additional_parameters['use_mask']
 name_toml = dictionary_additional_parameters['name_toml']
 
+# Starting MPI
 from mpi4py import MPI
 print("Starting MPI !!!", flush=True)
 MPI_comm = MPI.COMM_WORLD
@@ -61,65 +71,62 @@ MPI_size = MPI_comm.Get_size()
 
 print("r{} of {} -- Launch".format(MPI_rank, MPI_size), flush=True)
 
+# Checking if continuiation of previous run
 former_file_ver = dictionary_additional_parameters['former_file_ver'] 
 if former_file_ver != '':
     former_file_ver += f"_{MPI_rank}_{MPI_size}"
 
+# Loading the version of the file
 file_ver = dictionary_additional_parameters['file_ver'] + f"_{MPI_rank}_{MPI_size}"
 
 
-current_repo = 'validation_chain_v8_JZ/'
-
-MICMAC_repo = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/'
-repo_mask = "/gpfswork/rech/nih/commun/masks/"
-repo_save = "/gpfswork/rech/nih/ube74zo/MICMAC_save/"
-
+# Defining directories for saving and loading files
 directory_save_file = repo_save + current_repo + 'save_directory/'
 path_home_test_playground = MICMAC_repo + '/test_playground/'
 current_path = path_home_test_playground + current_repo
 
-
 path_mask = repo_mask + name_mask + ".fits"
+
 
 working_directory_path = current_path + '/'
 directory_toml_file = working_directory_path + 'toml_params/'
 
-
 path_toml_file = directory_toml_file + name_toml
 
-
+# Creating MICMAC Sampler object
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file)
 
+# Preparing the seed
 MICMAC_obj.seed = MICMAC_obj.seed + MPI_rank
 
-# General parameters
+# General parameters for the foregrounds
 # cmb_model = 'c1'
 fgs_model_ = fgs_model
 # model = cmb_model+fgs_model
-noise = True
-# noise = False
-# noise_seed = 42
 noise_seed = MICMAC_obj.seed + MPI_rank
 instr_name = MICMAC_obj.instrument_name #'SO_SAT'
 
-# path_home_test_playground = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/'
-# path_Fisher = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
-# path_Fisher = '../Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
-# path_Fisher = path_home_test_playground + 'Fisher_matrix_SO_SAT_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
 path_Fisher = path_home_test_playground + f'Fisher_matrix_{MICMAC_obj.instrument_name}_EB_model_{fgs_model_}_noise_True_seed_42_lmin2_lmax128.txt'
+try :
+    Fisher_matrix = np.loadtxt(path_Fisher)
+except:
+    print("Fisher matrix not found !", flush=True)
+    Fisher_matrix = path_home_test_playground + f'Fisher_matrix_{MICMAC_obj.instrument_name}_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
 
 # get instrument from public database
 instrument = get_instrument(instr_name)
 
+# Apply potential noise reduction
 instrument['depth_p'] /= reduction_noise
 
 
 
 # Mask initialization
-apod_mask = hp.ud_grade(hp.read_map(path_mask),nside_out=MICMAC_obj.nside)
 
-template_mask = np.copy(apod_mask)
 if use_mask:
+    apod_mask = hp.ud_grade(hp.read_map(path_mask),nside_out=MICMAC_obj.nside)
+
+    template_mask = np.copy(apod_mask)
     if use_nhits:
         template_mask[template_mask<relative_treshold] = 0
         inverse_nhits_mask = np.copy(template_mask)
@@ -135,13 +142,11 @@ if use_mask:
         template_mask = mask
 else:
     mask = np.ones_like(apod_mask)
+    template_mask = mask
 
 MICMAC_obj.mask = mask
 
-# get input freq maps
-# np.random.seed(noise_seed)
-# freq_maps = get_observation(instrument, model, nside=NSIDE, noise=noise)[:, 1:, :]   # keep only Q and U
-# freq_maps_fgs = get_observation(instrument, fgs_model, nside=MICMAC_obj.nside, noise=noise)[:, 1:, :]   # keep only Q and U
+# Generating foregrounds and noise maps
 np.random.seed(noise_seed + MPI_rank)
 freq_maps_fgs_noised = get_observation(instrument, fgs_model_, nside=MICMAC_obj.nside, noise=True)[:, 1:, :]   # keep only Q and U
 np.random.seed(noise_seed + MPI_rank)
@@ -149,31 +154,32 @@ freq_maps_fgs_denoised = get_observation(instrument, fgs_model_, nside=MICMAC_ob
 
 noise_map = freq_maps_fgs_noised - freq_maps_fgs_denoised
 
+# Modifying the noise map with the hits map
 if use_nhits:
+    print("Using nhits for noise map !", flush=True)
     new_noise_map = noise_map * jnp.sqrt(inverse_nhits_mask)
 else:
     new_noise_map = noise_map
-
 
 freq_maps_fgs = freq_maps_fgs_denoised + new_noise_map
 
 print("Shape for input frequency maps :", freq_maps_fgs.shape)
 
-
+# Preparing the frequency noise covariance matrix, and masking it if needed
 freq_inverse_noise = micmac.get_noise_covar(instrument['depth_p'], MICMAC_obj.nside) #MICMAC_obj.freq_inverse_noise
 
 freq_inverse_noise_masked = np.zeros((MICMAC_obj.number_frequencies,MICMAC_obj.number_frequencies,MICMAC_obj.npix))
 
-nb_pixels_mask = int(template_mask.sum())
+# nb_pixels_mask = int(template_mask.sum())
+nb_pixels_mask = int(len(template_mask[template_mask!=0]))
 freq_inverse_noise_masked[:,:,template_mask!=0] = np.repeat(freq_inverse_noise.ravel(order='F'), nb_pixels_mask).reshape((MICMAC_obj.number_frequencies,MICMAC_obj.number_frequencies,nb_pixels_mask), order='C')
 
 MICMAC_obj.freq_inverse_noise = freq_inverse_noise_masked*template_mask
 
 
 
+# Generation step-size from the Fisher matrix
 
-# Generation step-size
-Fisher_matrix = np.loadtxt(path_Fisher)
 minimum_std_Fisher = scipy.linalg.sqrtm(np.linalg.inv(Fisher_matrix))
 minimum_std_Fisher_diag = np.diag(minimum_std_Fisher)
 
@@ -197,21 +203,21 @@ input_freq_maps_masked = input_freq_maps*MICMAC_obj.mask
 indices_polar = np.array([1,2,4])
 partial_indices_polar = indices_polar[:MICMAC_obj.nstokes]
 
-
+# Preparing initial spectra
 theoretical_r0_total = micmac.get_c_ells_from_red_covariance_matrix(theoretical_red_cov_r0_total)#[partial_indices_polar,:]
 theoretical_r1_tensor = micmac.get_c_ells_from_red_covariance_matrix(theoretical_red_cov_r1_tensor)#[partial_indices_polar,:]
 
-# Params mixing matrix
+# Preparing params mixing matrix
 init_mixing_matrix_obj = micmac.InitMixingMatrix(MICMAC_obj.frequency_array, MICMAC_obj.number_components, pos_special_freqs=MICMAC_obj.pos_special_freqs)
 exact_params_mixing_matrix = init_mixing_matrix_obj.init_params()
 
-
+# Preparing c_approx
 c_ell_approx = np.zeros((3,MICMAC_obj.lmax+1))
 c_ell_approx[0,MICMAC_obj.lmin:] = theoretical_r0_total[0,:]
 c_ell_approx[1,MICMAC_obj.lmin:] = theoretical_r0_total[1,:]
 
 
-# First guesses
+# First guesses preparation
 initial_wiener_filter_term = np.zeros((MICMAC_obj.nstokes, MICMAC_obj.npix))
 initial_fluctuation_maps = np.zeros((MICMAC_obj.nstokes, MICMAC_obj.npix))
 
@@ -229,6 +235,7 @@ CMB_c_ell = np.zeros_like(c_ell_approx)
 # CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + MICMAC_obj.r_true*theoretical_r1_tensor)
 CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + initial_guess_r*theoretical_r1_tensor)
 
+# If continuation of previous run, preparation of the initial guess from previous run
 if former_file_ver != '':
     print("### Continuing from previous run !", former_file_ver, f"rank {MPI_rank} over {MPI_size}", flush=True)
     dict_all_params = micmac.loading_params(directory_save_file, former_file_ver, MICMAC_obj)
@@ -257,7 +264,7 @@ if former_file_ver != '':
 print(f'Exact param matrix : {exact_params_mixing_matrix}')
 print(f'Initial param matrix : {init_params_mixing_matrix}')
 
-
+# Launching the sampling !!!
 time_start_sampling = time.time()
 MICMAC_obj.perform_sampling(input_freq_maps_masked, c_ell_approx, CMB_c_ell, init_params_mixing_matrix, 
                          initial_guess_r=initial_guess_r, initial_wiener_filter_term=initial_wiener_filter_term, initial_fluctuation_maps=initial_fluctuation_maps,
@@ -266,6 +273,7 @@ MICMAC_obj.perform_sampling(input_freq_maps_masked, c_ell_approx, CMB_c_ell, ini
 time_full_chain = (time.time()-time_start_sampling)/60
 print("End of iterations in {} minutes, saving all files !".format(time_full_chain), f"rank {MPI_rank} over {MPI_size}", flush=True)
 
+# Getting all samples
 if not(MICMAC_obj.cheap_save):
     all_eta  = MICMAC_obj.all_samples_eta
     all_s_c_WF_maps = MICMAC_obj.all_samples_wiener_filter_maps
@@ -295,10 +303,6 @@ if former_file_ver != '':
         all_r_samples = np.hstack([dict_all_params['all_r_samples'], all_r_samples[1:]])
     elif MICMAC_obj.sample_C_inv_Wishart:
         all_cell_samples = np.hstack([dict_all_params['all_cell_samples'], all_cell_samples[1:]])
-
-    # all_params_mixing_matrix_samples_path = directory_save_file+file_ver+'_all_params_mixing_matrix_samples.npy'
-    # all_params_mixing_matrix_samples = np.load(all_params_mixing_matrix_samples_path)
-    # dict_all_params['all_params_mixing_matrix_samples'] = all_params_mixing_matrix_samples
 
     all_params_mixing_matrix_samples = np.vstack([dict_all_params['all_params_mixing_matrix_samples'], all_params_mixing_matrix_samples[1:]])
 
