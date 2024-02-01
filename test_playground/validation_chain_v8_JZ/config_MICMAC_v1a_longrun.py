@@ -111,7 +111,7 @@ try :
     Fisher_matrix = np.loadtxt(path_Fisher)
 except:
     print("Fisher matrix not found !", flush=True)
-    Fisher_matrix = path_home_test_playground + f'Fisher_matrix_{MICMAC_obj.instrument_name}_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt'
+    Fisher_matrix = np.loadtxt(path_home_test_playground + f'Fisher_matrix_{MICMAC_obj.instrument_name}_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt')
 
 # get instrument from public database
 instrument = get_instrument(instr_name)
