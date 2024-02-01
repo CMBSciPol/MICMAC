@@ -141,7 +141,7 @@ if use_mask:
         mask[apod_mask==0] = 0
         template_mask = mask
 else:
-    mask = np.ones_like(apod_mask)
+    mask = np.ones_like(MICMAC_obj.npix)
     template_mask = mask
 
 MICMAC_obj.mask = mask
@@ -179,8 +179,11 @@ MICMAC_obj.freq_inverse_noise = freq_inverse_noise_masked*template_mask
 
 
 # Generation step-size from the Fisher matrix
-
-minimum_std_Fisher = scipy.linalg.sqrtm(np.linalg.inv(Fisher_matrix))
+try :
+    minimum_std_Fisher = scipy.linalg.sqrtm(np.linalg.inv(Fisher_matrix))
+except:
+    print("Fisher matrix not invertible or scipy.linalg.sqrtm not working on GPU ! Taking only sqrt of diagonal elements instead !", flush=True)
+    minimum_std_Fisher = np.sqrt(np.linalg.inv(Fisher_matrix))
 minimum_std_Fisher_diag = np.diag(minimum_std_Fisher)
 
 col_dim_B_f = MICMAC_obj.number_frequencies-len(MICMAC_obj.pos_special_freqs)
