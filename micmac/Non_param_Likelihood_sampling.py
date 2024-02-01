@@ -476,13 +476,13 @@ class MICMAC_Sampler(Sampling_functions):
         
         jitted_single_Metropolis_Hasting_step_r = jax.jit(single_Metropolis_Hasting_step, static_argnames=['log_proba'])
 
-        jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v2b_JAX)
+        jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v2b_JAX, static_argnames=['biased_bool'])
         sampling_func = separate_single_MH_step_index_accelerated
 
         if self.biased_version or self.perturbation_eta_covariance:
             print("Using biased version or perturbation version of mixing matrix sampling !!!", flush=True)
             # jitted_Bf_func_sampling = jax.jit(self.get_biased_conditional_proba_mixing_matrix_v2_JAX)
-            jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_JAX)
+            jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_JAX, static_argnames=['biased_bool'])
             sampling_func = separate_single_MH_step_index
 
 
