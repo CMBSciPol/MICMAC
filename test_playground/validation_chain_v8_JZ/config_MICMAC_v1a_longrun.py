@@ -61,7 +61,9 @@ MPI_size = MPI_comm.Get_size()
 
 print("r{} of {} -- Launch".format(MPI_rank, MPI_size), flush=True)
 
-former_file_ver = dictionary_additional_parameters['former_file_ver'] + f"_{MPI_rank}_{MPI_size}"
+former_file_ver = dictionary_additional_parameters['former_file_ver'] 
+if former_file_ver != '':
+    former_file_ver += f"_{MPI_rank}_{MPI_size}"
 
 file_ver = dictionary_additional_parameters['file_ver'] + f"_{MPI_rank}_{MPI_size}"
 
@@ -229,7 +231,7 @@ CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + initial_guess_r*theoreti
 
 if former_file_ver != '':
     print("### Continuing from previous run !", former_file_ver, f"rank {MPI_rank} over {MPI_size}", flush=True)
-    dict_all_params = loading_params(directory_save_file, former_file_ver, MICMAC_obj)
+    dict_all_params = micmac.loading_params(directory_save_file, former_file_ver, MICMAC_obj)
 
     init_params_mixing_matrix = dict_all_params['all_params_mixing_matrix_samples'][-1,:,:]
 
