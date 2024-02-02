@@ -36,8 +36,8 @@ export OMP_PLACES=cores
 
 
 
-export VER=corr_masked_v104_v1ab
-export additional_config_file=add_corr_cutsky_v1ab.toml
+export VER=corr_cutsky_v104_v1ab2
+export additional_config_file=add_corr_cutsky_v1ab2.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_v8_JZ
 

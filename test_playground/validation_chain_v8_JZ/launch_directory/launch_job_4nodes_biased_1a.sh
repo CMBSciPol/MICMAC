@@ -36,8 +36,8 @@ export OMP_PLACES=cores
 
 
 
-export VER=biased_cutsky_v104_v1a
-export additional_config_file=add_biased_cutsky_v1a.toml
+export VER=biased_cutsky_v104_v1a2
+export additional_config_file=add_biased_cutsky_v1a2.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_v8_JZ
 
