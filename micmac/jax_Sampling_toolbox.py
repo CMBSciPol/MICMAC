@@ -74,7 +74,7 @@ class Sampling_functions(MixingMatrix):
         else:
             self.mask = mask
         if bin_ell_distribution is None:
-            self.bin_ell_distribution = jnp.arange(self.lmin, self.lmax+1)
+            self.bin_ell_distribution = np.arange(self.lmin, self.lmax+1)
         else:
             self.bin_ell_distribution = bin_ell_distribution # Expects array of the bounds of the bins, of size nbins+1
         self.maximum_number_dof = int(self.bin_ell_distribution[-1]**2 - self.bin_ell_distribution[-2]**2)
@@ -668,6 +668,7 @@ class Sampling_functions(MixingMatrix):
         sampling_Gamma = sampling_Gamma.at[self.lmin:].set(sampling_Gamma_map)
         return sampling_Gamma
 
+
     def get_binned_red_c_ells_v2(self, red_c_ells_to_bin):
         """ Bin the power spectrum to get the binned power spectrum
             
@@ -779,6 +780,7 @@ class Sampling_functions(MixingMatrix):
         chx.assert_tree_all_finite(new_sample)
         return new_sample
         # return reconstructed_spectra
+
 
     def get_binned_red_c_ells_v3(self, red_c_ells_to_bin):
         """ Bin the power spectrum to get the binned power spectrum
@@ -1203,9 +1205,15 @@ def single_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_size, log_pr
 
 def multivariate_Metropolis_Hasting_step(random_PRNGKey, old_sample, covariance_matrix, log_proba, **model_kwargs):
         rng_key, key_proposal, key_accept = random.split(random_PRNGKey, 3)
+
         u_proposal = dist.MultivariateNormal(jnp.ravel(old_sample,order='F'), covariance_matrix).sample(key_proposal)
+
         accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(u_proposal, **model_kwargs))
-        new_sample = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, u_proposal, jnp.ravel(old_sample,order='F'))
+
+        new_sample = jnp.where(
+            jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, 
+            u_proposal, 
+            jnp.ravel(old_sample,order='F'))
         return new_sample.reshape(old_sample.shape,order='F')
 
 def get_log_pdf_lognormal(x, mean, scale):

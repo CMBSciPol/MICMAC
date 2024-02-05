@@ -69,6 +69,12 @@ class MICMAC_Sampler(Sampling_functions):
         # Quick test parameters
         self.instrument_name = instrument_name
         self.sample_eta_B_f = bool(sample_eta_B_f)
+        if self.sample_eta_B_f is True:
+            assert self.number_components > 1
+            try:
+                assert len(pos_special_freqs) == self.number_components-1
+            except:
+                raise Exception("The number of special frequencies should be equal to the number of components - 1")
         self.biased_version = bool(biased_version)
         self.cheap_save = bool(cheap_save)
         self.very_cheap_save = bool(very_cheap_save)

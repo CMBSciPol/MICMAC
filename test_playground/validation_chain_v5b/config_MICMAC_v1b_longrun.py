@@ -18,19 +18,11 @@ from fgbuster.observation_helpers import *
 # from mcmc_tools import *
 
 
-
 from jax import config
 sys.path.append(os.path.dirname(os.path.abspath('')))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath('')))+'/tutorials/')
 
 config.update("jax_enable_x64", True)
-
-# Setting up the directory for saving and loading files as mask, etc.
-current_repo = 'validation_chain_v5b/'
-
-MICMAC_repo = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/'
-repo_mask = "/Users/mag/Documents/PHD1Y/Masks/"
-repo_save = "//Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/"
 
 # Parsing additional arguments to prepare run
 parser = argparse.ArgumentParser(description='Process some integers.')
@@ -50,7 +42,14 @@ with open(path_additional_params) as f:
     dictionary_additional_parameters = toml.load(f)
 f.close()
 
-# Getting those additional arguments
+# Setting up the directory for saving and loading files as mask, etc.
+current_repo = dictionary_additional_parameters['current_directory']
+MICMAC_repo = dictionary_additional_parameters['MICMAC_directory']
+repo_mask = dictionary_additional_parameters['directory_mask']
+repo_save = dictionary_additional_parameters['save_directory']
+
+# Getting the rest of the additional arguments
+delta_ell = dictionary_additional_parameters['delta_ell']
 reduction_noise = dictionary_additional_parameters['reduction_noise']
 factor_Fisher = dictionary_additional_parameters['factor_Fisher']
 relative_treshold = dictionary_additional_parameters['relative_treshold']
@@ -83,14 +82,11 @@ file_ver = dictionary_additional_parameters['file_ver'] + f"_{MPI_rank}_{MPI_siz
 # Defining directories for saving and loading files
 directory_save_file = repo_save + current_repo + 'save_directory/'
 path_home_test_playground = MICMAC_repo + '/test_playground/'
-current_path = path_home_test_playground + current_repo
+current_path = path_home_test_playground + current_repo + '/'
 
 path_mask = repo_mask + name_mask + ".fits"
 
-
-working_directory_path = current_path + '/'
-directory_toml_file = working_directory_path + 'toml_params/'
-
+directory_toml_file = current_path + 'toml_params/'
 path_toml_file = directory_toml_file + name_toml
 
 # Creating MICMAC Sampler object
@@ -240,6 +236,12 @@ init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-l
 CMB_c_ell = np.zeros_like(c_ell_approx)
 # CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + MICMAC_obj.r_true*theoretical_r1_tensor)
 CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + initial_guess_r*theoretical_r1_tensor)
+
+if MICMAC_obj.sample_C_inv_Wishart and MICMAC_obj.use_binning:
+    nb_bin = (lmax-lmin+1)//delta_ell
+    MICMAC_sampler_obj.bin_ell_distribution = MICMAC_sampler_obj.lmin + jnp.arange(nb_bin+1)*delta_ell
+    MICMAC_sampler_obj.maximum_number_dof = int(MICMAC_sampler_obj.bin_ell_distribution[-1]**2 - MICMAC_sampler_obj.bin_ell_distribution[-2]**2)
+
 
 # If continuation of previous run, preparation of the initial guess from previous run
 if former_file_ver != '':
