@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=corr_1a_4nodes
+#SBATCH --job-name=corr_fullsky_LB_2a_5nodes
 #SBATCH --account=nih@cpu          # use CPU allocation
 #SBATCH --qos=qos_cpu-t3          # dev qos (10 jobs, 2h max.)
 #SBATCH --mail-user=magdy.morshed.fr@gmail.com
 #SBATCH --mail-type=ALL
-#SBATCH --ntasks=4                 # nbr of MPI processes
+#SBATCH --ntasks=5                 # nbr of MPI processes
 #SBATCH --ntasks-per-node=1       # Nombre de processus MPI par noeud
 #SBATCH --cpus-per-task=40          # nbr of OpenMP threads
 #SBATCH --hint=nomultithread       # 1 thread / physical core (no hyperthreading)
@@ -36,8 +36,8 @@ export OMP_PLACES=cores
 
 
 
-export VER=corr_cutsky_v104_v1a
-export additional_config_file=add_corr_cutsky_v1a.toml
+export VER=corr_fullsky_LB_v104_v2a
+export additional_config_file=add_corr_fullsky_LB_v2a.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_v9_JZ
 

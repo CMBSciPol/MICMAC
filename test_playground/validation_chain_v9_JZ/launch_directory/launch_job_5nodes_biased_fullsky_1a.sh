@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=biased_fullsky_1a_4nodes
+#SBATCH --job-name=biased_fullsky_1a_5nodes
 #SBATCH --account=nih@cpu          # use CPU allocation
 #SBATCH --qos=qos_cpu-t3          # dev qos (10 jobs, 2h max.)
 #SBATCH --mail-user=magdy.morshed.fr@gmail.com
 #SBATCH --mail-type=ALL
-#SBATCH --ntasks=4                 # nbr of MPI processes
+#SBATCH --ntasks=5                 # nbr of MPI processes
 #SBATCH --ntasks-per-node=1       # Nombre de processus MPI par noeud
 #SBATCH --cpus-per-task=40          # nbr of OpenMP threads
 #SBATCH --hint=nomultithread       # 1 thread / physical core (no hyperthreading)
