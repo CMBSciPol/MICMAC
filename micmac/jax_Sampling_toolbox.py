@@ -178,18 +178,23 @@ class Sampling_functions(MixingMatrix):
         N_c_inv = N_c_inv.at[...,self.mask!=0].set(1/invBtinvNB[0,0,self.mask!=0]/jhp.nside2resol(self.nside)**2)
         first_member = jnp.einsum('kcp,cfp,fsp->ksp', invBtinvNB, BtinvN_sqrt, map_random_x)[0]*N_c_inv # Selecting CMB component of the random variable
 
-        if suppress_low_modes:
-            first_member = self.get_band_limited_maps(first_member)
+        # if suppress_low_modes:
+        #     first_member = self.get_band_limited_maps(first_member)
 
         ## Second right member C_approx^(-1/2) y
-        second_member = maps_x_red_covariance_cell_JAX(map_random_y, jnp.linalg.pinv(red_cov_approx_matrix_sqrt), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
+        # second_member = maps_x_red_covariance_cell_JAX(map_random_y, jnp.linalg.pinv(red_cov_approx_matrix_sqrt), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
 
         # Getting partial solution
-        map_solution_0 = first_member + second_member
+        # map_solution_0 = first_member + second_member
 
         # Getting final solution : C_approx^(1/2) ( N_c^{-1/2} x + C_approx^(-1/2) y)
-        map_solution = maps_x_red_covariance_cell_JAX(map_solution_0.reshape((self.nstokes,self.npix)), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
+        # map_solution = maps_x_red_covariance_cell_JAX(map_solution_0.reshape((self.nstokes,self.npix)), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
+        full_first_member = maps_x_red_covariance_cell_JAX(first_member.reshape((self.nstokes,self.npix)), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
 
+        map_solution = map_random_y + full_first_member
+
+        if suppress_low_modes:
+            map_solution = self.get_band_limited_maps(map_solution)
         return map_solution
 
 

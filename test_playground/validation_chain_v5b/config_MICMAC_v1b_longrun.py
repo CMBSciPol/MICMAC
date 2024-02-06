@@ -109,6 +109,12 @@ except:
     print("Fisher matrix not found !", flush=True)
     Fisher_matrix = np.loadtxt(path_home_test_playground + f'Fisher_matrix_{MICMAC_obj.instrument_name}_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt')
 
+if fgs_model_ == '':
+    print("No foregrounds, so no Fisher matrix !", flush=True)
+    inv_r_stepsize = Fisher_matrix[-1,-1]
+    Fisher_matrix = np.zeros((MICMAC_obj.number_frequencies*2+1,MICMAC_obj.number_frequencies*2+1))
+    Fisher_matrix[-1,-1] = inv_r_stepsize
+
 # get instrument from public database
 instrument = get_instrument(instr_name)
 
@@ -178,21 +184,20 @@ MICMAC_obj.freq_inverse_noise = freq_inverse_noise_masked*template_mask
 
 # Generation step-size from the Fisher matrix
 try :
-    minimum_std_Fisher = scipy.linalg.sqrtm(np.linalg.inv(Fisher_matrix))
+    minimum_std_Fisher = scipy.linalg.sqrtm(np.linalg.pinv(Fisher_matrix))
 except:
     print("Fisher matrix not invertible or scipy.linalg.sqrtm not working on GPU ! Taking only sqrt of diagonal elements instead !", flush=True)
-    minimum_std_Fisher = np.sqrt(np.linalg.inv(Fisher_matrix))
+    minimum_std_Fisher = np.sqrt(np.linalg.pinv(Fisher_matrix))
 minimum_std_Fisher_diag = np.diag(minimum_std_Fisher)
 
-if not(MICMAC_obj.sample_eta_B_f):
-    col_dim_B_f = MICMAC_obj.number_frequencies-len(MICMAC_obj.pos_special_freqs)
+col_dim_B_f = MICMAC_obj.number_frequencies-len(MICMAC_obj.pos_special_freqs)
 
-    len_pos_special_freqs = len(MICMAC_obj.pos_special_freqs)
-    step_size_B_f = np.zeros((col_dim_B_f,2))
-    step_size_B_f[:,0] = minimum_std_Fisher_diag[:MICMAC_obj.number_frequencies-len_pos_special_freqs]
-    step_size_B_f[:,1] = minimum_std_Fisher_diag[MICMAC_obj.number_frequencies-len_pos_special_freqs:2*(MICMAC_obj.number_frequencies-len_pos_special_freqs)]
+len_pos_special_freqs = len(MICMAC_obj.pos_special_freqs)
+step_size_B_f = np.zeros((col_dim_B_f,2))
+step_size_B_f[:,0] = minimum_std_Fisher_diag[:MICMAC_obj.number_frequencies-len_pos_special_freqs]
+step_size_B_f[:,1] = minimum_std_Fisher_diag[MICMAC_obj.number_frequencies-len_pos_special_freqs:2*(MICMAC_obj.number_frequencies-len_pos_special_freqs)]
 
-    MICMAC_obj.covariance_step_size_B_f = np.copy(np.linalg.inv(Fisher_matrix))[:-1,:-1]/factor_Fisher
+MICMAC_obj.covariance_step_size_B_f = np.copy(np.linalg.pinv(Fisher_matrix))[:-1,:-1]/factor_Fisher
 
 MICMAC_obj.step_size_r = minimum_std_Fisher_diag[-1]
 
@@ -209,10 +214,6 @@ partial_indices_polar = indices_polar[:MICMAC_obj.nstokes]
 theoretical_r0_total = micmac.get_c_ells_from_red_covariance_matrix(theoretical_red_cov_r0_total)#[partial_indices_polar,:]
 theoretical_r1_tensor = micmac.get_c_ells_from_red_covariance_matrix(theoretical_red_cov_r1_tensor)#[partial_indices_polar,:]
 
-# Preparing params mixing matrix
-init_mixing_matrix_obj = micmac.InitMixingMatrix(MICMAC_obj.frequency_array, MICMAC_obj.number_components, pos_special_freqs=MICMAC_obj.pos_special_freqs)
-exact_params_mixing_matrix = init_mixing_matrix_obj.init_params()
-
 # Preparing c_approx
 c_ell_approx = np.zeros((3,MICMAC_obj.lmax+1))
 c_ell_approx[0,MICMAC_obj.lmin:] = theoretical_r0_total[0,:]
@@ -224,23 +225,37 @@ initial_wiener_filter_term = np.zeros((MICMAC_obj.nstokes, MICMAC_obj.npix))
 initial_fluctuation_maps = np.zeros((MICMAC_obj.nstokes, MICMAC_obj.npix))
 
 len_pos_special_freqs = len(MICMAC_obj.pos_special_freqs)
+if len_pos_special_freqs == 0:
+    MICMAC_obj.indexes_free_Bf = np.arange(MICMAC_obj.number_frequencies*2)
 dimension_free_param_B_f = jnp.size(MICMAC_obj.indexes_free_Bf)
 
-first_guess = jnp.copy(jnp.ravel(exact_params_mixing_matrix,order='F'))
+# Preparing params mixing matrix
+init_mixing_matrix_obj = micmac.InitMixingMatrix(MICMAC_obj.frequency_array, MICMAC_obj.number_components, pos_special_freqs=MICMAC_obj.pos_special_freqs)
+if fgs_model != '':
+    exact_params_mixing_matrix = init_mixing_matrix_obj.init_params()
+    first_guess = jnp.copy(jnp.ravel(exact_params_mixing_matrix,order='F'))
 
-print(f"First guess from {sigma_gap} $\sigma$ Fisher !", f"rank {MPI_rank} over {MPI_size}", flush=True)
-first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
-    first_guess[MICMAC_obj.indexes_free_Bf] + minimum_std_Fisher_diag[:-1]*np.random.uniform(low=-sigma_gap,high=sigma_gap, size=(dimension_free_param_B_f)))
-init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
+    print(f"First guess from {sigma_gap} $\sigma$ Fisher !", f"rank {MPI_rank} over {MPI_size}", flush=True)
+    first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
+        first_guess[MICMAC_obj.indexes_free_Bf] + minimum_std_Fisher_diag[:-1]*np.random.uniform(low=-sigma_gap,high=sigma_gap, size=(dimension_free_param_B_f)))
+    init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
+
+else:
+    exact_params_mixing_matrix = np.zeros((MICMAC_obj.number_frequencies-len_pos_special_freqs,2))
+
+    print(f"Not foregrounds given so first guess to 0 !!", f"rank {MPI_rank} over {MPI_size}", flush=True)
+    init_params_mixing_matrix = np.zeros((MICMAC_obj.number_frequencies-MICMAC_obj.number_components+1,2))
+
+
 
 CMB_c_ell = np.zeros_like(c_ell_approx)
 # CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + MICMAC_obj.r_true*theoretical_r1_tensor)
 CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + initial_guess_r*theoretical_r1_tensor)
 
 if MICMAC_obj.sample_C_inv_Wishart and MICMAC_obj.use_binning:
-    nb_bin = (lmax-lmin+1)//delta_ell
-    MICMAC_sampler_obj.bin_ell_distribution = MICMAC_sampler_obj.lmin + jnp.arange(nb_bin+1)*delta_ell
-    MICMAC_sampler_obj.maximum_number_dof = int(MICMAC_sampler_obj.bin_ell_distribution[-1]**2 - MICMAC_sampler_obj.bin_ell_distribution[-2]**2)
+    nb_bin = (MICMAC_obj.lmax-MICMAC_obj.lmin+1)//delta_ell
+    MICMAC_obj.bin_ell_distribution = MICMAC_obj.lmin + jnp.arange(nb_bin+1)*delta_ell
+    MICMAC_obj.maximum_number_dof = int(MICMAC_obj.bin_ell_distribution[-1]**2 - MICMAC_obj.bin_ell_distribution[-2]**2)
 
 
 # If continuation of previous run, preparation of the initial guess from previous run

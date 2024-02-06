@@ -82,7 +82,7 @@ class MICMAC_Sampler(Sampling_functions):
         if indexes_free_Bf is False:
             indexes_free_Bf = jnp.arange((self.number_frequencies-len(pos_special_freqs))*(self.number_correlations-1))
         self.indexes_free_Bf = jnp.array(indexes_free_Bf)
-        self.use_old_s_c_sampling = bool(use_old_s_c_sampling)
+        # self.use_old_s_c_sampling = bool(use_old_s_c_sampling)
         # self.fixed_eta_covariance = bool(fixed_eta_covariance)
         self.perturbation_eta_covariance = bool(perturbation_eta_covariance)
         self.use_binning = bool(use_binning)
@@ -548,9 +548,9 @@ class MICMAC_Sampler(Sampling_functions):
             mixing_matrix_sampled = self.mixing_matrix_obj.get_B(jax_use=True)
 
             # Few checks for the mixing matrix
-            # chx.assert_axis_dimension(mixing_matrix_sampled, 0, self.number_frequencies)
-            # chx.assert_axis_dimension(mixing_matrix_sampled, 1, self.number_components)
-            chx.assert_shape(mixing_matrix_sampled, (self.number_frequencies, self.number_components))
+            chx.assert_axis_dimension(mixing_matrix_sampled, 0, self.number_frequencies)
+            chx.assert_axis_dimension(mixing_matrix_sampled, 1, self.number_components)
+            # chx.assert_shape(mixing_matrix_sampled, (self.number_frequencies, self.number_components))
 
             # Application of new mixing matrix to the noise covariance and extracted CMB map from data
             invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, mixing_matrix_sampled, jax_use=True)
@@ -564,7 +564,7 @@ class MICMAC_Sampler(Sampling_functions):
                 # map_random_y = jnp.empty(0)
                 map_random_x = None
                 map_random_y = None
-                
+
                 # Sampling eta maps
                 new_eta_maps_sample = self.get_sampling_eta_v2(red_cov_approx_matrix_sqrt, invBtinvNB, BtinvN_sqrt, 
                                                                subPRNGKey, map_random_x=map_random_x, map_random_y=map_random_y, 
@@ -686,7 +686,8 @@ class MICMAC_Sampler(Sampling_functions):
             # extended_CMB_maps = jnp.zeros((self.number_components, self.nstokes, self.npix))
             # extended_CMB_maps = extended_CMB_maps.at[0].set(s_c_sample)
             # full_data_without_CMB = input_freq_maps - jnp.einsum('fc,csp->fsp',mixing_matrix_sampled, extended_CMB_maps)
-            full_data_without_CMB = input_freq_maps - jnp.einsum('f,sp->fsp',mixing_matrix_sampled[:,0], s_c_sample)
+            # full_data_without_CMB = input_freq_maps - jnp.einsum('f,sp->fsp',mixing_matrix_sampled[:,0], s_c_sample)
+            full_data_without_CMB = input_freq_maps - jnp.einsum('f,sp->fsp', jnp.ones(self.number_frequencies), s_c_sample)
             chx.assert_shape(full_data_without_CMB, (self.number_frequencies, self.nstokes, self.npix))
 
             ## Preparing the new PRNGKey
