@@ -207,7 +207,7 @@ print(f'Initial param matrix : {init_params_mixing_matrix}')
 
 
 time_start_sampling = time.time()
-MICMAC_obj.perform_sampling(input_freq_maps_masked, c_ell_approx, CMB_c_ell, init_params_mixing_matrix, 
+MICMAC_obj.perform_Gibbs_sampling(input_freq_maps_masked, c_ell_approx, CMB_c_ell, init_params_mixing_matrix, 
                          initial_guess_r=initial_guess_r, initial_wiener_filter_term=initial_wiener_filter_term, initial_fluctuation_maps=initial_fluctuation_maps,
                          theoretical_r0_total=theoretical_r0_total, theoretical_r1_tensor=theoretical_r1_tensor)
 

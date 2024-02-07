@@ -229,8 +229,35 @@ def get_cell_from_map_jax(pixel_maps, lmax, n_iter=8):
     return c_ells_output
 
 
+@partial(jax.jit, static_argnames=("lmax"))
+def JAX_almxfl(alm, c_ell_x_, lmax):
+    """Return alms convolved with the covariance matrix given as input, assuming it's block diagonal
+
+    Parameters
+    ----------
+    :param alm: input alms of shape ((lmax + 1) * (lmax // 2 + 1))
+    :param c_ell_x_: input spectra of shape (lmax+1)
+
+    Returns
+    -------
+    :return: alms_output: output alms of shape ((lmax + 1) * (lmax // 2 + 1))
+    """
+
+    all_m_idx = jax.vmap(lambda m_idx:m_idx*(2*lmax+1-m_idx)//2)(jnp.arange(lmax+1))
+
+    alm_carry = jnp.copy(alm)
+    def func_scan(carry, ell):
+        _alm_carry = carry
+        mask_m = jnp.where(jnp.arange(lmax+1)<=ell, c_ell_x_[ell], 1)
+        _alm_carry = _alm_carry.at[all_m_idx+ell].set(_alm_carry[all_m_idx+ell]*mask_m)
+        return _alm_carry, ell
+
+    alms_output, _ = jax.lax.scan(func_scan, alm_carry, jnp.arange(lmax+1))
+    return alms_output
+
+    
 def maps_x_red_covariance_cell_JAX(
-    maps_TQU_input, red_matrix_sqrt, nside, lmin, n_iter=8
+    maps_input, red_matrix_sqrt, nside, lmin, n_iter=8
 ):
     """Return maps convolved with the covariance matrix given as input, assuming it's block diagonal
 
@@ -239,7 +266,7 @@ def maps_x_red_covariance_cell_JAX(
 
     Parameters
     ----------
-    :param maps_TQU_input: input maps of shape (nstokes, npix)
+    :param maps_input: input maps of shape (nstokes, npix)
     :param red_matrix_sqrt: input reduced spectra of shape (lmax+1-lmin, nstokes, nstokes)
     :param nside: nside of the input maps, int
     :param lmin: minimum ell for the spectrum, int
@@ -266,12 +293,12 @@ def maps_x_red_covariance_cell_JAX(
         red_decomp = red_decomp.at[lmin:].set(red_matrix_sqrt)
 
     # Extending the pixel maps if they are given with only polarization Stokes parameters (nstokes=2)
-    if maps_TQU_input.shape[0] == 2:
+    if maps_input.shape[0] == 2:
         maps_TQU = jnp.vstack(
-            (jnp.zeros_like(maps_TQU_input[0]), jnp.copy(maps_TQU_input))
+            (jnp.zeros_like(maps_input[0]), jnp.copy(maps_input))
         )
     else:
-        maps_TQU = jnp.copy(maps_TQU_input)
+        maps_TQU = jnp.copy(maps_input)
 
     # Wrapper for map2alm, to prepare the pure callback of JAX
     def wrapper_map2alm(maps_, lmax=lmax, n_iter=n_iter, nside=nside):
@@ -281,8 +308,8 @@ def maps_x_red_covariance_cell_JAX(
         return np.array([alm_T, alm_E, alm_B])
 
     # Wrapper for almxfl, to prepare the pure callback of JAX
-    def wrapper_almxfl(alm_, matrix_ell):
-        return hp.almxfl(alm_, matrix_ell, inplace=False)
+    # def wrapper_almxfl(alm_, matrix_ell):
+    #     return hp.almxfl(alm_, matrix_ell, inplace=False)
 
     # Wrapper for alm2map, to prepare the pure callback of JAX
     def wrapper_alm2map(alm_, lmax=lmax, nside=nside):
@@ -298,14 +325,14 @@ def maps_x_red_covariance_cell_JAX(
             maps_.ravel(),
         )
 
-    def pure_call_almxfl(alm_, matrix_ell):
-        shape_output = [(lmax + 1) * (lmax // 2 + 1)]
-        return jax.pure_callback(
-            wrapper_almxfl,
-            jax.ShapeDtypeStruct(shape_output, np.complex128),
-            alm_,
-            matrix_ell,
-        )
+    # def pure_call_almxfl(alm_, matrix_ell):
+    #     shape_output = [(lmax + 1) * (lmax // 2 + 1)]
+    #     return jax.pure_callback(
+    #         wrapper_almxfl,
+    #         jax.ShapeDtypeStruct(shape_output, np.complex128),
+    #         alm_,
+    #         matrix_ell,
+    #     )
 
     @partial(jax.jit, static_argnums=(1, 2))
     def pure_call_alm2map(alm_, lmax, nside):
@@ -319,8 +346,11 @@ def maps_x_red_covariance_cell_JAX(
     # Multiplying the je alms with the covariance matrix for each stokes parameter contribution
     def scan_func(carry, nstokes_j):
         val_alms_j, nstokes_i = carry
-        result_callback = pure_call_almxfl(
-            alms_input[nstokes_j], red_decomp[:, nstokes_i, nstokes_j]
+        # result_callback = pure_call_almxfl(
+        #     alms_input[nstokes_j], red_decomp[:, nstokes_i, nstokes_j]
+        # )
+        result_callback = JAX_almxfl(
+            alms_input[nstokes_j], red_decomp[:, nstokes_i, nstokes_j], lmax
         )
         new_carry = (val_alms_j + result_callback, nstokes_i)
         return new_carry, val_alms_j + result_callback
@@ -342,3 +372,115 @@ def maps_x_red_covariance_cell_JAX(
             3 - nstokes :, ...
         ]  # If only polarization maps are given, return only polarization maps
     return maps_output
+
+
+
+def alms_x_red_covariance_cell_JAX(
+    alm_Stokes_input, red_matrix, lmin, n_iter=8
+):
+    """Return maps convolved with the covariance matrix given as input, assuming it's block diagonal
+
+    The input matrix have to start from ell=lmin, otherwise the lmax associated with the harmonic
+    operations will be wrong
+
+    Parameters
+    ----------
+    :param alms_Stokes_input: input alms of shape (nstokes, (lmax + 1) * (lmax // 2 + 1)))
+    :param red_matrix: input reduced spectra of shape (lmax+1-lmin, nstokes, nstokes)
+    :param lmin: minimum ell for the spectrum, int
+    :param n_iter: number of iterations for harmonic operations, int
+
+    Returns
+    -------
+    :return: maps_output: output maps of shape (nstokes, npix)
+    """
+
+    all_params = 3
+
+    # Getting scalar parameters from the input covariance
+    lmax = red_matrix.shape[0] - 1 + lmin
+    nstokes = red_matrix.shape[1]
+
+    # Building the full covariance matrix from the covariance matrix
+    red_decomp = jnp.zeros((lmax + 1, all_params, all_params))
+    if nstokes != 1:
+        red_decomp = red_decomp.at[lmin:, 3 - nstokes :, 3 - nstokes :].set(
+            red_matrix
+        )
+    else:
+        red_decomp = red_decomp.at[lmin:].set(red_matrix)
+
+    # Multiplying the je alms with the covariance matrix for each stokes parameter contribution
+    def scan_func(carry, nstokes_j):
+        val_alms_j, nstokes_i = carry
+        # result_callback = pure_call_almxfl(
+        #     alm_Stokes_input[nstokes_j], red_decomp[:, nstokes_i, nstokes_j]
+        # )
+        result_callback = JAX_almxfl(
+            alm_Stokes_input[nstokes_j], red_decomp[:, nstokes_i, nstokes_j], lmax
+        )
+        new_carry = (val_alms_j + result_callback, nstokes_i)
+        return new_carry, val_alms_j + result_callback
+
+    # Multiplying the ie alms with the covariance matrix
+    def fmap(nstokes_i):
+        return jlax.scan(
+            scan_func,
+            (jnp.zeros_like(alm_Stokes_input[nstokes_i]), nstokes_i),
+            jnp.arange(all_params),
+        )[0][0]
+
+    # Multiplying the alms with the covariance matrix
+    alms_output = jax.vmap(fmap, in_axes=0)(jnp.arange(all_params))
+
+    if nstokes != 1:
+        return alms_output[
+            3 - nstokes :, ...
+        ]  # If only polarization maps are given, return only polarization alms
+    return alms_output
+
+
+def frequency_alms_x_red_covariance_cell_JAX(
+    freq_alm_Stokes_input, freq_red_matrix, lmin, n_iter=8
+):
+    """Return maps convolved with the covariance matrix given as input, assuming it's block diagonal
+
+    The input matrix have to start from ell=lmin, otherwise the lmax associated with the harmonic
+    operations will be wrong
+
+    Parameters
+    ----------
+    :param alms_Stokes_input: input alms of shape (nstokes, (lmax + 1) * (lmax // 2 + 1)))
+    :param red_matrix: input reduced spectra of shape (lmax+1-lmin, nstokes, nstokes)
+    :param lmin: minimum ell for the spectrum, int
+    :param n_iter: number of iterations for harmonic operations, int
+
+    Returns
+    -------
+    :return: maps_output: output maps of shape (nstokes, npix)
+    """
+
+    # Getting scalar parameters from the input covariance
+    lmax = red_matrix.shape[0] - 1 + lmin
+
+    def scan_func(carry, frequency_j):
+        val_alms_j, frequency_i = carry
+    
+        result_callback = alms_x_red_covariance_cell_JAX(
+            alm_Stokes_input[frequency_j], freq_red_matrix[frequency_i, frequency_j, ...], lmax
+        )
+        new_carry = (val_alms_j + result_callback, frequency_i)
+        return new_carry, val_alms_j + result_callback
+
+    freq_alm_input = jnp.copy(freq_alm_Stokes_input)
+    # Multiplying the ie alms with the covariance matrix
+    def fmap(frequency_i):
+        return jlax.scan(
+            scan_func,
+            (jnp.zeros_like(freq_alm_Stokes_input[frequency_i]), frequency_i),
+            jnp.arange(all_params),
+        )[0][0]
+
+    # Multiplying the alms with the covariance matrix
+    freq_alms_output = jax.vmap(fmap, in_axes=0)(jnp.arange(self.number_frequencies))
+    return freq_alms_output

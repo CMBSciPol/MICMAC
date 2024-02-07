@@ -362,7 +362,7 @@ class Gibbs_Sampling(object):
         c_ells_Wishart = get_cell_from_map(pixel_maps, lmax=self.lmax, n_iter=self.n_iter)
         return get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart, q_prior=self.prior, l_min=self.lmin, option_ell_2=self.option_ell_2)#[self.lmin:,...]
 
-    def perform_sampling(self, initial_map, c_ells_array, red_inverse_noise):
+    def perform_Gibbs_sampling(self, initial_map, c_ells_array, red_inverse_noise):
         """ Perform sampling steps with :
                 1. The constrained realization step
                 2. The c_ell sampling

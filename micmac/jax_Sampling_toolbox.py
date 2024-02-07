@@ -1196,6 +1196,64 @@ class Sampling_functions(MixingMatrix):
 
         return log_proba_spectral_likelihood + log_proba_perturbation_likelihood
 
+    def marginalized_harmonic_probability(self, sample_B_f_r, noise_weighted_alm_data, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total, red_C_approx):
+        """ Get marginalized probability of the full likelihood, over s_c
+        """
+
+        r_param = sample_B_f_r[-1]
+        B_f = sample_B_f_r[:-1]
+
+        self.update_params(B_f, jax_use=True)
+        mixing_matrix_sample = self.get_B(jax_use=True)
+
+        red_CMB_cell = theoretical_red_cov_r0_total + r_param*theoretical_red_cov_r1_tensor
+
+        inv_BtinvNB_c_ell = get_inv_BtinvNB_c_ell(red_freq_inverse_noise, mixing_matrix_sample, jax_use=True)
+        inv_noise_CMB = inv_BtinvNB_c_ell[0,0]
+        red_inv_noise_CMB = jnp.einsum('l,sk->lsk', inv_noise_CMB, jnp.eye(self.nstokes))
+
+        ## Computation of the first term d^t P d
+        central_term_1_ = jnp.einsum('fc,ckl,kg->fgl',
+                                    mixing_matrix_sample, 
+                                    inv_BtinvNB_c_ell, 
+                                    mixing_matrix_sample)
+
+        central_term_1 = jnp.einsum('fnl,sk->fnlsk', central_term_1_, jnp.eye(self.nstokes))
+
+        frequency_alm_central_term_1 = frequency_alms_x_red_covariance_cell_JAX(
+                                                            input_frequency_data_alms, 
+                                                            central_term_1, 
+                                                            lmin=self.lmin, 
+                                                            n_iter=self.n_iter)
+
+        first_term = jnp.einsum('fl,fl', noise_weighted_alm_data, jnp.conjugate(frequency_alm_central_term_1))
+
+        ## Computation of the second term s_{c,ML}^t (C^{-1} + N_c^{-1}) s_{c,ML}
+        # frequency_noise_Stokes = jnp.einsum('fgl,sk->fglsk', red_freq_inverse_noise, jnp.eye(self.nstokes))
+    
+        s_cML = jnp.einsum('ck,fk,ksl->csl',
+                            inv_BtinvNB_c_ell,
+                            mixing_matrix_sample,
+                            noise_weighted_alm_data)[0,...]
+
+        central_term_2 = jnp.linalg.pinv(red_inv_noise_CMB + red_CMB_cell)
+
+        alm_central_term_2 = alms_x_red_covariance_cell_JAX(s_cML, central_term_2, lmin=self.lmin, n_iter=self.n_iter)
+        
+        second_term_complete = jnp.einsum('sl,sl', s_cML, alm_central_term_2)
+        
+
+        ## Computation of the third term ln | (C + N_c) (C_approx + N_c)^-1 |
+
+        red_contribution = jnp.einsum('lsk,lkm->lsm', 
+                                        red_CMB_cell + red_inv_noise_CMB, 
+                                        jnp.linalg.pinv(red_inv_noise_CMB + red_C_approx))
+
+        third_term = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(jnp.linalg.det(red_contribution)) ).sum()
+
+        return -(first_term + second_term_complete + third_term)/2
+
+
 
 
 def single_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_size, log_proba, **model_kwargs):
