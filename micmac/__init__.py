@@ -1,8 +1,6 @@
-# from micmac.Gibbs_sampling import Gibbs_Sampling, solve_generalized_wiener_filter_term, get_fluctuating_term_maps
-# from micmac.tools import get_reduced_matrix_from_c_ell, get_inverse_reduced_matrix_from_c_ell, get_inverse_reduced_matrix_from_red_matrix, get_cholesky_reduced_matrix_from_matrix, generalized_cg_from_func, get_c_ells_from_red_covariance_matrix, get_sqrt_reduced_matrix_from_matrix, maps_x_reduced_matrix_generalized, maps_x_reduced_matrix_generalized_sqrt
-
-from micmac.Non_param_Likelihood_sampling import * #Gibbs_Sampling, solve_generalized_wiener_filter_term, get_fluctuating_term_maps
-from micmac.tools import * #get_reduced_matrix_from_c_ell, get_inverse_reduced_matrix_from_c_ell, get_inverse_reduced_matrix_from_red_matrix, get_cholesky_reduced_matrix_from_matrix, generalized_cg_from_func, get_c_ells_from_red_covariance_matrix, get_sqrt_reduced_matrix_from_matrix, maps_x_reduced_matrix_generalized, maps_x_reduced_matrix_generalized_sqrt
+from micmac.Non_param_Likelihood_sampling import *
+from micmac.Harmonic_Likelihood_sampling import *
+from micmac.tools import *
 from micmac.mixingmatrix import *
 from micmac.noisecovar import *
 from micmac.init_mixingmatrix import *

@@ -18,13 +18,14 @@ from .mixingmatrix import *
 class Sampling_functions(MixingMatrix):
     def __init__(self, nside, lmax, nstokes, 
                  frequency_array, freq_inverse_noise, pos_special_freqs=[0,-1],
+                 freq_noise_c_ell=None,
                  mask=None,
                  number_components=3, lmin=2,
                  lmin_r=-1, lmax_r=-1,
                  n_iter=8, 
                  limit_iter_cg=2000, limit_iter_cg_eta=200, 
                  tolerance_CG=1e-10, atol_CG=1e-8,
-                 restrict_to_mask=False,
+                 restrict_to_mask=True,
                  bin_ell_distribution=None):
         """ Sampling functions object
             Contains all the functions needed for the sampling step of the Gibbs sampler
@@ -54,6 +55,7 @@ class Sampling_functions(MixingMatrix):
 
         # Problem parameters
         self.freq_inverse_noise = freq_inverse_noise
+        self.freq_noise_c_ell = freq_noise_c_ell
         # self.frequency_array = frequency_array
         chx.assert_scalar_in(nstokes, 1, 3)
         self.nstokes = int(nstokes)
@@ -1196,88 +1198,110 @@ class Sampling_functions(MixingMatrix):
 
         return log_proba_spectral_likelihood + log_proba_perturbation_likelihood
 
-    def marginalized_harmonic_probability(self, sample_B_f_r, noise_weighted_alm_data, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total, red_C_approx):
-        """ Get marginalized probability of the full likelihood, over s_c
+    def harmonic_marginal_probability(self, sample_B_f_r, noise_weighted_alm_data, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total, red_cov_approx_matrix):
+        """ Get marginal probability of the full likelihood, over s_c
         """
 
+        chx.assert_axis_dimension(sample_B_f_r, 0, 2*(self.number_frequencies-jnp.size(self.pos_special_freqs))+1)
+        chx.assert_axis_dimension(red_cov_approx_matrix, 0, self.lmax+1-self.lmin)
+        chx.assert_axis_dimension(theoretical_red_cov_r1_tensor, 0, self.lmax+1-self.lmin)
+        chx.assert_axis_dimension(theoretical_red_cov_r0_total, 0, self.lmax+1-self.lmin)
+        chx.assert_axis_dimension(noise_weighted_alm_data, 0, self.number_frequencies)
+        chx.assert_axis_dimension(noise_weighted_alm_data, 1, self.nstokes)
+
         r_param = sample_B_f_r[-1]
-        B_f = sample_B_f_r[:-1]
+        B_f = sample_B_f_r[:-1].reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F')
 
         self.update_params(B_f, jax_use=True)
         mixing_matrix_sample = self.get_B(jax_use=True)
 
         red_CMB_cell = theoretical_red_cov_r0_total + r_param*theoretical_red_cov_r1_tensor
 
-        inv_BtinvNB_c_ell = get_inv_BtinvNB_c_ell(red_freq_inverse_noise, mixing_matrix_sample, jax_use=True)
-        inv_noise_CMB = inv_BtinvNB_c_ell[0,0]
-        red_inv_noise_CMB = jnp.einsum('l,sk->lsk', inv_noise_CMB, jnp.eye(self.nstokes))
+        inv_BtinvNB_c_ell = get_inv_BtinvNB_c_ell(self.freq_noise_c_ell, mixing_matrix_sample)
+        effective_noise_CMB_c_ell = inv_BtinvNB_c_ell[0,0]
+        red_noise_CMB = jnp.einsum('l,sk->lsk', effective_noise_CMB_c_ell, jnp.eye(self.nstokes))
 
         ## Computation of the first term d^t P d
-        central_term_1_ = jnp.einsum('fc,ckl,kg->fgl',
+        central_term_1_ = jnp.einsum('fc,ckl,gk->fgl',
                                     mixing_matrix_sample, 
                                     inv_BtinvNB_c_ell, 
                                     mixing_matrix_sample)
 
         central_term_1 = jnp.einsum('fnl,sk->fnlsk', central_term_1_, jnp.eye(self.nstokes))
 
-        frequency_alm_central_term_1 = frequency_alms_x_red_covariance_cell_JAX(
-                                                            input_frequency_data_alms, 
+        frequency_alm_central_term_1 = frequency_alms_x_obj_red_covariance_cell_JAX(
+                                                            noise_weighted_alm_data, 
                                                             central_term_1, 
-                                                            lmin=self.lmin, 
-                                                            n_iter=self.n_iter)
+                                                            lmin=self.lmin)
 
-        first_term = jnp.einsum('fl,fl', noise_weighted_alm_data, jnp.conjugate(frequency_alm_central_term_1))
+        
 
         ## Computation of the second term s_{c,ML}^t (C^{-1} + N_c^{-1}) s_{c,ML}
         # frequency_noise_Stokes = jnp.einsum('fgl,sk->fglsk', red_freq_inverse_noise, jnp.eye(self.nstokes))
     
-        s_cML = jnp.einsum('ck,fk,ksl->csl',
+        multiplicative_term_s_cML_ = jnp.einsum('ckl,fk->cfl',
                             inv_BtinvNB_c_ell,
-                            mixing_matrix_sample,
-                            noise_weighted_alm_data)[0,...]
+                            mixing_matrix_sample)
+        multiplicative_term_s_cML = jnp.einsum('cfl,sk->cflsk', multiplicative_term_s_cML_, jnp.eye(self.nstokes))
+        s_cML = frequency_alms_x_obj_red_covariance_cell_JAX(noise_weighted_alm_data, multiplicative_term_s_cML, lmin=self.lmin)[0,...]
 
-        central_term_2 = jnp.linalg.pinv(red_inv_noise_CMB + red_CMB_cell)
 
-        alm_central_term_2 = alms_x_red_covariance_cell_JAX(s_cML, central_term_2, lmin=self.lmin, n_iter=self.n_iter)
+        central_term_2 = jnp.linalg.pinv(red_noise_CMB + red_CMB_cell)
+        alm_central_term_2 = alms_x_red_covariance_cell_JAX(s_cML, central_term_2, lmin=self.lmin)
         
-        second_term_complete = jnp.einsum('sl,sl', s_cML, alm_central_term_2)
-        
-
         ## Computation of the third term ln | (C + N_c) (C_approx + N_c)^-1 |
-
         red_contribution = jnp.einsum('lsk,lkm->lsm', 
-                                        red_CMB_cell + red_inv_noise_CMB, 
-                                        jnp.linalg.pinv(red_inv_noise_CMB + red_C_approx))
+                                        red_CMB_cell + red_noise_CMB, 
+                                        jnp.linalg.pinv(red_noise_CMB + red_cov_approx_matrix))
+
+
+        first_term_complete = -alm_dot_product_JAX(noise_weighted_alm_data, frequency_alm_central_term_1, self.lmax)
+
+        second_term_complete = alm_dot_product_JAX(s_cML, alm_central_term_2, self.lmax)
 
         third_term = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(jnp.linalg.det(red_contribution)) ).sum()
 
-        return -(first_term + second_term_complete + third_term)/2
-
+        return -(first_term_complete + second_term_complete + third_term)/2
 
 
 
 def single_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_size, log_proba, **model_kwargs):
         rng_key, key_proposal, key_accept = random.split(random_PRNGKey, 3)
 
-        u_proposal = dist.Normal(jnp.ravel(old_sample,order='F'), step_size).sample(key_proposal)
+        sample_proposal = dist.Normal(jnp.ravel(old_sample,order='F'), step_size).sample(key_proposal)
 
-        accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(u_proposal, **model_kwargs))
-        new_sample = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, u_proposal, jnp.ravel(old_sample,order='F'))
+        accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(sample_proposal, **model_kwargs))
+        new_sample = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, sample_proposal, jnp.ravel(old_sample,order='F'))
 
         return new_sample.reshape(old_sample.shape,order='F')
 
 def multivariate_Metropolis_Hasting_step(random_PRNGKey, old_sample, covariance_matrix, log_proba, **model_kwargs):
         rng_key, key_proposal, key_accept = random.split(random_PRNGKey, 3)
 
-        u_proposal = dist.MultivariateNormal(jnp.ravel(old_sample,order='F'), covariance_matrix).sample(key_proposal)
+        sample_proposal = dist.MultivariateNormal(jnp.ravel(old_sample,order='F'), covariance_matrix).sample(key_proposal)
 
-        accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(u_proposal, **model_kwargs))
+        accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(sample_proposal, **model_kwargs))
 
         new_sample = jnp.where(
             jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, 
-            u_proposal, 
+            sample_proposal, 
             jnp.ravel(old_sample,order='F'))
         return new_sample.reshape(old_sample.shape,order='F')
+
+def multivariate_Metropolis_Hasting_step_numpyro(state, covariance_matrix, log_proba, **model_kwargs):
+        old_sample, random_PRNGKey = state
+        random_PRNGKey, key_proposal, key_accept = random.split(random_PRNGKey, 3)
+
+        sample_proposal = dist.MultivariateNormal(jnp.ravel(old_sample,order='F'), covariance_matrix).sample(key_proposal)
+
+        accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(sample_proposal, **model_kwargs))
+
+        new_sample = jnp.where(
+            jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, 
+            sample_proposal, 
+            jnp.ravel(old_sample,order='F'))
+        return new_sample.reshape(old_sample.shape,order='F'), random_PRNGKey
+
 
 def get_log_pdf_lognormal(x, mean, scale):
     return -(jnp.log(x) - mean)**2/(2*scale**2) - jnp.log(x*scale*jnp.sqrt(2*jnp.pi))
@@ -1290,15 +1314,15 @@ def single_lognormal_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_si
 
         mean_lognormal = 2*jnp.log(goal_mean) - 0.5*jnp.log(goal_step_size**2 + goal_mean**2)
         std_lognormal = jnp.sqrt(jnp.log(1 + goal_step_size**2/goal_mean**2))
-        u_proposal = dist.LogNormal(loc=mean_lognormal, scale=std_lognormal).sample(key_proposal)
+        sample_proposal = dist.LogNormal(loc=mean_lognormal, scale=std_lognormal).sample(key_proposal)
 
-        proposal_mean_lognormal = 2*jnp.log(u_proposal) - 0.5*jnp.log(goal_step_size**2 + u_proposal**2)
-        proposal_std_lognormal = jnp.sqrt(jnp.log(1 + goal_step_size**2/u_proposal**2))
+        proposal_mean_lognormal = 2*jnp.log(sample_proposal) - 0.5*jnp.log(goal_step_size**2 + sample_proposal**2)
+        proposal_std_lognormal = jnp.sqrt(jnp.log(1 + goal_step_size**2/sample_proposal**2))
 
-        diff_lognormal = get_log_pdf_lognormal(u_proposal, mean_lognormal, std_lognormal) - get_log_pdf_lognormal(jnp.ravel(old_sample,order='F'), proposal_mean_lognormal, proposal_std_lognormal)
+        diff_lognormal = get_log_pdf_lognormal(sample_proposal, mean_lognormal, std_lognormal) - get_log_pdf_lognormal(jnp.ravel(old_sample,order='F'), proposal_mean_lognormal, proposal_std_lognormal)
 
-        accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(u_proposal, **model_kwargs)) - diff_lognormal
-        new_sample = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, u_proposal, jnp.ravel(old_sample,order='F'))
+        accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(sample_proposal, **model_kwargs)) - diff_lognormal
+        new_sample = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, sample_proposal, jnp.ravel(old_sample,order='F'))
 
         # return new_sample.reshape(old_sample.shape,order='F')
         return jnp.reshape(new_sample, old_sample.shape, order='F')
@@ -1308,14 +1332,14 @@ def separate_single_MH_step_index(random_PRNGKey, old_sample, step_size, log_pro
     def map_func(carry, index_Bf):
         rng_key, key_proposal, key_accept = random.split(carry[0], 3)
 
-        u_proposal = dist.Normal(carry[1][index_Bf], step_size[index_Bf]).sample(key_proposal)
+        sample_proposal = dist.Normal(carry[1][index_Bf], step_size[index_Bf]).sample(key_proposal)
         
         
         proposal_params = jnp.copy(carry[1])
-        proposal_params = proposal_params.at[index_Bf].set(u_proposal)
+        proposal_params = proposal_params.at[index_Bf].set(sample_proposal)
 
         accept_prob = -(log_proba(carry[1], **model_kwargs) - log_proba(proposal_params, **model_kwargs))
-        new_param = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, u_proposal, carry[1][index_Bf])
+        new_param = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, sample_proposal, carry[1][index_Bf])
         
         proposal_params = proposal_params.at[index_Bf].set(new_param)
         return (rng_key, proposal_params), new_param
@@ -1332,17 +1356,17 @@ def separate_single_MH_step_index_accelerated(random_PRNGKey, old_sample, step_s
     def map_func(carry, index_Bf):
         rng_key, key_proposal, key_accept = random.split(carry[0], 3)
 
-        u_proposal = dist.Normal(carry[1][index_Bf], step_size[index_Bf]).sample(key_proposal)
+        sample_proposal = dist.Normal(carry[1][index_Bf], step_size[index_Bf]).sample(key_proposal)
 
         old_inverse = carry[2]
 
         proposal_params = jnp.copy(carry[1])
-        proposal_params = proposal_params.at[index_Bf].set(u_proposal)
+        proposal_params = proposal_params.at[index_Bf].set(sample_proposal)
 
         accept_prob_0, inverse_term_0 = log_proba(carry[1], previous_inverse=old_inverse, **model_kwargs)
         accept_prob_1, inverse_term_1 = log_proba(proposal_params, previous_inverse=old_inverse, **model_kwargs)
         accept_prob = -(accept_prob_0 - accept_prob_1)
-        new_param = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, u_proposal, carry[1][index_Bf])
+        new_param = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, sample_proposal, carry[1][index_Bf])
         new_inverse_term = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, inverse_term_1, inverse_term_0)
         
         proposal_params = proposal_params.at[index_Bf].set(new_param)
@@ -1370,12 +1394,12 @@ def separate_single_MH_step_index_accelerated(random_PRNGKey, old_sample, step_s
 
 #     fluctuation = dist.Normal(jnp.ravel(old_sample,order='F'), jnp.ones(jnp.size(old_sample))).sample(key_proposal)*jnp.sqrt(2*step_size)
 
-#     u_proposal = old_sample + step_size*grad_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) + fluctuation
+#     sample_proposal = old_sample + step_size*grad_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) + fluctuation
 
-#     diff_proposal = -(log_proba_proposal(u_proposal, jnp.ravel(old_sample,order='F'), step_size, grad_proba, **model_kwargs) 
-#                         - log_proba_proposal(jnp.ravel(old_sample,order='F'), u_proposal, step_size, grad_proba, **model_kwargs))
+#     diff_proposal = -(log_proba_proposal(sample_proposal, jnp.ravel(old_sample,order='F'), step_size, grad_proba, **model_kwargs) 
+#                         - log_proba_proposal(jnp.ravel(old_sample,order='F'), sample_proposal, step_size, grad_proba, **model_kwargs))
 
-#     accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(u_proposal, **model_kwargs)) + diff_proposal
-#     new_sample = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, u_proposal, jnp.ravel(old_sample,order='F'))
+#     accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(sample_proposal, **model_kwargs)) + diff_proposal
+#     new_sample = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, sample_proposal, jnp.ravel(old_sample,order='F'))
 
 #     return new_sample[indexes_Bf].reshape(old_sample.shape,order='F')

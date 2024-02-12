@@ -38,14 +38,14 @@ def get_freq_inv_noise_JAX(depth_p, lmax):
     return jnp.einsum('fg,l->fgl',jnp.diag(1/jnp.radians(depth_p/60.),jnp.ones(lmax+1)))
 
 def get_inv_BtinvNB_c_ell(freq_inv_noise, mixing_matrix):
-    BtinvNB = jnp.einsum('fc,fgl,gk->ckl',mixing_matrix,freq_inv_noise)
-    return jnp.linalg.pinv(BtinvNB)
+    BtinvNB = jnp.einsum('fc,fgl,gk->lck',mixing_matrix,freq_inv_noise, mixing_matrix)
+    return jnp.linalg.pinv(BtinvNB).swapaxes(-3,-1)
 
 def get_true_Cl_noise(depth_p, lmax):
     bl = jnp.ones((jnp.size(depth_p), lmax+1))
 
     nl = (bl / jnp.radians(depth_p/60.)[:, jnp.newaxis])**2
-    return jnp.einsum('fk,kl->fkl', jnp.eye(jnp.size(depth_p)), nl)
+    return jnp.einsum('fl,fk->fkl', nl, jnp.eye(jnp.size(depth_p)))
 
 def get_Cl_noise_from_invBtinvNB(invBtinvNB, nstokes, nside, lmax):
     """
