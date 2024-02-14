@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=biased_fullsky_1a_5nodes
+#SBATCH --job-name=biased_fullsky_1a_5nodes_gpu
 #SBATCH --account=nih@cpu          # use CPU allocation
 #SBATCH --qos=qos_cpu-t3          # dev qos (10 jobs, 2h max.)
 #SBATCH --mail-user=magdy.morshed.fr@gmail.com
@@ -23,7 +23,7 @@ module purge
 module load python
 
 #conda activate /gpfswork/rech/nih/commun/micmac_soft/micmac_env
-source /gpfswork/rech/nih/ube74zo/MICMAC/.bash_env
+source /gpfswork/rech/nih/ube74zo/MICMAC/.bash_env_gpu
 
 export PYSM_LOCAL_DATA=/gpfswork/rech/nih/commun/micmac_soft/pysm-data
 
@@ -36,8 +36,8 @@ export OMP_PLACES=cores
 
 
 
-export VER=biased_fullsky_v104_v1a
-export additional_config_file=add_biased_fullsky_v1a.toml
+export VER=biased_fullsky_v104_v1a_gpu
+export additional_config_file=add_gpu_biased_fullsky_v1a.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_v9_JZ
 

@@ -1,0 +1,19 @@
+current_directory='validation_chain_v9_JZ/'
+MICMAC_directory = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/'
+directory_mask = "/gpfswork/rech/nih/commun/masks/"
+save_directory = "/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/"
+
+seed_realization_input=42
+delta_ell=1
+reduction_noise = 1
+factor_Fisher = 1
+relative_treshold = 1e-1
+sigma_gap = 20
+fgs_model = 'd0s0'
+initial_guess_r=1e-3
+use_nhits = false
+name_mask = "mask_SO_SAT_apodized"
+use_mask = true
+name_toml = 'biased_cutsky_v1b.toml'
+former_file_ver = ''
+file_ver = 'biased_cutsky_v104_v1b_gpu'

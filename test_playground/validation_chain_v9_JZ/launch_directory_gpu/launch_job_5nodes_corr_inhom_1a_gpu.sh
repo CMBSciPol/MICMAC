@@ -1,13 +1,12 @@
 #!/bin/bash
-#SBATCH --job-name=biased_LB_fullsky_2b_5nodes
-#SBATCH --account=nih@cpu          # use CPU allocation
-#SBATCH --qos=qos_cpu-t3          # dev qos (10 jobs, 2h max.)
-#SBATCH --mail-user=magdy.morshed.fr@gmail.com
-#SBATCH --mail-type=ALL
+#SBATCH --job-name=corr_inhom_1a_5nodes_gpu
+#SBATCH --account=nih@v100          # use CPU allocation
 #SBATCH --ntasks=5                 # nbr of MPI processes
-#SBATCH --ntasks-per-node=1       # Nombre de processus MPI par noeud
+#SBATCH --gres=gpu:4                 # nombre de GPU par noeud (max 8 avec gpu_p2, gpu_p4, gpu_p5)
 #SBATCH --cpus-per-task=40          # nbr of OpenMP threads
 #SBATCH --hint=nomultithread       # 1 thread / physical core (no hyperthreading)
+#SBATCH --mail-user=magdy.morshed.fr@gmail.com
+#SBATCH --mail-type=ALL
 #SBATCH --time=20:00:00            # default: 10 minutes on cpu_p1
 
 # go to submit directory (where the .slurm file is)
@@ -23,7 +22,7 @@ module purge
 module load python
 
 #conda activate /gpfswork/rech/nih/commun/micmac_soft/micmac_env
-source /gpfswork/rech/nih/ube74zo/MICMAC/.bash_env
+source /gpfswork/rech/nih/ube74zo/MICMAC/.bash_env_gpu
 
 export PYSM_LOCAL_DATA=/gpfswork/rech/nih/commun/micmac_soft/pysm-data
 
@@ -36,8 +35,8 @@ export OMP_PLACES=cores
 
 
 
-export VER=biased_fullsky_LB_v104_v2b
-export additional_config_file=add_biased_fullsky_LB_v2b.toml
+export VER=corr_cutsky_inhom_v104_v1a_gpu
+export additional_config_file=add_gpu_corr_cutsky_inhom_v1a.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_v9_JZ
 
