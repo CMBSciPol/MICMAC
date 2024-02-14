@@ -1,0 +1,18 @@
+current_directory='validation_chain_v9_JZ/'
+MICMAC_directory = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/'
+directory_mask = "/gpfswork/rech/nih/commun/masks/"
+save_directory = "/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/"
+
+delta_ell=1
+reduction_noise = 1
+factor_Fisher = 1
+relative_treshold = 1e-1
+sigma_gap = 20
+fgs_model = 'd0s0'
+initial_guess_r=1e-8
+use_nhits = false
+name_mask = ""
+use_mask = false
+name_toml = 'corr_fullsky_v1a.toml'
+former_file_ver = ''
+file_ver = 'corr_fullsky_v104_v1a_gpu'
