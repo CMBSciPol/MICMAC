@@ -3,6 +3,7 @@ MICMAC_directory = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/'
 directory_mask = "/gpfswork/rech/nih/commun/masks/"
 save_directory = "/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/"
 
+seed_realization_input=42
 delta_ell=1
 # d7s0 with reduced noise !!
 reduction_noise = 10
