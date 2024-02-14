@@ -47,15 +47,6 @@ def get_MCMC_batch_error(sample_single_chain, batch_size):
     standard_error = np.sqrt((batch_size/number_iterations)*((sample_single_chain-overall_mean)**2).sum())
     return standard_error
 
-
-def get_empirical_covariance_JAX(samples):
-    """ Compute empirical covariance from samples
-    """
-    number_samples = jnp.size(samples, axis=0)
-    mean_samples = jnp.mean(samples, axis=0)
-
-    return (jnp.einsum('ti,tj->tij',samples,samples).sum(axis=0) - number_samples*jnp.einsum('i,j->ij',mean_samples,mean_samples))/(number_samples-1)
-
 def loading_params(directory_save_file, file_ver, MICMAC_sampler_obj):
     dict_all_params = dict()
     # Loading all files
@@ -99,3 +90,24 @@ def loading_params(directory_save_file, file_ver, MICMAC_sampler_obj):
     dict_all_params['all_params_mixing_matrix_samples'] = all_params_mixing_matrix_samples
 
     return dict_all_params
+
+
+    def get_Gelman_Rubin_statistics(all_chain_samples):
+        """ Compute Gelman-Rubin statistics
+
+        Parameters
+        ----------
+        :param all_chains_samples: all chains, with dimensions [number_chains, number_iterations, ...]
+    """
+
+    mean_chain = all_chain_samples.mean(axis=0)
+
+    return 1/all_chain_samples.var(axis=1)*mean_chain.var(axis=0)
+
+def get_empirical_covariance_JAX(samples):
+    """ Compute empirical covariance from samples
+    """
+    number_samples = jnp.size(samples, axis=0)
+    mean_samples = jnp.mean(samples, axis=0)
+
+    return (jnp.einsum('ti,tj->tij',samples,samples).sum(axis=0) - number_samples*jnp.einsum('i,j->ij',mean_samples,mean_samples))/(number_samples-1)

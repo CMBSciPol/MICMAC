@@ -1,0 +1,34 @@
+# [Quick_test_parameters]
+biased_version = true
+indexes_free_Bf = false
+disable_chex = false
+
+# [Instrument_parameters]
+instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_noise and frequency_array will be taken from fgbuster, 
+# or provide expcitely freq_inverse_noise and frequency_array with instrument_name="customized_instrument"
+# freq_inverse_noise = []
+# frequency_array = []
+
+# [CMB_parameters]
+r_true = 1e-2
+
+# [Problem_parameters]
+nside = 64
+lmax = 128
+nstokes = 2
+lmin = 2
+n_iter = 8 # Number of iterations for Python estimation of alms
+number_components = 3
+pos_special_freqs = [0,-1] # Position of the special frequencies in the frequency array
+
+
+# [Metropolis-Hastings_parameters]
+step_size_r = 1e-3 #1e-4 #1e-5 ???
+thinning=1
+number_chains_MH=5
+
+# [Sampling_parameters]
+# overrelax = 0 #-0.995 # Overrelaxation parameter for the sampling
+number_iterations_sampling = 5000 # Maximum number of iterations for the sampling
+number_iterations_done = 0 # Number of iterations already accomplished, in case the chain is resuming from a previous run
+seed = 42 # Seed for the random number generator

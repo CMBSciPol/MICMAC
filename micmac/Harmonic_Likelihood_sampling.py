@@ -374,13 +374,39 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
             c_ell_approx = c_ell_approx[indices_to_consider,:]
         
         ## Testing the initial mixing matrix
-        if len(init_params_mixing_matrix.shape) == 1:
-            assert len(init_params_mixing_matrix) == (self.number_frequencies-len(self.pos_special_freqs))*(self.number_correlations-1)
-        else:
-            # assert len(init_params_mixing_matrix.shape) == 2
-            assert init_params_mixing_matrix.shape[0] == (self.number_frequencies-len(self.pos_special_freqs))
-            assert init_params_mixing_matrix.shape[1] == (self.number_correlations-1)
+        try:
+            assert init_params_mixing_matrix.shape[0] == self.number_chains_MH
+        except:
+            if len(init_params_mixing_matrix) == 1:
+                init_params_mixing_matrix = np.repeat(init_params_mixing_matrix, 
+                                                    self.number_chains_MH).reshape(
+                                                        (self.number_chains_MH, 
+                                                        init_params_mixing_matrix.shape[0]), order='F')
+            else:
+                init_params_mixing_matrix = np.repeat(init_params_mixing_matrix, 
+                                                    self.number_chains_MH).reshape(
+                                                        (self.number_chains_MH, 
+                                                        init_params_mixing_matrix.shape[0],
+                                                        init_params_mixing_matrix.shape[1]), order='F')
 
+        if self.number_chains_MH == 1:
+            if len(init_params_mixing_matrix.shape) == 1:
+                assert len(init_params_mixing_matrix) == (self.number_frequencies-len(self.pos_special_freqs))*(self.number_correlations-1)
+            else:
+                # assert len(init_params_mixing_matrix.shape) == 2
+                assert init_params_mixing_matrix.shape[0] == (self.number_frequencies-len(self.pos_special_freqs))
+                assert init_params_mixing_matrix.shape[1] == (self.number_correlations-1)
+        
+        else:
+            if len(init_params_mixing_matrix.shape) == 2:
+                assert init_params_mixing_matrix.shape[1] == (self.number_frequencies-len(self.pos_special_freqs))*(self.number_correlations-1)
+            else:
+                assert init_params_mixing_matrix.shape[1] == (self.number_frequencies-len(self.pos_special_freqs))
+                assert init_params_mixing_matrix.shape[2] == (self.number_correlations-1)
+        try: 
+            assert jnp.size(initial_guess_r) == self.number_chains_MH
+        except:
+            initial_guess_r = np.repeat(initial_guess_r, self.number_chains_MH).reshape(self.number_chains_MH)
 
         ## Final set of tests
         # assert len(CMB_c_ell.shape) == 2
