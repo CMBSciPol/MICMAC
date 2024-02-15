@@ -37,7 +37,8 @@ export OMP_PLACES=cores
 
 
 
-export VER=corr_fullsky_v104_v1b_gpu
+# export VER=corr_fullsky_v104_v1b_gpu
+export VER=corr_fullsky_v104_v1b2_gpu
 export additional_config_file=add_gpu_corr_fullsky_v1b.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_v9_JZ

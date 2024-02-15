@@ -16,4 +16,5 @@ name_mask = ""
 use_mask = false
 name_toml = 'corr_fullsky_v1b.toml'
 former_file_ver = ''
-file_ver = 'corr_fullsky_v104_v1b_gpu'
+# file_ver = 'corr_fullsky_v104_v1b_gpu'
+file_ver = 'corr_fullsky_v104_v1b2_gpu'
