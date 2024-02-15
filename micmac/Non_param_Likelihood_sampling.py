@@ -50,7 +50,7 @@ class MICMAC_Sampler(Sampling_functions):
                  sample_eta_B_f=True,
                  sample_r_Metropolis=True, sample_C_inv_Wishart=False,
                  step_size_B_f=1e-5, step_size_r=1e-4,
-                 covariance_step_size_B_f=-1,
+                 covariance_B_f=-1,
                  indexes_free_Bf=False,
 
                  instrument_name='SO_SAT',
@@ -100,10 +100,10 @@ class MICMAC_Sampler(Sampling_functions):
         # Metropolis-Hastings parameters
         self.lognormal_r = lognormal_r
         # self.step_size_B_f = step_size_B_f
-        if covariance_step_size_B_f==-1:
-            self.covariance_step_size_B_f = jnp.diag((jnp.ravel(step_size_B_f,order='F')**2)*jnp.ones((self.number_frequencies-len(pos_special_freqs))*(self.number_correlations-1)))
+        if covariance_B_f==-1:
+            self.covariance_B_f = jnp.diag((jnp.ravel(step_size_B_f,order='F')**2)*jnp.ones((self.number_frequencies-len(pos_special_freqs))*(self.number_correlations-1)))
         else:
-            self.covariance_step_size_B_f = covariance_step_size_B_f
+            self.covariance_B_f = covariance_B_f
         self.step_size_r = step_size_r
         # self.number_steps_sampler_B_f = int(number_steps_sampler_B_f) # Maximum number of steps for the Metropolis-Hasting to sample the mixing matrix
         # self.number_steps_sampler_r = int(number_steps_sampler_r)
@@ -124,7 +124,7 @@ class MICMAC_Sampler(Sampling_functions):
         self.all_samples_fluctuation_maps = jnp.empty(0)
         self.all_samples_r = jnp.empty(0)
         self.all_samples_CMB_c_ell = jnp.empty(0)
-    
+
 
     @property
     def all_samples_s_c(self):
@@ -425,10 +425,11 @@ class MICMAC_Sampler(Sampling_functions):
             theoretical_red_cov_r0_total = get_reduced_matrix_from_c_ell(theoretical_r0_total)
             theoretical_red_cov_r1_tensor  = get_reduced_matrix_from_c_ell(theoretical_r1_tensor)
         ## Testing the initial CMB spectra given
-        if self.nstokes == 2 and (CMB_c_ell.shape[0] != len(indices_to_consider)):    
+        if self.nstokes == 2 and (CMB_c_ell.shape[0] != len(indices_to_consider)):
             CMB_c_ell = CMB_c_ell[indices_to_consider,:]
+        if self.nstokes == 2 and (c_ell_approx.shape[0] != len(indices_to_consider)):
             c_ell_approx = c_ell_approx[indices_to_consider,:]
-        
+
         ## testing the initial mixing matrix
         if len(init_params_mixing_matrix.shape) == 1:
             assert len(init_params_mixing_matrix) == (self.number_frequencies-len(self.pos_special_freqs))*(self.number_correlations-1)
@@ -464,12 +465,12 @@ class MICMAC_Sampler(Sampling_functions):
         red_cov_matrix = get_reduced_matrix_from_c_ell(CMB_c_ell)[self.lmin:,...]
 
         ## Preparation of the mixing matrix
-        self.mixing_matrix_obj = MixingMatrix(self.frequency_array, self.number_components, params_mixing_matrix_init_sample, pos_special_freqs=self.pos_special_freqs)
+        # self.mixing_matrix_obj = MixingMatrix(self.frequency_array, self.number_components, params_mixing_matrix_init_sample, pos_special_freqs=self.pos_special_freqs)
 
 
         ## Jitting the sampling function
-        jitted_sample_eta = jax.jit(self.get_sampling_eta_v2, static_argnames=['suppress_low_modes'])
-        
+        # jitted_sample_eta = jax.jit(self.get_sampling_eta_v2, static_argnames=['suppress_low_modes'])
+
         func_fixed_covariance_eta = self.get_conditional_proba_correction_likelihood_JAX_v2c
 
         # jitted_get_fluctuating_term = jax.jit(self.get_fluctuating_term_maps)
@@ -494,14 +495,15 @@ class MICMAC_Sampler(Sampling_functions):
             func_get_inverse_wishart_sampling_from_c_ells = self.get_binned_inverse_wishart_sampling_from_c_ells_v3
         # func_get_inverse_wishart_sampling_from_c_ells = self.get_inverse_gamma_sampling_from_c_ells
 
-        if self.lognormal_r:
-            # Using lognormal proposal distribution for r
-            r_sampling_MH = single_lognormal_Metropolis_Hasting_step
-        else:
-            # Using normal proposal distribution for r
-            r_sampling_MH = single_Metropolis_Hasting_step
-        
-        jitted_single_Metropolis_Hasting_step_r = jax.jit(single_Metropolis_Hasting_step, static_argnames=['log_proba'])
+        # if self.lognormal_r:
+        #     # Using lognormal proposal distribution for r
+        #     r_sampling_MH = single_lognormal_Metropolis_Hasting_step
+        # else:
+        #     # Using normal proposal distribution for r
+        #     r_sampling_MH = single_Metropolis_Hasting_step
+        r_sampling_MH = single_Metropolis_Hasting_step
+
+        # jitted_single_Metropolis_Hasting_step_r = jax.jit(single_Metropolis_Hasting_step, static_argnames=['log_proba'])
 
         jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v2b_JAX, static_argnames=['biased_bool'])
         sampling_func = separate_single_MH_step_index_accelerated
@@ -525,9 +527,9 @@ class MICMAC_Sampler(Sampling_functions):
 
         ## Preparing the step-size for Metropolis-within-Gibbs of B_f sampling
         try :
-            initial_step_size_Bf = jnp.array(jnp.diag(jsp.linalg.sqrtm(self.covariance_step_size_B_f)), dtype=jnp.float64)
+            initial_step_size_Bf = jnp.array(jnp.diag(jsp.linalg.sqrtm(self.covariance_B_f)), dtype=jnp.float64)
         except:
-            initial_step_size_Bf = jnp.array(jnp.diag(jnp.sqrt(self.covariance_step_size_B_f)), dtype=jnp.float64)
+            initial_step_size_Bf = jnp.array(jnp.diag(jnp.sqrt(self.covariance_B_f)), dtype=jnp.float64)
         print('Step-size B_f', initial_step_size_Bf, flush=True)
 
         ## Few prints to re-check the toml parameters chosen
@@ -563,9 +565,11 @@ class MICMAC_Sampler(Sampling_functions):
             PRNGKey, subPRNGKey = random.split(PRNGKey)
 
             # Extracting the mixing matrix parameters and initializing the new one
-            params_mixing_matrix_sample = params_mixing_matrix_sample.reshape((self.number_frequencies-len_pos_special_freqs,number_correlations-1),order='F')
-            self.mixing_matrix_obj.update_params(params_mixing_matrix_sample)
-            mixing_matrix_sampled = self.mixing_matrix_obj.get_B(jax_use=True)
+            # params_mixing_matrix_sample = params_mixing_matrix_sample.reshape((self.number_frequencies-len_pos_special_freqs,number_correlations-1),order='F')
+            # self.mixing_matrix_obj.update_params(params_mixing_matrix_sample)
+            # mixing_matrix_sampled = self.mixing_matrix_obj.get_B(jax_use=True)
+            self.update_params(params_mixing_matrix_sample)
+            mixing_matrix_sampled = self.get_B(jax_use=True)
 
             # Few checks for the mixing matrix
             chx.assert_axis_dimension(mixing_matrix_sampled, 0, self.number_frequencies)
@@ -719,7 +723,7 @@ class MICMAC_Sampler(Sampling_functions):
                 step_size_Bf = initial_step_size_Bf
                 # if self.use_automatic_step_size:
                 #     covariance_matrix_B_f = jnp.where(iteration < self.num_sample_AM, 
-                #                                     self.covariance_step_size_B_f,
+                #                                     self.covariance_B_f,
                 #                                     self.compute_covariance_nd(iteration, _all_B_f_samples))
                 #     step_size_Bf = jnp.array(jnp.diag(jsp.linalg.sqrtm(covariance_matrix_B_f)), dtype=jnp.float64)
 
@@ -746,7 +750,8 @@ class MICMAC_Sampler(Sampling_functions):
 
                 # Checking the shape of the resulting mixing matrix
                 chx.assert_axis_dimension(params_mixing_matrix_sample, 0, self.number_frequencies-len_pos_special_freqs)
-                params_mixing_matrix_sample = params_mixing_matrix_sample.reshape((self.number_frequencies-len_pos_special_freqs,number_correlations-1),order='F')
+                chx.assert_axis_dimension(params_mixing_matrix_sample, 1, self.number_correlations-1)
+                # params_mixing_matrix_sample = params_mixing_matrix_sample.reshape((self.number_frequencies-len_pos_special_freqs,number_correlations-1),order='F')
 
 
             new_carry = (eta_maps_sample, wiener_filter_term, fluctuation_maps, red_cov_matrix_sample, r_sample, params_mixing_matrix_sample, PRNGKey, s_c_sample, inverse_term)

@@ -92,8 +92,16 @@ def loading_params(directory_save_file, file_ver, MICMAC_sampler_obj):
     return dict_all_params
 
 
-    def get_Gelman_Rubin_statistics(all_chain_samples):
-        """ Compute Gelman-Rubin statistics
+def get_empirical_covariance_JAX(samples):
+    """ Compute empirical covariance from samples
+    """
+    number_samples = jnp.size(samples, axis=0)
+    mean_samples = jnp.mean(samples, axis=0)
+
+    return (jnp.einsum('ti,tj->tij',samples,samples).sum(axis=0) - number_samples*jnp.einsum('i,j->ij',mean_samples,mean_samples))/(number_samples-1)
+
+def get_Gelman_Rubin_statistics(all_chain_samples):
+    """ Compute Gelman-Rubin statistics
 
         Parameters
         ----------
@@ -102,12 +110,5 @@ def loading_params(directory_save_file, file_ver, MICMAC_sampler_obj):
 
     mean_chain = all_chain_samples.mean(axis=0)
 
-    return 1/all_chain_samples.var(axis=1)*mean_chain.var(axis=0)
+    return 1/all_chain_samples.var(axis=1).mean()*mean_chain.var(axis=0)
 
-def get_empirical_covariance_JAX(samples):
-    """ Compute empirical covariance from samples
-    """
-    number_samples = jnp.size(samples, axis=0)
-    mean_samples = jnp.mean(samples, axis=0)
-
-    return (jnp.einsum('ti,tj->tij',samples,samples).sum(axis=0) - number_samples*jnp.einsum('i,j->ij',mean_samples,mean_samples))/(number_samples-1)

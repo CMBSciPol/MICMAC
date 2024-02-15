@@ -191,7 +191,8 @@ class Sampling_functions(MixingMatrix):
 
         # Getting final solution : C_approx^(1/2) ( N_c^{-1/2} x + C_approx^(-1/2) y)
         # map_solution = maps_x_red_covariance_cell_JAX(map_solution_0.reshape((self.nstokes,self.npix)), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
-        full_first_member = maps_x_red_covariance_cell_JAX(first_member.reshape((self.nstokes,self.npix)), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
+        # full_first_member = maps_x_red_covariance_cell_JAX(first_member.reshape((self.nstokes,self.npix)), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
+        full_first_member = maps_x_red_covariance_cell_JAX(first_member, red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
 
         map_solution = map_random_y + full_first_member
 
@@ -992,7 +993,7 @@ class Sampling_functions(MixingMatrix):
 
         ## Preparing the mixing matrix and C_approx^{-1/2}
         invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, complete_mixing_matrix, jax_use=True)*jhp.nside2resol(self.nside)**2        
-        red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix_sqrt)
+        # red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix_sqrt)
         red_cov_approx_matrix_msqrt = jnp.linalg.pinv(red_cov_approx_matrix_sqrt)
 
         ## Preparing the operator ( C_approx^{-1} + N_c^{-1} )^{-1}
@@ -1234,7 +1235,6 @@ class Sampling_functions(MixingMatrix):
                                                             central_term_1, 
                                                             lmin=self.lmin)
 
-        
 
         ## Computation of the second term s_{c,ML}^t (C^{-1} + N_c^{-1}) s_{c,ML}
         # frequency_noise_Stokes = jnp.einsum('fgl,sk->fglsk', red_freq_inverse_noise, jnp.eye(self.nstokes))
@@ -1248,7 +1248,7 @@ class Sampling_functions(MixingMatrix):
 
         central_term_2 = jnp.linalg.pinv(red_noise_CMB + red_CMB_cell)
         alm_central_term_2 = alms_x_red_covariance_cell_JAX(s_cML, central_term_2, lmin=self.lmin)
-        
+
         ## Computation of the third term ln | (C + N_c) (C_approx + N_c)^-1 |
         red_contribution = jnp.einsum('lsk,lkm->lsm', 
                                         red_CMB_cell + red_noise_CMB, 

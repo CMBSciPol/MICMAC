@@ -20,7 +20,7 @@ instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_n
 # frequency_array = []
 
 # [CMB_parameters]
-r_true = 1e-2
+r_true = 0 #1e-2
 sample_r_Metropolis = true
 sample_C_inv_Wishart = false
 
