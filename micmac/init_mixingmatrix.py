@@ -8,18 +8,21 @@ import sympy
 from scipy import constants
 from astropy.cosmology import Planck15
 
+from .templates_spv import create_one_template, get_n_patches_b
+
 
 h_over_k = constants.h * 1e9 / constants.k
 
 
 class InitMixingMatrix:
-    def __init__(self, freqs, ncomp, pos_special_freqs):
+    def __init__(self, freqs, ncomp, pos_special_freqs, spv_nodes_b):
         """
         Note: units are K_CMB.
         """
         self.freqs = freqs  # all input freq bands
         self.ncomp = ncomp  # all comps (also cmb)
         self.pos_special_freqs = pos_special_freqs
+        self.spv_nodes_b = spv_nodes_b   # tree containing info to build spv_templates
 
     def K_rj2K_cmb(self, nu):
         Tcmb = Planck15.Tcmb(0).value
@@ -94,6 +97,22 @@ class InitMixingMatrix:
         inv_A_f1 = np.linalg.inv(A_f1)
         # get params w SEDs for redefined fgs (true B entries)
         # B = A invM
-        params = np.einsum("fc,cg->fg", params_, inv_A_f1)
+        params_no_spv = np.einsum("fc,cg->fg", params_, inv_A_f1)
+
+        # params spv (one parameter per patch)
+        # TODO: for the moment just repeated the values for d0s0, extend to d1s1
+        params_s = []
+        params_d = []
+        for ind_f, val_f in enumerate(unknown_freqs):
+            # TODO: extend the counting of the patches to adaptive multires
+            # (maybe easier to extend it by looking at the spv_templates
+            # or add a function in the templates_spv.py to get the number of patches for each b)
+            n_patches_b_s = get_n_patches_b(self.spv_nodes_b[ind_f])
+            n_patches_b_d = get_n_patches_b(self.spv_nodes_b[ind_f+len(unknown_freqs)])
+            for patch in range(n_patches_b_s):
+                params_s.append(params_no_spv[ind_f, 0])
+            for patch in range(n_patches_b_d):
+                params_d.append(params_no_spv[ind_f, 1])
+        params = np.concatenate((params_s, params_d))
 
         return params

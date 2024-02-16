@@ -5,25 +5,30 @@ import jax.numpy as jnp
 import chex as chx
 from functools import partial
 
-# Note: the mixing matrix is supposed to be the same 
-# for Q and U Stokes params and all pixels.
-# (also we supposed that I is never used)
-# Thus it has dimensions (number_frequencies*number_components).
+from .templates_spv import get_n_patches_b, get_nodes_b, create_one_template
+
+# Note: 
+# the mixing matrix is supposed to be the same for Q and U Stokes params
+# (also we suppose that I is not used)
+# Mixing matrix dimensions: number_frequencies*number_components*number_pixels
 
 
 
 class MixingMatrix():
-    def __init__(self, frequency_array, number_components, params=None, pos_special_freqs=[0,-1]):
+    def __init__(self, frequency_array, number_components, spv_nodes_b, nside_out, params=None, pos_special_freqs=[0,-1]):
         """
         Note: units are K_CMB.
         """
         self.frequency_array = frequency_array
         self.number_frequencies = jnp.size(frequency_array)    # all input freq bands
         self.number_components = number_components         # all comps (also cmb)
+        self.spv_nodes_b = spv_nodes_b   # nodes for b containing info patches to build spv_templates
+        self.nside_out = nside_out
+        self.n_pixels = 12*self.nside_out**2
         if params is None:
-            params = np.zeros((self.number_frequencies-self.number_components+1, self.number_components-1))
+            params = np.zeros((self.get_len_params()))
         else:
-            assert np.shape(params) == (self.number_frequencies-self.number_components+1, self.number_components-1)
+            assert len(params) == self.get_len_params()
             self.params = params
 
         ### checks on pos_special_freqs
@@ -36,18 +41,52 @@ class MixingMatrix():
         self.pos_special_freqs = pos_special_freqs
 
 
+    def get_len_params(self):
+        len_params = 0
+        for node in self.spv_nodes_b:
+            len_params += get_n_patches_b(node)
+        return len_params
+
+
     def update_params(self, new_params, jax_use=False):
         """
         Update values of the params in the mixing matrix.
         """
         if jax_use:
-            chx.assert_shape(new_params,(self.number_frequencies-self.number_components+1, self.number_components-1))
+            chx.assert_shape(new_params,self.get_len_params())
             self.params = new_params
             return
-        assert np.shape(new_params) == (self.number_frequencies-self.number_components+1, self.number_components-1)
+        assert np.shape(new_params)[0] == self.get_len_params()
         self.params = new_params
 
         return
+    
+
+    def get_params_long(self):
+        """From the params to all the entries of the mixing matrix"""
+        n_unknown_freqs = self.number_frequencies-self.number_components+1
+        n_comp_fgs = self.number_components-1
+        
+        params_long = np.zeros((n_unknown_freqs, n_comp_fgs, self.n_pixels))
+        ind_params = 0
+        for ind_node_b, node_b in enumerate(self.spv_nodes_b):
+            print("node: ", node_b.parent.name, node_b.name)
+            # template of all the patches for this b
+            spv_template_b = np.array(create_one_template(node_b, nside_out=self.nside_out, all_nsides=[], spv_templates=[]))
+            # loop over the patches of this b
+            params_long_b = np.zeros((self.n_pixels))
+            for b in range(get_n_patches_b(node_b)):
+                params_long_b += np.where(spv_template_b == b, 1, 0)*self.params[ind_params]
+                ind_params += 1
+            if ind_node_b < n_unknown_freqs:
+                ind_freq = ind_node_b
+                ind_comp = 0
+            else:
+                ind_freq = ind_node_b - n_unknown_freqs
+                ind_comp = 1
+            params_long[ind_freq, ind_comp, :] = params_long_b
+        
+        return params_long
     
 
     def get_B_fgs(self, jax_use=False):
@@ -55,8 +94,11 @@ class MixingMatrix():
         fgs part of the mixing matrix.
         """
         ncomp_fgs = self.number_components - 1
+        params_long = self.get_params_long()
+
         if jax_use:
-            B_fgs = jnp.zeros((self.number_frequencies, ncomp_fgs))
+            # TODO: jax part adjust with spv
+            B_fgs = jnp.zeros((self.number_frequencies, ncomp_fgs, self.n_pixels))
             # insert all the ones given by the pos_special_freqs
             for c in range(ncomp_fgs):
                 # B_fgs[self.pos_special_freqs[c]][c] = 1
@@ -71,19 +113,19 @@ class MixingMatrix():
             return B_fgs
 
         if ncomp_fgs != 0:
-            assert self.params.shape == ((self.number_frequencies - len(self.pos_special_freqs)),ncomp_fgs)
+            assert params_long.shape == ((self.number_frequencies - len(self.pos_special_freqs)), ncomp_fgs, self.n_pixels)
             assert len(self.pos_special_freqs) <= ncomp_fgs
 
-        B_fgs = np.zeros((self.number_frequencies, ncomp_fgs))
+        B_fgs = np.zeros((self.number_frequencies, ncomp_fgs, self.n_pixels))
         if len(self.pos_special_freqs) != 0:
             # insert all the ones given by the pos_special_freqs
             for c in range(len(self.pos_special_freqs)):
                 B_fgs[self.pos_special_freqs[c]][c] = 1
         # insert all the parameters values
-        f = 0 
+        f = 0
         for i in range(self.number_frequencies):
             if i not in self.pos_special_freqs:
-                B_fgs[i, :] = self.params[f, :]
+                B_fgs[i, :] = params_long[f, :, :]
                 f += 1
         
         return B_fgs
@@ -94,11 +136,11 @@ class MixingMatrix():
         CMB column of the mixing matrix.
         """
         if jax_use:
-            B_cmb = jnp.ones((self.number_frequencies))
-            return B_cmb[:, np.newaxis]
+            B_cmb = jnp.ones((self.number_frequencies, self.n_pixels))
+            return B_cmb[:, np.newaxis, :]
 
-        B_cmb = np.ones((self.number_frequencies))
-        B_cmb = B_cmb[:, np.newaxis]
+        B_cmb = np.ones((self.number_frequencies, self.n_pixels))
+        B_cmb = B_cmb[:, np.newaxis, :]
         
         return B_cmb
 
