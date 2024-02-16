@@ -4,6 +4,7 @@ Noise covariance matrix and useful recurring operations.
 import numpy as np
 import healpy as hp
 import jax.numpy as jnp
+import chex as chx
 
 # Note: we only consider diagonal noise covariance
 
@@ -19,6 +20,13 @@ def get_noise_covar(depth_p, nside):
     return invN
 
 def get_Cl_noise(depth_p, A, lmax):
+    """
+    Function used only in harmonic case
+    A: is pixel independent MixingMatrix, 
+    thus if you want to get it from full MixingMatrix 
+    you have to select the entry correspondind to one pixel
+    """
+    assert len(np.shape(A))==2
     bl = np.ones((len(depth_p), lmax+1))
 
     nl = (bl / np.radians(depth_p/60.)[:, np.newaxis])**2
@@ -27,6 +35,13 @@ def get_Cl_noise(depth_p, A, lmax):
     return inv_AtNA.swapaxes(-3, -1)
 
 def get_Cl_noise_JAX(depth_p, A, lmax):
+    """
+    Function used only in harmonic case
+    A: is pixel independent MixingMatrix, 
+    thus if you want to get it from full MixingMatrix 
+    you have to select the entry correspondind to one pixel
+    """
+    assert len(np.shape(A))==2
     bl = jnp.ones((jnp.size(depth_p), lmax+1))
 
     nl = (bl / jnp.radians(depth_p/60.)[:, jnp.newaxis])**2
@@ -38,6 +53,12 @@ def get_freq_inv_noise_JAX(depth_p, lmax):
     return jnp.einsum('fg,l->fgl',jnp.diag(1/jnp.radians(depth_p/60.),jnp.ones(lmax+1)))
 
 def get_inv_BtinvNB_c_ell(freq_inv_noise, mixing_matrix):
+    """
+    Function used only in harmonic case
+    mixing_matrix: is pixel independent MixingMatrix, 
+    thus if you want to get it from full MixingMatrix 
+    you have to select the entry correspondind to one pixel
+    """
     BtinvNB = jnp.einsum('fc,fgl,gk->lck',mixing_matrix,freq_inv_noise, mixing_matrix)
     return jnp.linalg.pinv(BtinvNB).swapaxes(-3,-1)
 
@@ -47,14 +68,14 @@ def get_true_Cl_noise(depth_p, lmax):
     nl = (bl / jnp.radians(depth_p/60.)[:, jnp.newaxis])**2
     return jnp.einsum('fl,fk->fkl', nl, jnp.eye(jnp.size(depth_p)))
 
-def get_Cl_noise_from_invBtinvNB(invBtinvNB, nstokes, nside, lmax):
-    """
-        Return cl noise from invBtinvNB if invBtinvNB is not multi-resolution
-    """
-    number_correlations = int(jnp.ceil(nstokes**2/2) + jnp.floor(nstokes/2))
-    full_spectra = jnp.zeros((number_correlations,lmax+1))
-    full_spectra = full_spectra.at[:nstokes,:].set(invBtinvNB*hp.nside2resol(nside)**2)
-    return full_spectra
+# def get_Cl_noise_from_invBtinvNB(invBtinvNB, nstokes, nside, lmax):
+#     """
+#         Return cl noise from invBtinvNB if invBtinvNB is not multi-resolution
+#     """
+#     number_correlations = int(jnp.ceil(nstokes**2/2) + jnp.floor(nstokes/2))
+#     full_spectra = jnp.zeros((number_correlations,lmax+1))
+#     full_spectra = full_spectra.at[:nstokes,:].set(invBtinvNB*hp.nside2resol(nside)**2)
+#     return full_spectra
 
 def get_BtinvN(invN, B, jax_use=False):
     """
@@ -112,28 +133,28 @@ def get_Wd(invN, B, d, jax_use=False):
     return np.einsum("cg...,hg...,hf...,f...->c...", invBtinvNB, B, invN, d)
 
 
-## Choose if we want to keep these ones
-## (this could be done directly in the code)
-def select_cmb_EtX(X, ncomp):
-    """
-    It acts on object w ncomp as external dimension
-    and it selects only cmb.
-    """
-    # check that the ext dim is indeed ncomp
-    assert X.shape[0] == ncomp
-    EtX = X[0, ...]
+# ## Choose if we want to keep these ones
+# ## (this could be done directly in the code)
+# def select_cmb_EtX(X, ncomp):
+#     """
+#     It acts on object w ncomp as external dimension
+#     and it selects only cmb.
+#     """
+#     # check that the ext dim is indeed ncomp
+#     assert X.shape[0] == ncomp
+#     EtX = X[0, ...]
 
-    return EtX
+#     return EtX
 
 
-def select_cmb_EtXE(X, ncomp):
-    """
-    It acts on object w (ncomp,ncomp) as external dimensions
-    and it selects only cmb.
-    """
-    # check that the ext dims are indeed (ncomp,ncomp)
-    assert X.shape[0] == ncomp
-    assert X.shape[1] == ncomp
-    EtXE = X[0, 0, ...]
+# def select_cmb_EtXE(X, ncomp):
+#     """
+#     It acts on object w (ncomp,ncomp) as external dimensions
+#     and it selects only cmb.
+#     """
+#     # check that the ext dims are indeed (ncomp,ncomp)
+#     assert X.shape[0] == ncomp
+#     assert X.shape[1] == ncomp
+#     EtXE = X[0, 0, ...]
 
-    return EtXE
+#     return EtXE
