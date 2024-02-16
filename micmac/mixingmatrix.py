@@ -15,7 +15,7 @@ from .templates_spv import get_n_patches_b, get_nodes_b, create_one_template
 
 
 class MixingMatrix():
-    def __init__(self, frequency_array, number_components, spv_nodes_b, nside_out, params=None, pos_special_freqs=[0,-1]):
+    def __init__(self, frequency_array, number_components, spv_nodes_b, nside, params=None, pos_special_freqs=[0,-1]):
         """
         Note: units are K_CMB.
         """
@@ -23,8 +23,8 @@ class MixingMatrix():
         self.number_frequencies = jnp.size(frequency_array)    # all input freq bands
         self.number_components = number_components         # all comps (also cmb)
         self.spv_nodes_b = spv_nodes_b   # nodes for b containing info patches to build spv_templates
-        self.nside_out = nside_out
-        self.n_pixels = 12*self.nside_out**2
+        self.nside = nside
+        self.n_pixels = 12*self.nside**2
         if params is None:
             params = np.zeros((self.get_len_params()))
         else:
@@ -72,7 +72,7 @@ class MixingMatrix():
         for ind_node_b, node_b in enumerate(self.spv_nodes_b):
             print("node: ", node_b.parent.name, node_b.name)
             # template of all the patches for this b
-            spv_template_b = np.array(create_one_template(node_b, nside_out=self.nside_out, all_nsides=[], spv_templates=[]))
+            spv_template_b = np.array(create_one_template(node_b, nside=self.nside, all_nsides=[], spv_templates=[]))
             # loop over the patches of this b
             params_long_b = np.zeros((self.n_pixels))
             for b in range(get_n_patches_b(node_b)):
