@@ -47,6 +47,7 @@ current_repo = dictionary_additional_parameters['current_directory']
 MICMAC_repo = dictionary_additional_parameters['MICMAC_directory']
 repo_mask = dictionary_additional_parameters['directory_mask']
 repo_save = dictionary_additional_parameters['save_directory']
+directory_covariance_B_f_r = dictionary_additional_parameters['directory_covariance_B_f_r']
 
 # Getting the rest of the additional arguments
 delta_ell = dictionary_additional_parameters['delta_ell']
@@ -61,6 +62,8 @@ name_mask = dictionary_additional_parameters['name_mask']
 use_mask = dictionary_additional_parameters['use_mask']
 name_toml = dictionary_additional_parameters['name_toml']
 seed_realization_input = dictionary_additional_parameters['seed_realization_input']
+use_Fisher = dictionary_additional_parameters['use_Fisher']
+
 
 # Starting MPI
 from mpi4py import MPI
@@ -70,6 +73,11 @@ MPI_rank = MPI_comm.Get_rank()
 MPI_size = MPI_comm.Get_size()
 
 print("r{} of {} -- Launch".format(MPI_rank, MPI_size), flush=True)
+
+# Checking if continuation of harmonic run
+from_harmonic_run_ver = dictionary_additional_parameters['from_harmonic_run_ver']
+if from_harmonic_run_ver != '':
+    path_covariance_B_f_r = current_repo + covariance_matrices_Harm + 'covariance_B_f_r_' + from_harmonic_run_ver + '.npy'
 
 # Checking if continuiation of previous run
 former_file_ver = dictionary_additional_parameters['former_file_ver'] 
@@ -103,12 +111,17 @@ fgs_model_ = fgs_model
 # noise_seed = seed_realization_input
 instr_name = MICMAC_obj.instrument_name #'SO_SAT'
 
-path_Fisher = path_home_test_playground + f'Fisher_matrix_{MICMAC_obj.instrument_name}_EB_model_{fgs_model_}_noise_True_seed_42_lmin2_lmax128.txt'
-try :
-    Fisher_matrix = np.loadtxt(path_Fisher)
-except:
-    print("Fisher matrix not found !", flush=True)
-    Fisher_matrix = np.loadtxt(path_home_test_playground + f'Fisher_matrix_{MICMAC_obj.instrument_name}_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt')
+if use_Fisher:
+    print("Using Fisher matrix !", flush=True)
+    path_Fisher = path_home_test_playground + f'Fisher_matrix_{MICMAC_obj.instrument_name}_EB_model_{fgs_model_}_noise_True_seed_42_lmin2_lmax128.txt'
+    try :
+        covariance_matrix_B_f_r = np.loadtxt(path_Fisher)
+    except:
+        print("Fisher matrix not found !", flush=True)
+        covariance_matrix_B_f_r = np.loadtxt(path_home_test_playground + f'Fisher_matrix_{MICMAC_obj.instrument_name}_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt')
+else:
+    print("Using personalized covariance matrix for B_f, r from file :", path_covariance_B_f_r, flush=True)
+    covariance_matrix_B_f_r = np.load(path_covariance_B_f_r)
 
 # get instrument from public database
 instrument = get_instrument(instr_name)
@@ -181,23 +194,24 @@ MICMAC_obj.freq_inverse_noise = freq_inverse_noise_masked*template_mask
 
 # Generation step-size from the Fisher matrix
 try :
-    minimum_std_Fisher = scipy.linalg.sqrtm(np.linalg.inv(Fisher_matrix))
+    covariance_sqrt_step_size = scipy.linalg.sqrtm(np.linalg.inv(covariance_matrix_B_f_r))
 except:
     print("Fisher matrix not invertible or scipy.linalg.sqrtm not working on GPU ! Taking only sqrt of diagonal elements instead !", flush=True)
-    minimum_std_Fisher = np.sqrt(np.linalg.inv(Fisher_matrix))
-minimum_std_Fisher_diag = np.diag(minimum_std_Fisher)
+    covariance_sqrt_step_size = np.sqrt(np.linalg.inv(covariance_matrix_B_f_r))
+
+step_size_B_f_r_diag = np.diag(covariance_sqrt_step_size)
 
 if MICMAC_obj.sample_eta_B_f:
     col_dim_B_f = MICMAC_obj.number_frequencies-len(MICMAC_obj.pos_special_freqs)
 
     len_pos_special_freqs = len(MICMAC_obj.pos_special_freqs)
     step_size_B_f = np.zeros((col_dim_B_f,2))
-    step_size_B_f[:,0] = minimum_std_Fisher_diag[:MICMAC_obj.number_frequencies-len_pos_special_freqs]
-    step_size_B_f[:,1] = minimum_std_Fisher_diag[MICMAC_obj.number_frequencies-len_pos_special_freqs:2*(MICMAC_obj.number_frequencies-len_pos_special_freqs)]
+    step_size_B_f[:,0] = step_size_B_f_r_diag[:MICMAC_obj.number_frequencies-len_pos_special_freqs]
+    step_size_B_f[:,1] = step_size_B_f_r_diag[MICMAC_obj.number_frequencies-len_pos_special_freqs:2*(MICMAC_obj.number_frequencies-len_pos_special_freqs)]
 
-    MICMAC_obj.covariance_B_f = np.copy(np.linalg.inv(Fisher_matrix))[:-1,:-1]/factor_Fisher
+    MICMAC_obj.covariance_B_f = np.copy(np.linalg.inv(covariance_matrix_B_f_r))[:-1,:-1]/factor_Fisher
 
-MICMAC_obj.step_size_r = minimum_std_Fisher_diag[-1]
+MICMAC_obj.step_size_r = step_size_B_f_r_diag[-1]
 
 # Generation input maps
 np.random.seed(seed_realization_input+1)
@@ -235,8 +249,9 @@ first_guess = jnp.copy(jnp.ravel(exact_params_mixing_matrix,order='F'))
 print(f"First guess from {sigma_gap} $\sigma$ Fisher !", f"rank {MPI_rank} over {MPI_size}", flush=True)
 np.random.seed(MICMAC_obj.seed)
 first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
-    first_guess[MICMAC_obj.indexes_free_Bf] + minimum_std_Fisher_diag[:-1]*np.random.uniform(low=-sigma_gap,high=sigma_gap, size=(dimension_free_param_B_f)))
+    first_guess[MICMAC_obj.indexes_free_Bf] + step_size_B_f_r_diag[:-1]*np.random.uniform(low=-sigma_gap,high=sigma_gap, size=(dimension_free_param_B_f)))
 init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
+
 initial_guess_r = initial_guess_r_ + np.random.uniform(low=-sigma_gap,high=sigma_gap, size=1)*MICMAC_obj.step_size_r
 
 CMB_c_ell = np.zeros_like(c_ell_approx)

@@ -1,0 +1,24 @@
+current_directory='validation_chain_v10_JZ_Dante/'
+MICMAC_directory = '/work/morshed/MICMAC/MICMAC/'
+directory_mask = "/work/morshed/MICMAC/masks/"
+save_directory = "/work/morshed/MICMAC/MICMAC/test_playground/"
+directory_covariance_B_f_r=""
+
+
+seed_realization_input=42
+delta_ell=1
+reduction_noise = 1
+factor_Fisher = 1
+relative_treshold = 1e-1
+sigma_gap = 20
+fgs_model = 'd0s0'
+initial_guess_r=1e-8
+use_nhits = false
+name_mask = ""
+use_mask = false
+name_toml = 'corr_fullsky_v1a.toml'
+former_file_ver = ''
+from_harmonic_run_ver = ''
+#file_ver = 'corr_fullsky_v104_v1a_gpu'
+file_ver = 'corr_fullsky_v106_v1a_gpu'
+use_Fisher=true

@@ -59,6 +59,7 @@ class Sampling_functions(MixingMatrix):
         # self.frequency_array = frequency_array
         chx.assert_scalar_in(nstokes, 1, 3)
         self.nstokes = int(nstokes)
+        self.number_correlations = int(np.ceil(self.nstokes**2/2) + np.floor(self.nstokes/2))
         self.nside = int(nside)
         self.lmax = int(lmax)
         assert lmin >= 2
@@ -99,12 +100,12 @@ class Sampling_functions(MixingMatrix):
         """
         return 12*self.nside**2
 
-    @property
-    def number_correlations(self):
-        """ Maximum number of correlations depending of the number of Stokes parameters : 
-            6 (TT,EE,BB,TE,EB,TB) for 3 Stokes parameters ; 3 (EE,BB,EB) for 2 Stokes parameters ; 1 (TT) for 1 Stokes parameter
-        """
-        return int(jnp.ceil(self.nstokes**2/2) + jnp.floor(self.nstokes/2))
+    # @property
+    # def number_correlations(self):
+    #     """ Maximum number of correlations depending of the number of Stokes parameters : 
+    #         6 (TT,EE,BB,TE,EB,TB) for 3 Stokes parameters ; 3 (EE,BB,EB) for 2 Stokes parameters ; 1 (TT) for 1 Stokes parameter
+    #     """
+    #     return int(jnp.ceil(self.nstokes**2/2) + jnp.floor(self.nstokes/2))
 
     # @property
     # def number_frequencies(self):
@@ -1002,9 +1003,9 @@ class Sampling_functions(MixingMatrix):
         N_c_inv_repeat = jnp.repeat(N_c_inv.ravel(order='C'), self.nstokes).reshape((self.nstokes,self.npix), order='F').ravel()
 
         N_c_repeat = jnp.repeat(invBtinvNB[0,0].ravel(order='C'), self.nstokes).reshape((self.nstokes,self.npix), order='F').ravel()
-        
+
         first_part_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
-        
+
         def second_part_left(x):
             # return x.reshape((self.nstokes,self.npix))*N_c_inv
             return x*N_c_inv_repeat
