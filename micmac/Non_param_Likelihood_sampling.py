@@ -300,7 +300,7 @@ class MICMAC_Sampler(Sampling_functions):
         # self.all_samples_s_c = self.update_variable(self.all_samples_s_c, all_samples[indice_s_c]+all_samples[indice_s_c+1])
 
         if self.sample_C_inv_Wishart:
-            if one_sample[indice_s_c+2].shape[0] == self.lmax+1-self.lmin:
+            if one_sample['red_cov_matrix_sample'].shape[0] == self.lmax+1-self.lmin:
                 one_sample_CMB_c_ell = get_c_ells_from_red_covariance_matrix(one_sample['red_cov_matrix_sample'])
             else:
                 one_sample_CMB_c_ell = one_sample['red_cov_matrix_sample']
@@ -757,6 +757,7 @@ class MICMAC_Sampler(Sampling_functions):
                                                             previous_inverse=inverse_term,
                                                             biased_bool=self.biased_version)
                 new_carry['inverse_term'] = inverse_term
+                all_samples['params_mixing_matrix_sample'] = new_carry['params_mixing_matrix_sample']
 
                 # Checking the shape of the resulting mixing matrix
                 chx.assert_axis_dimension(new_carry['params_mixing_matrix_sample'], 0, self.number_frequencies-len_pos_special_freqs)

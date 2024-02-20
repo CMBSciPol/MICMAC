@@ -811,7 +811,8 @@ class Sampling_functions(MixingMatrix):
         def map_binned_red_c_ells(bin_ell):
             """ Compute the binned power spectrum for a given ell
             """
-            cond = jnp.logical_and(self.bin_ell_distribution[bin_ell]<=ell_distribution, self.bin_ell_distribution[bin_ell+1]>ell_distribution)
+            cond = jnp.logical_and(self.bin_ell_distribution[bin_ell]<=ell_distribution, 
+                                    self.bin_ell_distribution[bin_ell+1]>ell_distribution)
             cond_quantitative = jnp.where(cond, 1, 0)
             modes_to_bin = jnp.einsum('lij, l->lij', red_c_ells_to_bin, cond_quantitative)
 
@@ -819,9 +820,41 @@ class Sampling_functions(MixingMatrix):
 
         binned_red_c_ells = jax.vmap(map_binned_red_c_ells)(jnp.arange(self.number_bins))
         return binned_red_c_ells
+    
+    def get_binned_red_c_ells_v4(self, red_c_ells_to_bin):
+        """ Bin the power spectrum to get the binned power spectrum
+            
+                Parameters
+                ----------
+                :param red_c_ells_to_bin: power spectrum to bin ; must be of dimension [lmax+1, nstokes, nstokes]
+
+                Returns
+                -------
+                :return: Binned power spectrum, of dimension [number_bins, nstokes, nstokes]
+        """
+        chx.assert_axis_dimension(red_c_ells_to_bin, 0, self.lmax+1 - self.lmin)
+
+        ell_distribution = jnp.arange(red_c_ells_to_bin.shape[0]) + self.lmin
+
+        # number_bins = self.bin_ell_distribution.shape[0]-1
+
+        def map_binned_red_c_ells(bin_sup, bin_inf):
+            """ Compute the binned power spectrum for a given ell
+            """
+            cond = jnp.logical_and(bin_inf<=ell_distribution, 
+                                    bin_sup>ell_distribution)
+            cond_quantitative = jnp.where(cond, 1, 0)
+            modes_to_bin = jnp.einsum('lij, l->lij', red_c_ells_to_bin, cond_quantitative)
+
+            return modes_to_bin.sum(axis=0)#/(self.bin_ell_distribution[bin_ell+1]-self.bin_ell_distribution[bin_ell])
+
+        binned_red_c_ells = jax.vmap(map_binned_red_c_ells)(self.bin_ell_distribution[1:],self.bin_ell_distribution[:-1])
+
+        chx.assert_axis_dimension(binned_red_c_ells, 0, self.number_bins)
+        return binned_red_c_ells
 
 
-
+    @chx.chexify
     def get_binned_inverse_wishart_sampling_from_c_ells_v3(self, sigma_ell, PRNGKey, old_sample=None, acceptance_posdef=False):
         """ Solve sampling step 3 : inverse Wishart distribution with C
 
@@ -847,22 +880,32 @@ class Sampling_functions(MixingMatrix):
         # chx.assert_axis_dimension(sigma_ell, 1, self.lmax+1)
         chx.assert_axis_dimension(sigma_ell, 1, self.lmax+1-self.lmin)
         # c_ells_Wishart_modified = jnp.copy(sigma_ell)*(2*jnp.arange(self.lmax+1) + 1)
-        c_ells_Wishart_modified = (jnp.copy(sigma_ell)*(2*(jnp.arange(self.lmax+1-self.lmin)+self.lmin) + 1))[self.bin_ell_distribution[-1]-self.lmin-1]
-        
+        c_ells_Wishart_modified = (sigma_ell*(2*jnp.arange(self.lmin, self.lmax+1) + 1))[...,:self.bin_ell_distribution[-1]-self.lmin] #-1 ?
+    
+
+        chx.assert_axis_dimension(c_ells_Wishart_modified, 1, self.bin_ell_distribution[-1]-self.lmin) #-1 ?
+
         # invert_parameter_Wishart = jnp.linalg.pinv(get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_modified))
-        binned_invert_parameter_Wishart = jnp.linalg.pinv(self.get_binned_red_c_ells_v3(get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_modified)))
+        # binned_invert_parameter_Wishart = jnp.linalg.pinv(self.get_binned_red_c_ells_v3(get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_modified)))
+        binned_invert_parameter_Wishart = jnp.linalg.pinv(self.get_binned_red_c_ells_v4(get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_modified)))
 
         # sampling_Wishart = jnp.zeros_like(invert_parameter_Wishart)
         sampling_Wishart = jnp.zeros_like(binned_invert_parameter_Wishart)
         # number_dof = lambda x: 2*x+1
 
+        all_number_dof = jnp.array((self.bin_ell_distribution[1:])**2 - self.bin_ell_distribution[:-1]**2)
+
         def map_sampling_Wishart(ell_PNRGKey, binned_ell):
             """ Compute the sampling of the Wishart distribution for a given ell
             """
 
-            sample_gaussian = random.multivariate_normal(ell_PNRGKey, jnp.zeros(self.nstokes), binned_invert_parameter_Wishart[binned_ell], shape=(self.maximum_number_dof - self.nstokes-1,))
+            sample_gaussian = random.multivariate_normal(ell_PNRGKey, 
+                                                        jnp.zeros(self.nstokes), 
+                                                        binned_invert_parameter_Wishart[binned_ell], 
+                                                        shape=(self.maximum_number_dof - self.nstokes-1,))
 
-            weighting = jnp.where(self.number_dof(binned_ell)-self.nstokes-1 >= jnp.arange(self.maximum_number_dof-self.nstokes-1), 1, 0)
+            # weighting = jnp.where(self.number_dof(binned_ell)-self.nstokes-1 >= jnp.arange(self.maximum_number_dof-self.nstokes-1), 1, 0)
+            weighting = jnp.where(all_number_dof[binned_ell]-self.nstokes-1 >= jnp.arange(self.maximum_number_dof-self.nstokes-1), 1, 0)
 
             sample_to_return = jnp.einsum('lk,l,lm->km',sample_gaussian,weighting,sample_gaussian)
             # new_carry = new_ell_PRNGKey
@@ -897,8 +940,8 @@ class Sampling_functions(MixingMatrix):
         if acceptance_posdef and old_sample is not None:
             print("Only positive definite matrices are accepted for inv Wishart !")
             eigen_prod = jnp.prod(jnp.linalg.eigvalsh(reconstructed_spectra), axis=(1))
-            acceptance = jnp.where(eigen_prod<0, 0, 1)
-            acceptance_reversed = jnp.where(eigen_prod<0, 1, 0)
+            acceptance = jnp.where(eigen_prod<=0, 0, 1)
+            acceptance_reversed = jnp.where(eigen_prod<=0, 1, 0)
             # new_sample = jnp.copy(old_sample)
             # new_sample = new_sample.at[acceptance==1,...].set(reconstructed_spectra[acceptance==1,...])
             new_sample = jnp.einsum('lik,l->lik', reconstructed_spectra, acceptance) + jnp.einsum('lik,l->lik', old_sample, acceptance_reversed)
