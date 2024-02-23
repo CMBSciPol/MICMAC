@@ -151,7 +151,7 @@ else:
 np.random.seed(seed_realization_input)
 freq_maps_fgs_denoised = get_observation(instrument, fgs_model_, nside=MICMAC_obj.nside, noise=False)[:, 1:, :]   # keep only Q and U
 np.random.seed(seed_realization_input)
-noise_map = get_noise_realization(MICMAC_obj.nside, instrument)[1, 1:, :]
+noise_map = get_noise_realization(MICMAC_obj.nside, instrument)[:, 1:, :]
 
 # noise_map = freq_maps_fgs_noised - freq_maps_fgs_denoised
 

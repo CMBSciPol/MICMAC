@@ -120,7 +120,7 @@ class MICMAC_Sampler(Sampling_functions):
         # Samples preparation
         self.all_samples_eta = jnp.empty(0)
         self.all_params_mixing_matrix_samples = jnp.empty(0)
-        self.all_samples_wiener_filter_maps = jnp.empty(0)
+        self.all_samples_wiener_filter_term = jnp.empty(0)
         self.all_samples_fluctuation_maps = jnp.empty(0)
         self.all_samples_r = jnp.empty(0)
         self.all_samples_CMB_c_ell = jnp.empty(0)
@@ -128,7 +128,7 @@ class MICMAC_Sampler(Sampling_functions):
 
     @property
     def all_samples_s_c(self):
-        return self.all_samples_wiener_filter_maps +  self.all_samples_fluctuation_maps
+        return self.all_samples_wiener_filter_term +  self.all_samples_fluctuation_maps
 
 
 
@@ -192,35 +192,6 @@ class MICMAC_Sampler(Sampling_functions):
 
         return input_freq_maps, input_cmb_maps, theoretical_red_cov_r0_total, theoretical_red_cov_r1_tensor
 
-    # @property
-    # def all_samples_eta(self):
-    #     return jnp.empty(0)
-    
-    # @property
-    # def all_params_mixing_matrix_samples(self):
-    #     return jnp.empty(0)
-    
-    # @property
-    # def all_samples_wiener_filter_maps(self):
-    #     return jnp.empty(0)
-    
-    # @property
-    # def all_samples_fluctuation_maps(self):
-    #     return jnp.empty(0)
-    
-    # @property
-    # def all_samples_s_c(self):
-    #     return jnp.empty(0)
-
-    # @property
-    # def all_samples_r(self):
-    #     return jnp.empty(0)
-
-    # @property
-    # def all_samples_CMB_c_ell(self):
-    #     return jnp.empty(0)
-
-
     def update_variable(self, all_samples, new_samples_to_add):
         if jnp.size(all_samples) == 0:
             return new_samples_to_add
@@ -229,53 +200,53 @@ class MICMAC_Sampler(Sampling_functions):
         else:
             return jnp.vstack([all_samples,new_samples_to_add])
 
-    def old_update_samples(self, all_samples):
-        indice_s_c = 1
-        # if self.sample_eta_B_f:
-        if not(self.cheap_save):
-            self.all_samples_eta = self.update_variable(self.all_samples_eta, all_samples[0])
+    # def old_update_samples(self, all_samples):
+    #     indice_s_c = 1
+    #     # if self.sample_eta_B_f:
+    #     if not(self.cheap_save):
+    #         self.all_samples_eta = self.update_variable(self.all_samples_eta, all_samples[0])
 
-        if not(self.very_cheap_save):
-            self.all_samples_wiener_filter_maps = self.update_variable(self.all_samples_wiener_filter_maps, all_samples[indice_s_c])
-            self.all_samples_fluctuation_maps = self.update_variable(self.all_samples_fluctuation_maps, all_samples[indice_s_c+1])
+    #     if not(self.very_cheap_save):
+    #         self.all_samples_wiener_filter_term = self.update_variable(self.all_samples_wiener_filter_term, all_samples[indice_s_c])
+    #         self.all_samples_fluctuation_maps = self.update_variable(self.all_samples_fluctuation_maps, all_samples[indice_s_c+1])
             
-        # self.all_samples_s_c = self.update_variable(self.all_samples_s_c, all_samples[indice_s_c]+all_samples[indice_s_c+1])
-        if self.sample_C_inv_Wishart:
-            if all_samples[indice_s_c+2].shape[1] == self.lmax+1-self.lmin:
-                all_samples_CMB_c_ell = jnp.array([get_c_ells_from_red_covariance_matrix(all_samples[indice_s_c+2][iteration]) for iteration in range(self.number_iterations_sampling-self.number_iterations_done)])
-            else:
-                all_samples_CMB_c_ell = all_samples[indice_s_c+2]
-            self.all_samples_CMB_c_ell = self.update_variable(self.all_samples_CMB_c_ell, all_samples_CMB_c_ell)
-        if self.sample_r_Metropolis:
-            self.all_samples_r = self.update_variable(self.all_samples_r, all_samples[indice_s_c+3])
+    #     # self.all_samples_s_c = self.update_variable(self.all_samples_s_c, all_samples[indice_s_c]+all_samples[indice_s_c+1])
+    #     if self.sample_C_inv_Wishart:
+    #         if all_samples[indice_s_c+2].shape[1] == self.lmax+1-self.lmin:
+    #             all_samples_CMB_c_ell = jnp.array([get_c_ells_from_red_covariance_matrix(all_samples[indice_s_c+2][iteration]) for iteration in range(self.number_iterations_sampling-self.number_iterations_done)])
+    #         else:
+    #             all_samples_CMB_c_ell = all_samples[indice_s_c+2]
+    #         self.all_samples_CMB_c_ell = self.update_variable(self.all_samples_CMB_c_ell, all_samples_CMB_c_ell)
+    #     if self.sample_r_Metropolis:
+    #         self.all_samples_r = self.update_variable(self.all_samples_r, all_samples[indice_s_c+3])
 
-        self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, all_samples[5])
+    #     self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, all_samples[5])
 
-    def old_update_one_sample(self, one_sample):
-        indice_s_c = 1
-        # if self.sample_eta_B_f:
-        self.all_samples_eta = self.update_variable(self.all_samples_eta, one_sample[0].reshape([1]+list(one_sample[0].shape)))
-        self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, one_sample[5].reshape([1]+list(one_sample[5].shape)))
-        # else:
-        #     indice_s_c = -1
+    # def old_update_one_sample(self, one_sample):
+    #     indice_s_c = 1
+    #     # if self.sample_eta_B_f:
+    #     self.all_samples_eta = self.update_variable(self.all_samples_eta, one_sample[0].reshape([1]+list(one_sample[0].shape)))
+    #     self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, one_sample[5].reshape([1]+list(one_sample[5].shape)))
+    #     # else:
+    #     #     indice_s_c = -1
 
-        self.all_samples_wiener_filter_maps = self.update_variable(self.all_samples_wiener_filter_maps, one_sample[indice_s_c].reshape([1]+list(one_sample[indice_s_c].shape)))
-        self.all_samples_fluctuation_maps = self.update_variable(self.all_samples_fluctuation_maps, one_sample[indice_s_c+1].reshape([1]+list(one_sample[indice_s_c+1].shape)))
-        # self.all_samples_s_c = self.update_variable(self.all_samples_s_c, all_samples[indice_s_c]+all_samples[indice_s_c+1])
+    #     self.all_samples_wiener_filter_term = self.update_variable(self.all_samples_wiener_filter_term, one_sample[indice_s_c].reshape([1]+list(one_sample[indice_s_c].shape)))
+    #     self.all_samples_fluctuation_maps = self.update_variable(self.all_samples_fluctuation_maps, one_sample[indice_s_c+1].reshape([1]+list(one_sample[indice_s_c+1].shape)))
+    #     # self.all_samples_s_c = self.update_variable(self.all_samples_s_c, all_samples[indice_s_c]+all_samples[indice_s_c+1])
 
-        if one_sample[indice_s_c+2].shape[0] == self.lmax+1-self.lmin:
-            one_sample_CMB_c_ell = get_c_ells_from_red_covariance_matrix(one_sample[indice_s_c+2])
-        else:
-            one_sample_CMB_c_ell = one_sample[indice_s_c+2]
-        self.all_samples_CMB_c_ell = self.update_variable(self.all_samples_CMB_c_ell, one_sample_CMB_c_ell.reshape([1]+list(one_sample_CMB_c_ell.shape)))
-        self.all_samples_r = self.update_variable(self.all_samples_r, one_sample[indice_s_c+3])
+    #     if one_sample[indice_s_c+2].shape[0] == self.lmax+1-self.lmin:
+    #         one_sample_CMB_c_ell = get_c_ells_from_red_covariance_matrix(one_sample[indice_s_c+2])
+    #     else:
+    #         one_sample_CMB_c_ell = one_sample[indice_s_c+2]
+    #     self.all_samples_CMB_c_ell = self.update_variable(self.all_samples_CMB_c_ell, one_sample_CMB_c_ell.reshape([1]+list(one_sample_CMB_c_ell.shape)))
+    #     self.all_samples_r = self.update_variable(self.all_samples_r, one_sample[indice_s_c+3])
 
     def update_samples(self, all_samples):
-        if not(self.cheap_save):
+        if not(self.cheap_save) and self.sample_eta_B_f:
             self.all_samples_eta = self.update_variable(self.all_samples_eta, all_samples['eta_maps'])
 
         if not(self.very_cheap_save):
-            self.all_samples_wiener_filter_maps = self.update_variable(self.all_samples_wiener_filter_maps, all_samples['wiener_filter_maps'])
+            self.all_samples_wiener_filter_term = self.update_variable(self.all_samples_wiener_filter_term, all_samples['wiener_filter_term'])
             self.all_samples_fluctuation_maps = self.update_variable(self.all_samples_fluctuation_maps, all_samples['fluctuation_maps'])
         # self.all_samples_s_c = self.update_variable(self.all_samples_s_c, all_samples[indice_s_c]+all_samples[indice_s_c+1])
         if self.sample_C_inv_Wishart:
@@ -295,7 +266,7 @@ class MICMAC_Sampler(Sampling_functions):
             self.all_samples_eta = self.update_variable(self.all_samples_eta, jnp.expand_dims(one_sample['eta_maps'],axis=0))
 
         if not(self.very_cheap_save):
-            self.all_samples_wiener_filter_maps = self.update_variable(self.all_samples_wiener_filter_maps, jnp.expand_dims(one_sample['wiener_filter_maps'],axis=0))
+            self.all_samples_wiener_filter_term = self.update_variable(self.all_samples_wiener_filter_term, jnp.expand_dims(one_sample['wiener_filter_term'],axis=0))
             self.all_samples_fluctuation_maps = self.update_variable(self.all_samples_fluctuation_maps, jnp.expand_dims(one_sample['fluctuation_maps'],axis=0))
         # self.all_samples_s_c = self.update_variable(self.all_samples_s_c, all_samples[indice_s_c]+all_samples[indice_s_c+1])
 
@@ -336,59 +307,55 @@ class MICMAC_Sampler(Sampling_functions):
 
     #     return (self.scale_param/dimension_sample)*(empirical_covariance + self.epsilon_cov*jnp.eye(dimension_sample))
 
-    def spectral_likelihood_dB(self, new_params_mixing_matrix, full_data, **model_kwargs):
-        """
-        Returns a list of the derivatives of -log(L_sp)
-        per each spectral parameter
-        """
+    # def spectral_likelihood_dB(self, new_params_mixing_matrix, full_data, **model_kwargs):
+    #     """
+    #     Returns a list of the derivatives of -log(L_sp)
+    #     per each spectral parameter
+    #     """
 
-        # self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
-        self.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+    #     # self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+    #     self.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
 
-        # new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
-        # new_mixing_matrix_dB = self._fake_mixing_matrix.get_B_db(jax_use=True)
-        new_mixing_matrix = self.get_B(jax_use=True)
-        new_mixing_matrix_dB = self.get_B_db(jax_use=True)
+    #     # new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+    #     # new_mixing_matrix_dB = self._fake_mixing_matrix.get_B_db(jax_use=True)
+    #     new_mixing_matrix = self.get_B(jax_use=True)
+    #     new_mixing_matrix_dB = self.get_B_db(jax_use=True)
 
-        invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, new_mixing_matrix, jax_use=True)
-        BtinvN = get_BtinvN(self.freq_inverse_noise, new_mixing_matrix, jax_use=True)
+    #     invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, new_mixing_matrix, jax_use=True)
+    #     BtinvN = get_BtinvN(self.freq_inverse_noise, new_mixing_matrix, jax_use=True)
         
-        BtinvNd = jnp.einsum('cf, fsp -> csp', BtinvN, full_data)
+    #     BtinvNd = jnp.einsum('cf, fsp -> csp', BtinvN, full_data)
 
-        P = jnp.einsum('ef,fc,cg,lg,lh->eh', self.freq_inverse_noise, new_mixing_matrix, invBtinvNB, new_mixing_matrix, self.freq_inverse_noise)
+    #     P = jnp.einsum('ef,fc,cg,lg,lh->eh', self.freq_inverse_noise, new_mixing_matrix, invBtinvNB, new_mixing_matrix, self.freq_inverse_noise)
 
-        logL_dB = jnp.einsum('csp,ck,bfk,fg,gsp->b', BtinvNd, invBtinvNB, new_mixing_matrix_dB, self.freq_inverse_noise-P, full_data)
+    #     logL_dB = jnp.einsum('csp,ck,bfk,fg,gsp->b', BtinvNd, invBtinvNB, new_mixing_matrix_dB, self.freq_inverse_noise-P, full_data)
 
-        return -logL_dB
+    #     return -logL_dB
 
-    def spectral_likelihood_dB_f(self, new_params_mixing_matrix, full_data_without_CMB, **model_kwargs):
-        """
-        Returns a list of the derivatives of -log(L_sp)
-        per each spectral parameter
-        """
+    # def spectral_likelihood_dB_f(self, new_params_mixing_matrix, full_data_without_CMB, **model_kwargs):
+    #     """
+    #     Returns a list of the derivatives of -log(L_sp)
+    #     per each spectral parameter
+    #     """
 
-        # self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
-        self.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+    #     # self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
+    #     self.update_params(new_params_mixing_matrix.reshape((self.number_frequencies-jnp.size(self.pos_special_freqs), self.number_components-1),order='F'),jax_use=True)
 
-        # new_mixing_matrix_fg = self._fake_mixing_matrix.get_B(jax_use=True)[:,1:]
-        # new_mixing_matrix_dB_fg = self._fake_mixing_matrix.get_B_db(jax_use=True)[:,:,1:]
-        new_mixing_matrix_fg = self.get_B(jax_use=True)[:,1:]
-        new_mixing_matrix_dB_fg = self.get_B_db(jax_use=True)[:,:,1:]
+    #     # new_mixing_matrix_fg = self._fake_mixing_matrix.get_B(jax_use=True)[:,1:]
+    #     # new_mixing_matrix_dB_fg = self._fake_mixing_matrix.get_B_db(jax_use=True)[:,:,1:]
+    #     new_mixing_matrix_fg = self.get_B(jax_use=True)[:,1:]
+    #     new_mixing_matrix_dB_fg = self.get_B_db(jax_use=True)[:,:,1:]
 
-        invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, new_mixing_matrix_fg, jax_use=True)
-        BtinvN = get_BtinvN(self.freq_inverse_noise, new_mixing_matrix_fg, jax_use=True)
+    #     invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, new_mixing_matrix_fg, jax_use=True)
+    #     BtinvN = get_BtinvN(self.freq_inverse_noise, new_mixing_matrix_fg, jax_use=True)
         
-        BtinvNd = jnp.einsum('cf, fsp -> csp', BtinvN, full_data_without_CMB)
+    #     BtinvNd = jnp.einsum('cf, fsp -> csp', BtinvN, full_data_without_CMB)
 
-        P = jnp.einsum('ef,fc,cg,lg,lh->eh', self.freq_inverse_noise, new_mixing_matrix_fg, invBtinvNB, new_mixing_matrix_fg, self.freq_inverse_noise)
+    #     P = jnp.einsum('ef,fc,cg,lg,lh->eh', self.freq_inverse_noise, new_mixing_matrix_fg, invBtinvNB, new_mixing_matrix_fg, self.freq_inverse_noise)
 
-        logL_dB = jnp.einsum('csp,ck,bfk,fg,gsp->b', BtinvNd, invBtinvNB, new_mixing_matrix_dB_fg, self.freq_inverse_noise-P, full_data_without_CMB)
+    #     logL_dB = jnp.einsum('csp,ck,bfk,fg,gsp->b', BtinvNd, invBtinvNB, new_mixing_matrix_dB_fg, self.freq_inverse_noise-P, full_data_without_CMB)
 
-        return -logL_dB
-
-    # def parameter_estimate !!!!
-    # TO DO !!!!!!!!!!!!!!!!!
-
+    #     return -logL_dB
 
     def perform_Gibbs_sampling(self, input_freq_maps, c_ell_approx, CMB_c_ell, init_params_mixing_matrix, 
                          initial_guess_r=0, initial_wiener_filter_term=jnp.empty(0), initial_fluctuation_maps=jnp.empty(0),
@@ -439,8 +406,8 @@ class MICMAC_Sampler(Sampling_functions):
             wiener_filter_term = jnp.zeros((self.nstokes,self.npix))
         else:
             assert len(initial_wiener_filter_term.shape) == 2
-            assert initial_wiener_filter_term.shape[0] == self.nstokes
-            assert initial_wiener_filter_term.shape[1] == self.npix
+            assert initial_wiener_filter_term.shape == (self.nstokes, self.npix)
+            # assert initial_wiener_filter_term.shape[1] == self.npix
             wiener_filter_term = initial_wiener_filter_term
 
         ## Testing the initial fluctuation term, initialize it properly
@@ -448,8 +415,8 @@ class MICMAC_Sampler(Sampling_functions):
             fluctuation_maps = jnp.zeros((self.nstokes,self.npix))
         else:
             assert len(initial_fluctuation_maps.shape) == 2
-            assert initial_fluctuation_maps.shape[0] == self.nstokes
-            assert initial_fluctuation_maps.shape[1] == self.npix
+            assert initial_fluctuation_maps.shape == (self.nstokes, self.npix)
+            # assert initial_fluctuation_maps.shape[1] == self.npix
             fluctuation_maps = initial_fluctuation_maps
 
         ## Testing the initial spectra given in case the sampling is done with r
@@ -461,6 +428,7 @@ class MICMAC_Sampler(Sampling_functions):
 
             theoretical_red_cov_r0_total = get_reduced_matrix_from_c_ell(theoretical_r0_total)
             theoretical_red_cov_r1_tensor  = get_reduced_matrix_from_c_ell(theoretical_r1_tensor)
+            assert theoretical_red_cov_r0_total.shape[1] == self.nstokes
         ## Testing the initial CMB spectra given
         if self.nstokes == 2 and (CMB_c_ell.shape[0] != len(indices_to_consider)):
             CMB_c_ell = CMB_c_ell[indices_to_consider,:]
@@ -475,7 +443,6 @@ class MICMAC_Sampler(Sampling_functions):
             assert init_params_mixing_matrix.shape[0] == (self.number_frequencies-len(self.pos_special_freqs))
             assert init_params_mixing_matrix.shape[1] == (self.number_correlations-1)
 
-
         ## Final set of tests
         assert len(CMB_c_ell.shape) == 2
         assert CMB_c_ell.shape[1] == self.lmax + 1
@@ -483,11 +450,9 @@ class MICMAC_Sampler(Sampling_functions):
         assert c_ell_approx.shape[1] == self.lmax + 1
 
         assert len(input_freq_maps.shape) == 3
-        assert input_freq_maps.shape[0] == self.number_frequencies
-        assert input_freq_maps.shape[1] == self.nstokes
-        assert input_freq_maps.shape[2] == self.npix
-
-
+        assert input_freq_maps.shape == (self.number_frequencies, self.nstokes, self.npix)
+        # assert input_freq_maps.shape[1] == self.nstokes
+        # assert input_freq_maps.shape[2] == self.npix
 
         # Preparing for the full Gibbs sampling
         len_pos_special_freqs = len(self.pos_special_freqs)
@@ -655,7 +620,7 @@ class MICMAC_Sampler(Sampling_functions):
 
             ## Geting the Wiener filter term, mean of the variable s_c
             red_cov_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(carry['red_cov_matrix_sample'])
-            
+
             initial_guess_WF = maps_x_red_covariance_cell_JAX(carry['wiener_filter_term'], jnp.linalg.pinv(red_cov_matrix_sqrt), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
             new_carry['wiener_filter_term'] = sampling_func_WF(s_cML, red_cov_matrix_sqrt, invBtinvNB, initial_guess=initial_guess_WF)
 
@@ -666,6 +631,7 @@ class MICMAC_Sampler(Sampling_functions):
 
             ## Getting the fluctuation maps terms, for the variance of the variable s_c
             initial_guess_Fluct = maps_x_red_covariance_cell_JAX(carry['fluctuation_maps'], jnp.linalg.pinv(red_cov_matrix_sqrt), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
+            # initial_guess_Fluct = jnp.zeros_like(initial_guess_WF)
             new_carry['fluctuation_maps'] = sampling_func_Fluct(red_cov_matrix_sqrt, invBtinvNB, BtinvN_sqrt, new_subPRNGKey, 
                                                               map_random_realization_xi=map_random_realization_xi, map_random_realization_chi=map_random_realization_chi, 
                                                               initial_guess=initial_guess_Fluct)
@@ -714,7 +680,7 @@ class MICMAC_Sampler(Sampling_functions):
                 all_samples['r_sample'] = new_carry['r_sample']
             else:
                 raise Exception('C not sampled in any way !!! It must be either inv Wishart or through r sampling !')
-            
+
             ## Checking the shape of the resulting covariance matrix, and correcting it if needed
             if new_carry['red_cov_matrix_sample'].shape[0] == self.lmax + 1:
                 new_carry['red_cov_matrix_sample'] = new_carry['red_cov_matrix_sample'][self.lmin:]
@@ -756,14 +722,18 @@ class MICMAC_Sampler(Sampling_functions):
                                                             red_cov_approx_matrix_sqrt=red_cov_approx_matrix_sqrt,
                                                             previous_inverse=inverse_term,
                                                             biased_bool=self.biased_version)
-                new_carry['inverse_term'] = inverse_term
+                
                 all_samples['params_mixing_matrix_sample'] = new_carry['params_mixing_matrix_sample']
 
                 # Checking the shape of the resulting mixing matrix
                 chx.assert_axis_dimension(new_carry['params_mixing_matrix_sample'], 0, self.number_frequencies-len_pos_special_freqs)
                 chx.assert_axis_dimension(new_carry['params_mixing_matrix_sample'], 1, self.number_correlations-1)
                 # params_mixing_matrix_sample = params_mixing_matrix_sample.reshape((self.number_frequencies-len_pos_special_freqs,number_correlations-1),order='F')
+            else:
+                new_carry['params_mixing_matrix_sample'] = carry['params_mixing_matrix_sample']
+                all_samples['params_mixing_matrix_sample'] = new_carry['params_mixing_matrix_sample']
 
+            new_carry['inverse_term'] = inverse_term
             new_carry['PRNGKey'] = PRNGKey
 
             # new_carry = (new_eta_maps_sample, wiener_filter_term, fluctuation_maps, red_cov_matrix_sample, r_sample, params_mixing_matrix_sample, PRNGKey, s_c_sample, inverse_term)

@@ -177,7 +177,6 @@ def get_sqrt_reduced_matrix_from_matrix_jax(red_matrix):
         jnp.sqrt(jnp.abs(eigvals)),
         inv_eigvect,
         )
-
     # reduced_sqrtm = jax.vmap(func_map, in_axes=0)(jnp.arange(lmax))
     return reduced_sqrtm
 

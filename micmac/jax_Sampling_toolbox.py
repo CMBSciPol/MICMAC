@@ -90,10 +90,6 @@ class Sampling_functions(MixingMatrix):
         self.atol_CG = float(atol_CG) # Absolute tolerance for the different CGs
         self.limit_iter_cg_eta = float(limit_iter_cg_eta) # Maximum number of iterations for the CG of eta
 
-        # Tools
-        # fake_params = jnp.zeros((self.number_frequencies-jnp.size(self.pos_special_freqs),self.number_correlations-1))
-        # self._fake_mixing_matrix = MixingMatrix(self.frequency_array, self.number_components, fake_params, pos_special_freqs=self.pos_special_freqs)
-
     @property
     def npix(self):
         """ Number of pixels
@@ -551,7 +547,7 @@ class Sampling_functions(MixingMatrix):
         print("CG-Python-0 Fluct finished with ", solution.result, solution.stats)
         
         wiener_filter_term = maps_x_red_covariance_cell_JAX(wiener_filter_term_z.reshape((self.nstokes,self.npix)), red_cov_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
-
+    
         return wiener_filter_term.reshape((self.nstokes, self.npix))
 
 
@@ -854,7 +850,6 @@ class Sampling_functions(MixingMatrix):
         return binned_red_c_ells
 
 
-    @chx.chexify
     def get_binned_inverse_wishart_sampling_from_c_ells_v3(self, sigma_ell, PRNGKey, old_sample=None, acceptance_posdef=False):
         """ Solve sampling step 3 : inverse Wishart distribution with C
 
@@ -935,7 +930,7 @@ class Sampling_functions(MixingMatrix):
         
         # reconstructed_spectra = jax.vmap(reconstruct_spectra)(jnp.arange(self.lmin,self.lmax+1))
         reconstructed_spectra = jax.vmap(reconstruct_spectra)(jnp.arange(self.bin_ell_distribution[0],self.bin_ell_distribution[-1])-1)
-        
+
         new_sample = reconstructed_spectra
         if acceptance_posdef and old_sample is not None:
             print("Only positive definite matrices are accepted for inv Wishart !")
@@ -946,7 +941,7 @@ class Sampling_functions(MixingMatrix):
             # new_sample = new_sample.at[acceptance==1,...].set(reconstructed_spectra[acceptance==1,...])
             new_sample = jnp.einsum('lik,l->lik', reconstructed_spectra, acceptance) + jnp.einsum('lik,l->lik', old_sample, acceptance_reversed)
 
-        chx.assert_tree_all_finite(new_sample)
+        # chx.assert_tree_all_finite(new_sample)
         return new_sample
     # return reconstructed_spectra
 
@@ -1038,7 +1033,7 @@ class Sampling_functions(MixingMatrix):
         ## Preparing the mixing matrix and C_approx^{-1/2}
         invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, complete_mixing_matrix, jax_use=True)*jhp.nside2resol(self.nside)**2        
         # red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix_sqrt)
-        red_cov_approx_matrix_msqrt = jnp.linalg.pinv(red_cov_approx_matrix_sqrt)
+        # red_cov_approx_matrix_msqrt = jnp.linalg.pinv(red_cov_approx_matrix_sqrt)
 
         ## Preparing the operator ( C_approx^{-1} + N_c^{-1} )^{-1}
         N_c_inv = jnp.zeros_like(invBtinvNB[0,0])
@@ -1063,7 +1058,7 @@ class Sampling_functions(MixingMatrix):
         if previous_inverse.size != 0:
             initial_guess = jnp.copy(previous_inverse)
 
-        right_member = jnp.copy(component_eta_maps)
+        right_member = component_eta_maps
     
         func_lineax = lx.FunctionLinearOperator(func_left_term, jax.ShapeDtypeStruct((self.nstokes*self.npix,),jnp.float64), tags=(lx.symmetric_tag,lx.positive_semidefinite_tag))
 
@@ -1082,7 +1077,7 @@ class Sampling_functions(MixingMatrix):
 
         inverse_term = solution.value
         print("CG-Python-0 Fluct finished with ", solution.result, solution.stats)
-        
+
         if self.restrict_to_mask:
             central_term = self.mask
         else:
