@@ -61,6 +61,7 @@ name_mask = dictionary_additional_parameters['name_mask']
 use_mask = dictionary_additional_parameters['use_mask']
 name_toml = dictionary_additional_parameters['name_toml']
 seed_realization_input = dictionary_additional_parameters['seed_realization_input']
+use_preconditioner = dictionary_additional_parameters['use_preconditioner']
 
 # Starting MPI
 from mpi4py import MPI
@@ -177,7 +178,9 @@ freq_inverse_noise_masked[:,:,template_mask!=0] = np.repeat(freq_inverse_noise.r
 
 MICMAC_obj.freq_inverse_noise = freq_inverse_noise_masked*template_mask
 
-
+if use_preconditioner:
+    print("Using preconditioner !", flush=True)
+    MICMAC_obj.freq_noise_c_ell = micmac.get_true_Cl_noise(np.array(instrument['depth_p']), MICMAC_obj.lmax)
 
 # Generation step-size from the Fisher matrix
 try :
@@ -239,6 +242,9 @@ first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
 init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
 initial_guess_r = initial_guess_r_ + np.random.uniform(low=-sigma_gap,high=sigma_gap, size=1)*MICMAC_obj.step_size_r
 
+if initial_guess_r < 0:
+    initial_guess_r = 1e-8
+
 CMB_c_ell = np.zeros_like(c_ell_approx)
 # CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + MICMAC_obj.r_true*theoretical_r1_tensor)
 CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + initial_guess_r*theoretical_r1_tensor)
@@ -274,6 +280,8 @@ if former_file_ver != '':
     MICMAC_obj.seed = MICMAC_obj.seed + MICMAC_obj.number_iterations_sampling
 
 
+print(f'Exact r : {MICMAC_obj.r_true}')
+print(f'Initial r : {initial_guess_r}')
 
 print(f'Exact param matrix : {exact_params_mixing_matrix}')
 print(f'Initial param matrix : {init_params_mixing_matrix}')
