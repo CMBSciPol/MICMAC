@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=corr_fullsky_SO_1a_5walkers
+#SBATCH --job-name=corr_cutsky_SO_1a_5walkers
 #SBATCH --account=nih@cpu          # use CPU allocation
 #SBATCH --qos=qos_cpu-t3          # dev qos (10 jobs, 2h max.)
 #SBATCH --nodes=5

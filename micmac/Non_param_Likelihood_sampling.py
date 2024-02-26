@@ -520,7 +520,8 @@ class MICMAC_Sampler(Sampling_functions):
             print("Using biased version or perturbation version of mixing matrix sampling !!!", flush=True)
             # jitted_Bf_func_sampling = jax.jit(self.get_biased_conditional_proba_mixing_matrix_v2_JAX)
             jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_JAX, static_argnames=['biased_bool'])
-            sampling_func = separate_single_MH_step_index
+            # sampling_func = separate_single_MH_step_index
+            sampling_func = separate_single_MH_step_index_v2
 
 
         ## Preparing the scalar quantities
@@ -677,7 +678,12 @@ class MICMAC_Sampler(Sampling_functions):
                                                                             lmin=self.lmin, 
                                                                             n_iter=self.n_iter).ravel()
 
-            initial_guess_WF = maps_x_red_covariance_cell_JAX(carry['wiener_filter_term'], jnp.linalg.pinv(red_cov_matrix_sqrt), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
+            initial_guess_WF = maps_x_red_covariance_cell_JAX(carry['wiener_filter_term'], 
+                                                              jnp.linalg.pinv(red_cov_matrix_sqrt), 
+                                                              nside=self.nside, 
+                                                              lmin=self.lmin, 
+                                                              n_iter=self.n_iter)
+            # initial_guess_WF = jnp.zeros_like(s_cML)
             new_carry['wiener_filter_term'] = sampling_func_WF(s_cML, 
                                                                red_cov_matrix_sqrt, 
                                                                invBtinvNB, 
@@ -695,8 +701,7 @@ class MICMAC_Sampler(Sampling_functions):
                                                                 nside=self.nside, 
                                                                 lmin=self.lmin, 
                                                                 n_iter=self.n_iter)
-
-            # initial_guess_Fluct = jnp.zeros_like(initial_guess_WF)
+            # initial_guess_Fluct = jnp.zeros_like(carry['fluctuation_maps'])
             new_carry['fluctuation_maps'] = sampling_func_Fluct(red_cov_matrix_sqrt, 
                                                                 invBtinvNB, 
                                                                 BtinvN_sqrt, 
@@ -775,7 +780,12 @@ class MICMAC_Sampler(Sampling_functions):
 
                 # Sampling B_f
                 if self.perturbation_eta_covariance or self.biased_version:
-                    inverse_term_x_Capprox_root = maps_x_red_covariance_cell_JAX(inverse_term.reshape(self.nstokes,self.npix), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
+                    inverse_term_x_Capprox_root = maps_x_red_covariance_cell_JAX(inverse_term.reshape(self.nstokes,self.npix), 
+                                                                                 red_cov_approx_matrix_sqrt, 
+                                                                                 nside=self.nside, 
+                                                                                 lmin=self.lmin, 
+                                                                                 n_iter=self.n_iter
+                                                                                 ).ravel()
                     new_subPRNGKey_3, new_carry['params_mixing_matrix_sample'] = sampling_func(random_PRNGKey=new_subPRNGKey_3, old_sample=carry['params_mixing_matrix_sample'], 
                                                             step_size=step_size_Bf, indexes_Bf=self.indexes_free_Bf,
                                                             log_proba=jitted_Bf_func_sampling,
