@@ -16,14 +16,14 @@ def get_sampling_eta_prime(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sq
 
         Parameters
         ----------
-        param_dict : dictionnary containing the following fields : nside, nstokes, lmax, number_frequencies
+        param_dict : dictionnary containing the following fields : nside, nstokes, lmax, n_frequencies
         
         red_cov_approx_matrix : correction covariance matrice (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
         BtinvNB : matrices of noise combined with mixing matrices corresponding to (B^t N^{-1} B)^{-1}, dimension [component, component]
         # BtinvN_sqrt : matrices of noise combined with mixing matrices corresponding to B^T N^{-1/2}, dimension [component, frequencies]
 
-        map_random_x : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
-        map_random_y : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
+        map_random_x : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, n_pix]
+        map_random_y : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, n_pix]
         
         lmin : minimum multipole to be considered, default 0
         
@@ -36,7 +36,7 @@ def get_sampling_eta_prime(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sq
 
         Returns
         -------
-        eta maps [nstokes, npix]
+        eta maps [nstokes, n_pix]
     """
 
     assert red_cov_approx_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
@@ -48,7 +48,7 @@ def get_sampling_eta_prime(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sq
         map_random_x = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
     if len(map_random_y) == 0:
         print("Recalculating y !")
-        map_random_y = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["number_frequencies"],param_dict["nstokes"],12*param_dict["nside"]**2))
+        map_random_y = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["n_frequencies"],param_dict["nstokes"],12*param_dict["nside"]**2))
 
     # Computation of the right hand side member of the CG
     red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix(red_cov_approx_matrix)
@@ -73,14 +73,14 @@ def get_sampling_eta(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, ma
 
         Parameters
         ----------
-        param_dict : dictionnary containing the following fields : nside, nstokes, lmax, number_frequencies
+        param_dict : dictionnary containing the following fields : nside, nstokes, lmax, n_frequencies
         
         red_cov_approx_matrix : correction covariance matrice (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
         BtinvNB : matrices of noise combined with mixing matrices corresponding to (B^t N^{-1} B)^{-1}, dimension [component, component]
         # BtinvN_sqrt : matrices of noise combined with mixing matrices corresponding to B^T N^{-1/2}, dimension [component, frequencies]
 
-        map_random_x : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
-        map_random_y : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
+        map_random_x : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, n_pix]
+        map_random_y : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, n_pix]
         
         lmin : minimum multipole to be considered, default 0
         
@@ -93,13 +93,13 @@ def get_sampling_eta(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, ma
 
         Returns
         -------
-        eta maps [nstokes, npix]
+        eta maps [nstokes, n_pix]
     """
 
     # assert red_cov_approx_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
     eta_prime = get_sampling_eta_prime(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt, map_random_x=map_random_x, map_random_y=map_random_y, initial_guess=np.copy(initial_guess), lmin=lmin, n_iter=n_iter, suppress_low_modes=suppress_low_modes)
     
-    # eta_prime_extended_frequencies = np.repeat(eta_prime, param_dict['number_frequencies']).reshape((param_dict['number_frequencies'],param_dict['nstokes'],12*param_dict['nside']**2),order='F')
+    # eta_prime_extended_frequencies = np.repeat(eta_prime, param_dict['n_frequencies']).reshape((param_dict['n_frequencies'],param_dict['nstokes'],12*param_dict['nside']**2),order='F')
 
     # Transform into eta maps by applying N_c^{-1/2} = N_c^{-1} N_c^{1/2} = (E^t (B^t N^{-1} B)^{-1} E)^{-1} E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2}
     # First applying N_c^{1/2}
@@ -122,14 +122,14 @@ def get_sampling_eta_v2(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt,
 
         Parameters
         ----------
-        param_dict : dictionnary containing the following fields : nside, nstokes, lmax, number_frequencies
+        param_dict : dictionnary containing the following fields : nside, nstokes, lmax, n_frequencies
         
         red_cov_approx_matrix : correction covariance matrice (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
         BtinvNB : matrices of noise combined with mixing matrices corresponding to (B^t N^{-1} B)^{-1}, dimension [component, component]
         # BtinvN_sqrt : matrices of noise combined with mixing matrices corresponding to B^T N^{-1/2}, dimension [component, frequencies]
 
-        map_random_x : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
-        map_random_y : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, npix]
+        map_random_x : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, n_pix]
+        map_random_y : set of maps 0 with mean and variance 1/(pixel_size**2), which will be used to compute eta, default [] and it will be computed by the code ; dimension [nstokes, n_pix]
         
         lmin : minimum multipole to be considered, default 0
         
@@ -142,7 +142,7 @@ def get_sampling_eta_v2(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt,
 
         Returns
         -------
-        eta maps [nstokes, npix]
+        eta maps [nstokes, n_pix]
     """
 
     assert red_cov_approx_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
@@ -150,7 +150,7 @@ def get_sampling_eta_v2(param_dict, red_cov_approx_matrix, BtinvNB, BtinvN_sqrt,
     # Creation of the random maps if they are not given
     if len(map_random_x) == 0:
         print("Recalculating x !")
-        map_random_x = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["number_frequencies"],param_dict["nstokes"],12*param_dict["nside"]**2))
+        map_random_x = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["n_frequencies"],param_dict["nstokes"],12*param_dict["nside"]**2))
         # map_random_x = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
     if len(map_random_y) == 0:
         print("Recalculating y !")
@@ -191,8 +191,8 @@ def get_fluctuating_term_maps(param_dict, red_cov_matrix, BtinvNB, BtinvN_sqrt, 
         red_cov_matrix : covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
         red_inverse_noise : matrices of inverse noise in harmonic domain (yet), dimension [lmin:lmax, nstokes, nstokes]
 
-        map_white_noise_xi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, npix]
-        map_white_noise_chi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, npix]
+        map_white_noise_xi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, n_pix]
+        map_white_noise_chi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, n_pix]
         
         lmin : minimum multipole to be considered, default 0
         
@@ -203,7 +203,7 @@ def get_fluctuating_term_maps(param_dict, red_cov_matrix, BtinvNB, BtinvN_sqrt, 
 
         Returns
         -------
-        Fluctuation maps [nstokes, npix]
+        Fluctuation maps [nstokes, n_pix]
     """
 
     assert red_cov_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
@@ -217,7 +217,7 @@ def get_fluctuating_term_maps(param_dict, red_cov_matrix, BtinvNB, BtinvN_sqrt, 
         map_random_realization_xi = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["nstokes"],12*param_dict["nside"]**2))
     if len(map_random_realization_chi) == 0:
         print("Recalculating chi !")
-        map_random_realization_chi = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["number_frequencies"],param_dict["nstokes"],12*param_dict["nside"]**2))
+        map_random_realization_chi = np.random.normal(loc=0, scale=1/hp.nside2resol(param_dict["nside"]), size=(param_dict["n_frequencies"],param_dict["nstokes"],12*param_dict["nside"]**2))
 
     # Computation of the right side member of the CG
     red_inv_cov_sqrt = get_sqrt_reduced_matrix_from_matrix(red_inverse_cov_matrix)
@@ -236,7 +236,7 @@ def get_fluctuating_term_maps(param_dict, red_cov_matrix, BtinvNB, BtinvN_sqrt, 
     first_term_left = lambda x : maps_x_reduced_matrix_generalized_sqrt_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inverse_cov_matrix, lmin=lmin, n_iter=n_iter)
     
     ## Second left member : (E^t (B^t N^{-1} B) E)
-    def second_term_left(x, number_component=param_dict['number_components']):
+    def second_term_left(x, number_component=param_dict['n_components']):
         # cg_variable = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
         # x_all_components = np.zeros((number_component, cg_variable.shape[0], cg_variable.shape[1]))
         # x_all_components[0,...] =cg_variable
@@ -265,13 +265,13 @@ def solve_generalized_wiener_filter_term(param_dict, s_cML, red_cov_matrix, Btin
         ----------
         param_dict : dictionnary containing the following fields : nside, nstokes, lmax
 
-        s_cML : data maps, for Wiener filter CG ; dimensions [nstokes, npix]
+        s_cML : data maps, for Wiener filter CG ; dimensions [nstokes, n_pix]
 
         red_cov_matrix : covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
         red_inverse_noise : matrices of inverse noise in harmonic domain (yet), dimension [lmin:lmax, nstokes, nstokes]
 
-        map_white_noise_xi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, npix]
-        map_white_noise_chi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, npix]
+        map_white_noise_xi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, n_pix]
+        map_white_noise_chi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, n_pix]
         
         lmin : minimum multipole to be considered, default 0
         
@@ -282,7 +282,7 @@ def solve_generalized_wiener_filter_term(param_dict, s_cML, red_cov_matrix, Btin
 
         Returns
         -------
-        Wiener filter maps [nstokes, npix]
+        Wiener filter maps [nstokes, n_pix]
     """
 
     assert red_cov_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
@@ -292,7 +292,7 @@ def solve_generalized_wiener_filter_term(param_dict, s_cML, red_cov_matrix, Btin
     
 
     # Computation of the right side member of the CG
-    s_cML_extended = np.zeros((param_dict['number_components'], s_cML.shape[0], s_cML.shape[1]))
+    s_cML_extended = np.zeros((param_dict['n_components'], s_cML.shape[0], s_cML.shape[1]))
     s_cML_extended[0,...] = s_cML
     # right_member = np.einsum('kc,csp->ksp', np.linalg.pinv(BtinvNB), s_cML_extended)[0].ravel() # Selecting CMB component of the
     right_member = (s_cML/BtinvNB[0,0]).ravel()
@@ -301,7 +301,7 @@ def solve_generalized_wiener_filter_term(param_dict, s_cML, red_cov_matrix, Btin
     first_term_left = lambda x : maps_x_reduced_matrix_generalized_sqrt_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), np.linalg.pinv(red_cov_matrix), lmin=lmin, n_iter=n_iter).ravel()
     
     ## Second left member : (E^t (B^t N^{-1} B)^{-1}
-    def second_term_left(x, number_component=param_dict['number_components']):
+    def second_term_left(x, number_component=param_dict['n_components']):
         # cg_variable = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
         # x_all_components = np.zeros((number_component, cg_variable.shape[0], cg_variable.shape[1]))
         # x_all_components[0,...] = cg_variable
@@ -488,7 +488,7 @@ def get_inverse_operators_harm_pixel(param_dict, right_member, operator_harmonic
     first_term_left = lambda x : maps_x_reduced_matrix_generalized_sqrt_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), operator_harmonic, lmin=lmin, n_iter=n_iter)
     
     ## Second left member : (E^t (B^t N^{-1} B)^{-1}
-    def second_term_left(x, number_component=param_dict['number_components']):
+    def second_term_left(x, number_component=param_dict['n_components']):
         cg_variable = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
         x_all_components = np.zeros((number_component, cg_variable.shape[0], cg_variable.shape[1]))
         x_all_components[0,...] = cg_variable
@@ -513,8 +513,8 @@ def get_conditional_proba_mixing_matrix_foregrounds(params_mixing_matrix, mixing
         + \eta^t N_c^{1/2} (C_{approx} + E^t (B^T N^{-1} B)^{-1} E)^{-1} N_c^{1/2} \ \eta 
     """
 
-    # print("Test params :", params_mixing_matrix.reshape((param_dict['number_frequencies']-2,param_dict['number_components']-1)))
-    mixingmatrix_object.update_params(params_mixing_matrix.reshape((param_dict['number_frequencies']-2,param_dict['number_components']-1)))
+    # print("Test params :", params_mixing_matrix.reshape((param_dict['n_frequencies']-2,param_dict['n_components']-1)))
+    mixingmatrix_object.update_params(params_mixing_matrix.reshape((param_dict['n_frequencies']-2,param_dict['n_components']-1)))
 
     # Building the first term : - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
     complete_mixing_matrix_fg = mixingmatrix_object.get_B_fgs()
@@ -534,7 +534,7 @@ def get_conditional_proba_mixing_matrix_foregrounds(params_mixing_matrix, mixing
 
     ## Left hand side term : N_c^{1/2] \eta = (E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2} \eta
     # noise_weighted_eta = np.einsum('kc,cf,fsp->ksp', BtinvNB, BtinvN_sqrt, eta_maps)[0] # Selecting CMB component
-    eta_prime_maps_extended = np.zeros((param_dict['number_components'],param_dict['nstokes'],12*param_dict['nside']**2))
+    eta_prime_maps_extended = np.zeros((param_dict['n_components'],param_dict['nstokes'],12*param_dict['nside']**2))
     eta_prime_maps_extended[0] = eta_prime_maps
     noise_weighted_eta = np.einsum('kc,csp->ksp', BtinvNB, eta_prime_maps_extended)[0] # Selecting CMB component
 
@@ -559,7 +559,7 @@ def sample_mixing_matrix_term(param_dict, mixingmatrix_object, full_data_without
         ----------
         param_dict : dictionnary containing the following fields : nside, nstokes, lmax
 
-        full_data : full data maps, for Wiener filter CG ; dimensions [nstokes, npix]
+        full_data : full data maps, for Wiener filter CG ; dimensions [nstokes, n_pix]
 
         red_cov_matrix : covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
 
@@ -573,8 +573,8 @@ def sample_mixing_matrix_term(param_dict, mixingmatrix_object, full_data_without
         Mixing matrix sampled
     """
 
-    # assert initial_guess_fg_mixing_matrix.shape[0] == param_dict['number_components']-1
-    # assert initial_guess_fg_mixing_matrix.shape[1] == param_dict['number_frequencies']
+    # assert initial_guess_fg_mixing_matrix.shape[0] == param_dict['n_components']-1
+    # assert initial_guess_fg_mixing_matrix.shape[1] == param_dict['n_frequencies']
 
     initial_guess_fg_mixing_matrix = mixingmatrix_object.params.ravel()
     dimensions_mixing_matrix = len(initial_guess_fg_mixing_matrix)

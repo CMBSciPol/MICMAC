@@ -45,11 +45,11 @@ MICMAC_sampler_obj.mask = mask
 
 
 
-freq_inverse_noise_masked = np.zeros((MICMAC_sampler_obj.number_frequencies,MICMAC_sampler_obj.number_frequencies,MICMAC_sampler_obj.npix))
+freq_inverse_noise_masked = np.zeros((MICMAC_sampler_obj.n_frequencies,MICMAC_sampler_obj.n_frequencies,MICMAC_sampler_obj.n_pix))
 freq_inverse_noise_0 = micmac.get_noise_covar(instrument['depth_p'], MICMAC_sampler_obj.nside) #MICMAC_sampler_obj.freq_inverse_noise
 
 nb_pixels_mask = int(mask.sum())
-freq_inverse_noise_masked[:,:,mask!=0] = np.repeat(freq_inverse_noise_0.ravel(order='F'), nb_pixels_mask).reshape((MICMAC_sampler_obj.number_frequencies,MICMAC_sampler_obj.number_frequencies,nb_pixels_mask), order='C')
+freq_inverse_noise_masked[:,:,mask!=0] = np.repeat(freq_inverse_noise_0.ravel(order='F'), nb_pixels_mask).reshape((MICMAC_sampler_obj.n_frequencies,MICMAC_sampler_obj.n_frequencies,nb_pixels_mask), order='C')
 
 freq_inverse_noise_masked = freq_inverse_noise_masked*mask
 # freq_inverse_noise_masked = freq_inverse_noise_masked*nhits_mask
@@ -61,10 +61,10 @@ freq_inverse_noise = freq_inverse_noise_masked
 np.random.seed(MICMAC_sampler_obj.seed)
 freq_maps_fgs = get_observation(instrument, fgs_model, nside=MICMAC_sampler_obj.nside, noise=False)[:, 1:, :]   # keep only Q and U
 
-init_mixing_matrix_obj = micmac.InitMixingMatrix(np.array(instrument['frequency']), MICMAC_sampler_obj.number_components, pos_special_freqs=MICMAC_sampler_obj.pos_special_freqs)
+init_mixing_matrix_obj = micmac.InitMixingMatrix(np.array(instrument['frequency']), MICMAC_sampler_obj.n_components, pos_special_freqs=MICMAC_sampler_obj.pos_special_freqs)
 init_params = init_mixing_matrix_obj.init_params()
 
-mixing_matrix_obj = micmac.MixingMatrix(instrument['frequency'], MICMAC_sampler_obj.number_components, init_params, pos_special_freqs=MICMAC_sampler_obj.pos_special_freqs)
+mixing_matrix_obj = micmac.MixingMatrix(instrument['frequency'], MICMAC_sampler_obj.n_components, init_params, pos_special_freqs=MICMAC_sampler_obj.pos_special_freqs)
 
 mixing_matrix_sampled = mixing_matrix_obj.get_B()
 
@@ -89,14 +89,14 @@ input_cmb_maps = input_cmb_maps*mask
 red_cov_matrix_sample = theoretical_red_cov_r0_total + MICMAC_sampler_obj.r_true * theoretical_red_cov_r1_tensor
 
 
-number_frequencies = MICMAC_sampler_obj.number_frequencies
-number_components = MICMAC_sampler_obj.number_components
+n_frequencies = MICMAC_sampler_obj.n_frequencies
+n_components = MICMAC_sampler_obj.n_components
 nstokes = MICMAC_sampler_obj.nstokes
 lmin = MICMAC_sampler_obj.lmin
 lmax = MICMAC_sampler_obj.lmax
 nside = MICMAC_sampler_obj.nside
 n_iter = MICMAC_sampler_obj.n_iter
-npix = 12*nside**2
+n_pix = 12*nside**2
 
 
 
@@ -107,30 +107,30 @@ MICMAC_sampler_obj.atol_CG = 1e-8
 
 N_c_inv = jnp.copy(BtinvNB[0,0])
 N_c_inv = N_c_inv.at[...,MICMAC_sampler_obj.mask!=0].set(1/BtinvNB[0,0,MICMAC_sampler_obj.mask!=0]/jhp.nside2resol(MICMAC_sampler_obj.nside)**2)
-N_c_inv_repeat = jnp.repeat(N_c_inv.ravel(order='C'), MICMAC_sampler_obj.nstokes).reshape((MICMAC_sampler_obj.nstokes,MICMAC_sampler_obj.npix), order='F').ravel()
+N_c_inv_repeat = jnp.repeat(N_c_inv.ravel(order='C'), MICMAC_sampler_obj.nstokes).reshape((MICMAC_sampler_obj.nstokes,MICMAC_sampler_obj.n_pix), order='F').ravel()
 
 def second_term_left(x):
     return x*N_c_inv_repeat
 
 red_cov_matrix_sqrt = micmac.get_sqrt_reduced_matrix_from_matrix_jax(red_cov_matrix_sample)
-first_part_term_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((MICMAC_sampler_obj.nstokes,MICMAC_sampler_obj.npix)), red_cov_matrix_sqrt, nside=MICMAC_sampler_obj.nside, lmin=MICMAC_sampler_obj.lmin, n_iter=MICMAC_sampler_obj.n_iter).ravel()
+first_part_term_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((MICMAC_sampler_obj.nstokes,MICMAC_sampler_obj.n_pix)), red_cov_matrix_sqrt, nside=MICMAC_sampler_obj.nside, lmin=MICMAC_sampler_obj.lmin, n_iter=MICMAC_sampler_obj.n_iter).ravel()
 
-# func = lambda x: maps_x_red_covariance_cell_JAX(x.reshape((MICMAC_sampler_obj.nstokes,MICMAC_sampler_obj.npix)), red_cov_matrix_sample, nside=MICMAC_sampler_obj.nside, lmin=MICMAC_sampler_obj.lmin, n_iter=MICMAC_sampler_obj.n_iter).ravel()
+# func = lambda x: maps_x_red_covariance_cell_JAX(x.reshape((MICMAC_sampler_obj.nstokes,MICMAC_sampler_obj.n_pix)), red_cov_matrix_sample, nside=MICMAC_sampler_obj.nside, lmin=MICMAC_sampler_obj.lmin, n_iter=MICMAC_sampler_obj.n_iter).ravel()
 func = lambda x: x.ravel() + first_part_term_left(second_term_left(first_part_term_left(x)))
 # func_left_term_tree_map = lambda x : jax.tree_map(func, x)
 func_norm = lambda x : jnp.linalg.norm(x,ord=2)
 
 
-func_lineax_test = lx.FunctionLinearOperator(func, jax.ShapeDtypeStruct((MICMAC_sampler_obj.nstokes*MICMAC_sampler_obj.npix,),jnp.float64), tags=(lx.symmetric_tag,lx.positive_semidefinite_tag))
+func_lineax_test = lx.FunctionLinearOperator(func, jax.ShapeDtypeStruct((MICMAC_sampler_obj.nstokes*MICMAC_sampler_obj.n_pix,),jnp.float64), tags=(lx.symmetric_tag,lx.positive_semidefinite_tag))
 
 
 jax_key_PNRG, jax_key_PNRG_xi = random.split(PRNGKey+10) # Splitting of the random key to generate a new one
 
-map_random_realization_xi = jax.random.normal(jax_key_PNRG_xi, shape=(MICMAC_sampler_obj.nstokes,MICMAC_sampler_obj.npix))/jhp.nside2resol(MICMAC_sampler_obj.nside)#*mask_to_use
+map_random_realization_xi = jax.random.normal(jax_key_PNRG_xi, shape=(MICMAC_sampler_obj.nstokes,MICMAC_sampler_obj.n_pix))/jhp.nside2resol(MICMAC_sampler_obj.nside)#*mask_to_use
 
-jax_key_PNRG, *jax_key_PNRG_chi = random.split(jax_key_PNRG,MICMAC_sampler_obj.number_frequencies+1) # Splitting of the random key to generate a new one
+jax_key_PNRG, *jax_key_PNRG_chi = random.split(jax_key_PNRG,MICMAC_sampler_obj.n_frequencies+1) # Splitting of the random key to generate a new one
 def fmap(random_key):
-    random_map = jax.random.normal(random_key, shape=(MICMAC_sampler_obj.nstokes,MICMAC_sampler_obj.npix))#/jhp.nside2resol(nside)
+    random_map = jax.random.normal(random_key, shape=(MICMAC_sampler_obj.nstokes,MICMAC_sampler_obj.n_pix))#/jhp.nside2resol(nside)
     return MICMAC_sampler_obj.get_band_limited_maps(random_map)
 map_random_realization_chi = jax.vmap(fmap)(jnp.array(jax_key_PNRG_chi))
 
@@ -162,7 +162,7 @@ t1_GMRES = time.time()
 print('GMRES stats :', solution_GMRES.stats, flush=True)
 print('GMRES time :', t1_GMRES-t0_GMRES, flush=True)
 
-solution_lineax_CG = solution_CG.value.reshape((MICMAC_sampler_obj.nstokes,MICMAC_sampler_obj.npix))
-solution_lineax_GMRES = solution_GMRES.value.reshape((MICMAC_sampler_obj.nstokes,MICMAC_sampler_obj.npix))
+solution_lineax_CG = solution_CG.value.reshape((MICMAC_sampler_obj.nstokes,MICMAC_sampler_obj.n_pix))
+solution_lineax_GMRES = solution_GMRES.value.reshape((MICMAC_sampler_obj.nstokes,MICMAC_sampler_obj.n_pix))
 
 print("Difference -> max :", jnp.abs(solution_lineax_CG-solution_lineax_GMRES).max(), "mean :", (solution_lineax_CG-solution_lineax_GMRES).mean(), flush=True)

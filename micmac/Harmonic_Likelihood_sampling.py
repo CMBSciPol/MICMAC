@@ -31,7 +31,7 @@ config.update("jax_enable_x64", True)
 class Harmonic_MICMAC_Sampler(Sampling_functions):
     def __init__(self, nside, lmax, nstokes, 
                  frequency_array, freq_noise_c_ell, pos_special_freqs=[0,-1], 
-                 number_components=3, lmin=2,
+                 n_components=3, lmin=2,
                  n_iter=8,
                  mask=None,
 
@@ -54,7 +54,7 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
         super(Harmonic_MICMAC_Sampler,self).__init__(nside=nside,lmax=lmax,nstokes=nstokes,lmin=lmin,
                                             freq_inverse_noise=None, freq_noise_c_ell=freq_noise_c_ell,
                                             frequency_array=frequency_array,
-                                            pos_special_freqs=pos_special_freqs,number_components=number_components,
+                                            pos_special_freqs=pos_special_freqs,n_components=n_components,
                                             n_iter=n_iter, 
                                             mask=mask)
 
@@ -63,12 +63,12 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
         self.biased_version = bool(biased_version)
         self.disable_chex = disable_chex
         if indexes_free_Bf is False:
-            indexes_free_Bf = jnp.arange((self.number_frequencies-len(pos_special_freqs))*(self.number_correlations-1))
+            indexes_free_Bf = jnp.arange((self.n_frequencies-len(pos_special_freqs))*(self.number_correlations-1))
         self.indexes_free_Bf = jnp.array(indexes_free_Bf)
 
         # CMB parameters
         self.r_true = float(r_true)
-        # assert freq_noise_c_ell.shape == (self.number_frequencies,self.number_frequencies,self.lmax+1-self.lmin)
+        # assert freq_noise_c_ell.shape == (self.n_frequencies,self.n_frequencies,self.lmax+1-self.lmin)
         self.freq_noise_c_ell = freq_noise_c_ell
 
         # Metropolis-Hastings parameters
@@ -136,7 +136,7 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
 
         input_cmb_maps_alt = hp.synfast(true_cmb_specra_extended, nside=self.nside, new=True, lmax=self.lmax)[1:,...]
 
-        input_cmb_maps = np.repeat(input_cmb_maps_alt.ravel(order='F'), self.number_frequencies).reshape((self.number_frequencies,self.nstokes,self.npix),order='F')
+        input_cmb_maps = np.repeat(input_cmb_maps_alt.ravel(order='F'), self.n_frequencies).reshape((self.n_frequencies,self.nstokes,self.n_pix),order='F')
         input_freq_maps = input_cmb_maps + freq_maps_fgs
 
         # true_red_cov_cmb_specra = get_reduced_matrix_from_c_ell(true_cmb_specra)
@@ -178,7 +178,7 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
     def update_samples_MH(self, all_samples):
         self.all_samples_r = self.update_variable(self.all_samples_r, all_samples[...,-1])
 
-        self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, all_samples[...,:-1].reshape((all_samples.shape[0],self.number_frequencies-len(self.pos_special_freqs),self.number_components-1),order='F'))
+        self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, all_samples[...,:-1].reshape((all_samples.shape[0],self.n_frequencies-len(self.pos_special_freqs),self.n_components-1),order='F'))
 
     # def compute_covariance_1d(self, iteration, all_samples):
     #     """ Give new covariance matrix from the samples of a 1d variable
@@ -209,9 +209,9 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
     def get_alm_from_frequency_maps(self, input_freq_maps):
 
         assert len(input_freq_maps.shape) == 3
-        assert input_freq_maps.shape[0] == self.number_frequencies
+        assert input_freq_maps.shape[0] == self.n_frequencies
         assert input_freq_maps.shape[1] == self.nstokes
-        assert input_freq_maps.shape[2] == self.npix
+        assert input_freq_maps.shape[2] == self.n_pix
 
         ## Preparing input alms data
         def wrapper_map2alm(maps_, lmax=self.lmax, n_iter=self.n_iter, nside=self.nside):
@@ -235,7 +235,7 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
             all_alms = jnp.array(pure_call_map2alm(input_map_extended, lmax=self.lmax))
             return all_alms[3-self.nstokes:,...]
   
-        return jax.vmap(get_freq_alm)(jnp.arange(self.number_frequencies))
+        return jax.vmap(get_freq_alm)(jnp.arange(self.n_frequencies))
 
 
     def perform_harmonic_minimize(self, input_freq_maps, c_ell_approx, init_params_mixing_matrix,
@@ -275,10 +275,10 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
 
         ## Testing the initial mixing matrix
         if len(init_params_mixing_matrix.shape) == 1:
-            assert len(init_params_mixing_matrix) == (self.number_frequencies-len(self.pos_special_freqs))*(self.number_correlations-1)
+            assert len(init_params_mixing_matrix) == (self.n_frequencies-len(self.pos_special_freqs))*(self.number_correlations-1)
         else:
             # assert len(init_params_mixing_matrix.shape) == 2
-            assert init_params_mixing_matrix.shape[0] == (self.number_frequencies-len(self.pos_special_freqs))
+            assert init_params_mixing_matrix.shape[0] == (self.n_frequencies-len(self.pos_special_freqs))
             assert init_params_mixing_matrix.shape[1] == (self.number_correlations-1)
 
         red_cov_approx_matrix = get_reduced_matrix_from_c_ell_jax(c_ell_approx)[self.lmin:,...]
@@ -323,7 +323,7 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
 
             Parameters
             ----------
-            input_freq_maps : data of initial frequency maps, dimensions [frequencies, nstokes, npix]
+            input_freq_maps : data of initial frequency maps, dimensions [frequencies, nstokes, n_pix]
             
             tot_cov_first_guess : total covariance first guess, composed of all c_ell correlations in order (for polarization [EE, BB, EB])
 
@@ -390,17 +390,17 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
                                                             init_params_mixing_matrix.shape[0],
                                                             init_params_mixing_matrix.shape[1]), order='F')
                 if len(init_params_mixing_matrix.shape) == 2:
-                    assert init_params_mixing_matrix.shape[1] == (self.number_frequencies-len(self.pos_special_freqs))*(self.number_correlations-1)
+                    assert init_params_mixing_matrix.shape[1] == (self.n_frequencies-len(self.pos_special_freqs))*(self.number_correlations-1)
                 else:
-                    assert init_params_mixing_matrix.shape[1] == (self.number_frequencies-len(self.pos_special_freqs))
+                    assert init_params_mixing_matrix.shape[1] == (self.n_frequencies-len(self.pos_special_freqs))
                     assert init_params_mixing_matrix.shape[2] == (self.number_correlations-1)
 
         else:
             if len(init_params_mixing_matrix.shape) == 1:
-                assert len(init_params_mixing_matrix) == (self.number_frequencies-len(self.pos_special_freqs))*(self.number_correlations-1)
+                assert len(init_params_mixing_matrix) == (self.n_frequencies-len(self.pos_special_freqs))*(self.number_correlations-1)
             else:
                 # assert len(init_params_mixing_matrix.shape) == 2
-                assert init_params_mixing_matrix.shape[0] == (self.number_frequencies-len(self.pos_special_freqs))
+                assert init_params_mixing_matrix.shape[0] == (self.n_frequencies-len(self.pos_special_freqs))
                 assert init_params_mixing_matrix.shape[1] == (self.number_correlations-1)
         
                 
@@ -419,9 +419,9 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
         len_pos_special_freqs = len(self.pos_special_freqs)
 
         ## Initial guesses
-        initial_eta = jnp.zeros((self.nstokes,self.npix))
+        initial_eta = jnp.zeros((self.nstokes,self.n_pix))
         params_mixing_matrix_init_sample = jnp.copy(init_params_mixing_matrix).reshape(
-                                            ((self.number_frequencies-len_pos_special_freqs),self.number_correlations-1), order='F')
+                                            ((self.n_frequencies-len_pos_special_freqs),self.number_correlations-1), order='F')
 
         ## CMB covariance preparation in the format [lmax,nstokes,nstokes]
         red_cov_approx_matrix = get_reduced_matrix_from_c_ell_jax(c_ell_approx)[self.lmin:,...]
@@ -429,7 +429,7 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
         ## Preparing the scalar quantities
         PRNGKey = random.PRNGKey(self.seed)
 
-        dimension_param_B_f = (self.number_frequencies-len_pos_special_freqs)*(self.number_correlations-1)
+        dimension_param_B_f = (self.n_frequencies-len_pos_special_freqs)*(self.number_correlations-1)
 
         ## Preparing the step-size for Metropolis-within-Gibbs of B_f sampling
         if covariance_B_f_r is None:
@@ -537,7 +537,7 @@ def create_Harmonic_MICMAC_sampler_from_MICMAC_sampler_obj(MICMAC_sampler_obj, d
     Harmonic_MICMAC_Sampler_obj = Harmonic_MICMAC_Sampler(**dictionary_parameters)
 
     list_attributes = ['pos_special_freqs', 
-                 'number_components', 'lmin',
+                 'n_components', 'lmin',
                  'n_iter',
                  'mask',
                  'biased_version',

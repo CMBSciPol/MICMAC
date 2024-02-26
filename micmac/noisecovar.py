@@ -9,6 +9,7 @@ import chex as chx
 # Note: we only consider diagonal noise covariance
 
 
+### Objects in pixel domain
 def get_noise_covar(depth_p, nside):
     """
     Noise covariance matrix (nfreq*nfreq).
@@ -19,6 +20,73 @@ def get_noise_covar(depth_p, nside):
 
     return invN
 
+
+def get_noise_covar_extended(depth_p, nside):
+    invN = get_noise_covar(depth_p, nside)
+    invN_extended = np.repeat(invN.ravel(order='F'), 12*nside**2).reshape((invN.shape[0],invN.shape[0],12*nside**2), order='C')
+    
+    return invN_extended
+
+
+def get_BtinvN(invN, B, jax_use=False):
+    """
+    B can be full Mixing Matrix,
+    or just the cmb part,
+    or just the fgs part.
+    """
+
+    if jax_use:
+        return jnp.einsum("fc...,fh...->ch...", B, invN)
+
+    return np.einsum("fc...,fh...->ch...", B, invN)
+
+
+def get_BtinvNB(invN, B, jax_use=False):
+    """
+    B can be full Mixing Matrix,
+    or just the cmb part,
+    or just the fgs part.
+    """
+    BtinvN = get_BtinvN(invN, B, jax_use)
+
+    if jax_use:
+        return jnp.einsum("ch...,hf...->cf...", BtinvN, B)
+
+    return np.einsum("ch...,hf...->cf...", BtinvN, B)
+
+
+def get_inv_BtinvNB(invN, B, jax_use=False):
+    """
+    B can be full Mixing Matrix,
+    or just the cmb part,
+    or just the fgs part.
+    """
+    BtinvNB = get_BtinvNB(invN, B, jax_use)
+
+    if jax_use:
+        return jnp.linalg.pinv(BtinvNB.swapaxes(0,-1)).swapaxes(0,-1)
+
+    return np.linalg.pinv(BtinvNB.swapaxes(0,-1)).swapaxes(0,-1)
+
+
+def get_Wd(invN, B, d, jax_use=False):
+    """
+    invN: inverse noise covar matrix
+    B: mixing matrix
+    d: frequency maps
+    returns: W d = inv(Bt invN B) Bt invN d
+    """
+    invBtinvNB = get_inv_BtinvNB(invN, B, jax_use)
+
+    if jax_use:
+        return jnp.einsum("cg...,hg...,hf...,f...->c...", invBtinvNB, B, invN, d)
+
+    return np.einsum("cg...,hg...,hf...,f...->c...", invBtinvNB, B, invN, d)
+
+
+
+
+### Objects in harmonic domain
 def get_Cl_noise(depth_p, A, lmax):
     """
     Function used only in harmonic case
@@ -76,62 +144,6 @@ def get_true_Cl_noise(depth_p, lmax):
 #     full_spectra = jnp.zeros((number_correlations,lmax+1))
 #     full_spectra = full_spectra.at[:nstokes,:].set(invBtinvNB*hp.nside2resol(nside)**2)
 #     return full_spectra
-
-def get_BtinvN(invN, B, jax_use=False):
-    """
-    B can be full Mixing Matrix,
-    or just the cmb part,
-    or just the fgs part.
-    """
-
-    if jax_use:
-        return jnp.einsum("fc...,fh...->ch...", B, invN)
-
-    return np.einsum("fc...,fh...->ch...", B, invN)
-
-
-def get_BtinvNB(invN, B, jax_use=False):
-    """
-    B can be full Mixing Matrix,
-    or just the cmb part,
-    or just the fgs part.
-    """
-    BtinvN = get_BtinvN(invN, B, jax_use)
-
-    if jax_use:
-        return jnp.einsum("ch...,hf...->cf...", BtinvN, B)
-
-    return np.einsum("ch...,hf...->cf...", BtinvN, B)
-
-
-def get_inv_BtinvNB(invN, B, jax_use=False):
-    """
-    B can be full Mixing Matrix,
-    or just the cmb part,
-    or just the fgs part.
-    """
-    BtinvNB = get_BtinvNB(invN, B, jax_use)
-
-    if jax_use:
-        return jnp.linalg.pinv(BtinvNB.swapaxes(0,-1)).swapaxes(0,-1)
-
-    return np.linalg.pinv(BtinvNB.swapaxes(0,-1)).swapaxes(0,-1)
-
-
-def get_Wd(invN, B, d, jax_use=False):
-    """
-    invN: inverse noise covar matrix
-    B: mixing matrix
-    d: frequency maps
-    returns: W d = inv(Bt invN B) Bt invN d
-    """
-    invBtinvNB = get_inv_BtinvNB(invN, B, jax_use)
-
-    if jax_use:
-        return jnp.einsum("cg...,hg...,hf...,f...->c...", invBtinvNB, B, invN, d)
-
-    return np.einsum("cg...,hg...,hf...,f...->c...", invBtinvNB, B, invN, d)
-
 
 # ## Choose if we want to keep these ones
 # ## (this could be done directly in the code)

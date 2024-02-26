@@ -186,7 +186,7 @@ def get_cell_from_map_jax(pixel_maps, lmax, n_iter=8):
 
     Parameters
     ----------
-    :param pixel_maps: array of shape (nstokes, npix)
+    :param pixel_maps: array of shape (nstokes, n_pix)
     :param lmax: maximum ell for the spectrum, int
     :param n_iter: number of iterations for harmonic operations, int
 
@@ -295,7 +295,7 @@ def maps_x_red_covariance_cell_JAX(
 
     Parameters
     ----------
-    :param maps_input: input maps of shape (nstokes, npix)
+    :param maps_input: input maps of shape (nstokes, n_pix)
     :param red_matrix_sqrt: input reduced spectra of shape (lmax+1-lmin, nstokes, nstokes)
     :param nside: nside of the input maps, int
     :param lmin: minimum ell for the spectrum, int
@@ -303,7 +303,7 @@ def maps_x_red_covariance_cell_JAX(
 
     Returns
     -------
-    :return: maps_output: output maps of shape (nstokes, npix)
+    :return: maps_output: output maps of shape (nstokes, n_pix)
     """
 
     all_params = 3
@@ -421,7 +421,7 @@ def alms_x_red_covariance_cell_JAX(
 
     Returns
     -------
-    :return: maps_output: output maps of shape (nstokes, npix)
+    :return: maps_output: output maps of shape (nstokes, n_pix)
     """
 
     # all_params = 3
@@ -504,7 +504,7 @@ def frequency_alms_x_obj_red_covariance_cell_JAX(
 
     Returns
     -------
-    :return: maps_output: output maps of shape (nstokes, npix)
+    :return: maps_output: output maps of shape (nstokes, n_pix)
     """
 
     # all_params = 3
@@ -512,15 +512,15 @@ def frequency_alms_x_obj_red_covariance_cell_JAX(
     # Getting scalar parameters from the input covariance
     lmax = freq_red_matrix.shape[2] - 1 + lmin
     first_dim_red_matrix = freq_red_matrix.shape[0]
-    number_frequencies = freq_red_matrix.shape[1]
+    n_frequencies = freq_red_matrix.shape[1]
     nstokes = freq_red_matrix.shape[3]
 
-    # chx.assert_shape(freq_red_matrix, (number_frequencies, number_frequencies, lmax + 1 - lmin, nstokes, nstokes))
-    chx.assert_axis_dimension(freq_red_matrix, 1, number_frequencies)
+    # chx.assert_shape(freq_red_matrix, (n_frequencies, n_frequencies, lmax + 1 - lmin, nstokes, nstokes))
+    chx.assert_axis_dimension(freq_red_matrix, 1, n_frequencies)
     chx.assert_axis_dimension(freq_red_matrix, 2, lmax + 1 - lmin)
     chx.assert_axis_dimension(freq_red_matrix, 3, nstokes)
     chx.assert_axis_dimension(freq_red_matrix, 4, nstokes)
-    chx.assert_shape(freq_alm_Stokes_input, (number_frequencies, nstokes, (lmax + 1) * (lmax // 2 + 1)))
+    chx.assert_shape(freq_alm_Stokes_input, (n_frequencies, nstokes, (lmax + 1) * (lmax // 2 + 1)))
 
     freq_alm_input = jnp.copy(freq_alm_Stokes_input)
 
@@ -536,7 +536,7 @@ def frequency_alms_x_obj_red_covariance_cell_JAX(
         return jlax.scan(
             scan_func,
             (jnp.zeros_like(freq_alm_input[0]), idx_i),
-            jnp.arange(number_frequencies),
+            jnp.arange(n_frequencies),
         )[0][0]
 
     # Multiplying the alms with the covariance matrix
