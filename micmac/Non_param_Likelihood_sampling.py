@@ -29,8 +29,9 @@ config.update("jax_enable_x64", True)
 
 class MICMAC_Sampler(Sampling_functions):
     def __init__(self, nside, lmax, nstokes, 
-                 frequency_array, freq_inverse_noise, pos_special_freqs=[0,-1], 
-                 n_components=3, lmin=2,
+                 frequency_array, freq_inverse_noise, pos_special_freqs=[0,-1],
+                 freq_noise_c_ell=None,
+                 number_components=3, lmin=2,
                  lmin_r=-1, lmax_r=-1,
                  n_iter=8, limit_iter_cg=2000, tolerance_CG=1e-10, atol_CG=1e-8,
                  limit_iter_cg_eta=200,
@@ -102,6 +103,8 @@ class MICMAC_Sampler(Sampling_functions):
         self.sample_r_Metropolis = bool(sample_r_Metropolis)
         self.sample_C_inv_Wishart = bool(sample_C_inv_Wishart)
 
+        # Noise parameters
+        self.freq_noise_c_ell = freq_noise_c_ell 
 
         # Metropolis-Hastings parameters
         self.lognormal_r = lognormal_r
@@ -199,35 +202,6 @@ class MICMAC_Sampler(Sampling_functions):
 
         return input_freq_maps, input_cmb_maps, theoretical_red_cov_r0_total, theoretical_red_cov_r1_tensor
 
-    # @property
-    # def all_samples_eta(self):
-    #     return jnp.empty(0)
-    
-    # @property
-    # def all_params_mixing_matrix_samples(self):
-    #     return jnp.empty(0)
-    
-    # @property
-    # def all_samples_wiener_filter_maps(self):
-    #     return jnp.empty(0)
-    
-    # @property
-    # def all_samples_fluctuation_maps(self):
-    #     return jnp.empty(0)
-    
-    # @property
-    # def all_samples_s_c(self):
-    #     return jnp.empty(0)
-
-    # @property
-    # def all_samples_r(self):
-    #     return jnp.empty(0)
-
-    # @property
-    # def all_samples_CMB_c_ell(self):
-    #     return jnp.empty(0)
-
-
     def update_variable(self, all_samples, new_samples_to_add):
         if jnp.size(all_samples) == 0:
             return new_samples_to_add
@@ -236,50 +210,87 @@ class MICMAC_Sampler(Sampling_functions):
         else:
             return jnp.vstack([all_samples,new_samples_to_add])
 
+    # def old_update_samples(self, all_samples):
+    #     indice_s_c = 1
+    #     # if self.sample_eta_B_f:
+    #     if not(self.cheap_save):
+    #         self.all_samples_eta = self.update_variable(self.all_samples_eta, all_samples[0])
+
+    #     if not(self.very_cheap_save):
+    #         self.all_samples_wiener_filter_maps = self.update_variable(self.all_samples_wiener_filter_maps, all_samples[indice_s_c])
+    #         self.all_samples_fluctuation_maps = self.update_variable(self.all_samples_fluctuation_maps, all_samples[indice_s_c+1])
+            
+    #     # self.all_samples_s_c = self.update_variable(self.all_samples_s_c, all_samples[indice_s_c]+all_samples[indice_s_c+1])
+    #     if self.sample_C_inv_Wishart:
+    #         if all_samples[indice_s_c+2].shape[1] == self.lmax+1-self.lmin:
+    #             all_samples_CMB_c_ell = jnp.array([get_c_ells_from_red_covariance_matrix(all_samples[indice_s_c+2][iteration]) for iteration in range(self.number_iterations_sampling-self.number_iterations_done)])
+    #         else:
+    #             all_samples_CMB_c_ell = all_samples[indice_s_c+2]
+    #         self.all_samples_CMB_c_ell = self.update_variable(self.all_samples_CMB_c_ell, all_samples_CMB_c_ell)
+    #     if self.sample_r_Metropolis:
+    #         self.all_samples_r = self.update_variable(self.all_samples_r, all_samples[indice_s_c+3])
+
+    #     self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, all_samples[5])
+
+    # def old_update_one_sample(self, one_sample):
+    #     indice_s_c = 1
+    #     # if self.sample_eta_B_f:
+    #     self.all_samples_eta = self.update_variable(self.all_samples_eta, one_sample[0].reshape([1]+list(one_sample[0].shape)))
+    #     self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, one_sample[5].reshape([1]+list(one_sample[5].shape)))
+    #     # else:
+    #     #     indice_s_c = -1
+
+    #     self.all_samples_wiener_filter_maps = self.update_variable(self.all_samples_wiener_filter_maps, one_sample[indice_s_c].reshape([1]+list(one_sample[indice_s_c].shape)))
+    #     self.all_samples_fluctuation_maps = self.update_variable(self.all_samples_fluctuation_maps, one_sample[indice_s_c+1].reshape([1]+list(one_sample[indice_s_c+1].shape)))
+    #     # self.all_samples_s_c = self.update_variable(self.all_samples_s_c, all_samples[indice_s_c]+all_samples[indice_s_c+1])
+
+    #     if one_sample[indice_s_c+2].shape[0] == self.lmax+1-self.lmin:
+    #         one_sample_CMB_c_ell = get_c_ells_from_red_covariance_matrix(one_sample[indice_s_c+2])
+    #     else:
+    #         one_sample_CMB_c_ell = one_sample[indice_s_c+2]
+    #     self.all_samples_CMB_c_ell = self.update_variable(self.all_samples_CMB_c_ell, one_sample_CMB_c_ell.reshape([1]+list(one_sample_CMB_c_ell.shape)))
+    #     self.all_samples_r = self.update_variable(self.all_samples_r, one_sample[indice_s_c+3])
+
     def update_samples(self, all_samples):
-        indice_s_c = 1
-        # if self.sample_eta_B_f:
-        if not(self.cheap_save):
-            self.all_samples_eta = self.update_variable(self.all_samples_eta, all_samples[0])
+        if not(self.cheap_save) and self.sample_eta_B_f:
+            self.all_samples_eta = self.update_variable(self.all_samples_eta, all_samples['eta_maps'])
 
         if not(self.very_cheap_save):
-            self.all_samples_wiener_filter_maps = self.update_variable(self.all_samples_wiener_filter_maps, all_samples[indice_s_c])
-            self.all_samples_fluctuation_maps = self.update_variable(self.all_samples_fluctuation_maps, all_samples[indice_s_c+1])
+            self.all_samples_wiener_filter_maps = self.update_variable(self.all_samples_wiener_filter_maps, all_samples['wiener_filter_term'])
+            self.all_samples_fluctuation_maps = self.update_variable(self.all_samples_fluctuation_maps, all_samples['fluctuation_maps'])
         # self.all_samples_s_c = self.update_variable(self.all_samples_s_c, all_samples[indice_s_c]+all_samples[indice_s_c+1])
         if self.sample_C_inv_Wishart:
-            if all_samples[indice_s_c+2].shape[1] == self.lmax+1-self.lmin:
-                all_samples_CMB_c_ell = jnp.array([get_c_ells_from_red_covariance_matrix(all_samples[indice_s_c+2][iteration]) for iteration in range(self.number_iterations_sampling-self.number_iterations_done)])
+            if all_samples['red_cov_matrix_sample'].shape[1] == self.lmax+1-self.lmin:
+                all_samples_CMB_c_ell = jnp.array([get_c_ells_from_red_covariance_matrix(all_samples['red_cov_matrix_sample'][iteration]) for iteration in range(self.number_iterations_sampling-self.number_iterations_done)])
             else:
-                all_samples_CMB_c_ell = all_samples[indice_s_c+2]
+                all_samples_CMB_c_ell = all_samples['red_cov_matrix_sample']
             self.all_samples_CMB_c_ell = self.update_variable(self.all_samples_CMB_c_ell, all_samples_CMB_c_ell)
         if self.sample_r_Metropolis:
-            self.all_samples_r = self.update_variable(self.all_samples_r, all_samples[indice_s_c+3])
+            self.all_samples_r = self.update_variable(self.all_samples_r, all_samples['r_sample'])
 
-        self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, all_samples[5])
+        self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, all_samples['params_mixing_matrix_sample'])
 
     def update_one_sample(self, one_sample):
-        indice_s_c = 1
-        # if self.sample_eta_B_f:
-        self.all_samples_eta = self.update_variable(self.all_samples_eta, one_sample[0].reshape([1]+list(one_sample[0].shape)))
-        self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, one_sample[5].reshape([1]+list(one_sample[5].shape)))
-        # else:
-        #     indice_s_c = -1
 
-        self.all_samples_wiener_filter_maps = self.update_variable(self.all_samples_wiener_filter_maps, one_sample[indice_s_c].reshape([1]+list(one_sample[indice_s_c].shape)))
-        self.all_samples_fluctuation_maps = self.update_variable(self.all_samples_fluctuation_maps, one_sample[indice_s_c+1].reshape([1]+list(one_sample[indice_s_c+1].shape)))
+        if not(self.cheap_save):
+            self.all_samples_eta = self.update_variable(self.all_samples_eta, jnp.expand_dims(one_sample['eta_maps'],axis=0))
+
+        if not(self.very_cheap_save):
+            self.all_samples_wiener_filter_maps = self.update_variable(self.all_samples_wiener_filter_maps, jnp.expand_dims(one_sample['wiener_filter_term'],axis=0))
+            self.all_samples_fluctuation_maps = self.update_variable(self.all_samples_fluctuation_maps, jnp.expand_dims(one_sample['fluctuation_maps'],axis=0))
         # self.all_samples_s_c = self.update_variable(self.all_samples_s_c, all_samples[indice_s_c]+all_samples[indice_s_c+1])
 
-        if one_sample[indice_s_c+2].shape[0] == self.lmax+1-self.lmin:
-            one_sample_CMB_c_ell = get_c_ells_from_red_covariance_matrix(one_sample[indice_s_c+2])
-        else:
-            one_sample_CMB_c_ell = one_sample[indice_s_c+2]
-        self.all_samples_CMB_c_ell = self.update_variable(self.all_samples_CMB_c_ell, one_sample_CMB_c_ell.reshape([1]+list(one_sample_CMB_c_ell.shape)))
-        self.all_samples_r = self.update_variable(self.all_samples_r, one_sample[indice_s_c+3])
-        
-    # def update_samples_MH(self, all_samples):
-    #     self.all_samples_r = self.update_variable(self.all_samples_r, all_samples[...,-1])
+        if self.sample_C_inv_Wishart:
+            if one_sample['red_cov_matrix_sample'].shape[0] == self.lmax+1-self.lmin:
+                one_sample_CMB_c_ell = get_c_ells_from_red_covariance_matrix(one_sample['red_cov_matrix_sample'])
+            else:
+                one_sample_CMB_c_ell = one_sample['red_cov_matrix_sample']
+            self.all_samples_CMB_c_ell = self.update_variable(self.all_samples_CMB_c_ell, jnp.expand_dims(one_sample_CMB_c_ell,axis=0))
+        if self.sample_r_Metropolis:
+            self.all_samples_r = self.update_variable(self.all_samples_r, one_sample['r_sample'])
 
-    #     self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, all_samples[...,:-1].reshape((all_samples.shape[0],self.n_frequencies-len(self.pos_special_freqs),self.n_components-1),order='F'))
+        self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, jnp.expand_dims(one_sample['params_mixing_matrix_sample'],axis=0))
+
 
     # def compute_covariance_1d(self, iteration, all_samples):
     #     """ Give new covariance matrix from the samples of a 1d variable
@@ -311,6 +322,11 @@ class MICMAC_Sampler(Sampling_functions):
     #     Returns a list of the derivatives of -log(L_sp)
     #     per each spectral parameter
     #     """
+    # def spectral_likelihood_dB(self, new_params_mixing_matrix, full_data, **model_kwargs):
+    #     """
+    #     Returns a list of the derivatives of -log(L_sp)
+    #     per each spectral parameter
+    #     """
 
     #     # self._fake_mixing_matrix.update_params(new_params_mixing_matrix.reshape((self.n_frequencies-jnp.size(self.pos_special_freqs), self.n_components-1),order='F'),jax_use=True)
     #     self.update_params(new_params_mixing_matrix.reshape((self.n_frequencies-jnp.size(self.pos_special_freqs), self.n_components-1),order='F'),jax_use=True)
@@ -319,18 +335,33 @@ class MICMAC_Sampler(Sampling_functions):
     #     # new_mixing_matrix_dB = self._fake_mixing_matrix.get_B_db(jax_use=True)
     #     new_mixing_matrix = self.get_B(jax_use=True)
     #     new_mixing_matrix_dB = self.get_B_db(jax_use=True)
+    #     # new_mixing_matrix = self._fake_mixing_matrix.get_B(jax_use=True)
+    #     # new_mixing_matrix_dB = self._fake_mixing_matrix.get_B_db(jax_use=True)
+    #     new_mixing_matrix = self.get_B(jax_use=True)
+    #     new_mixing_matrix_dB = self.get_B_db(jax_use=True)
 
+    #     invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, new_mixing_matrix, jax_use=True)
+    #     BtinvN = get_BtinvN(self.freq_inverse_noise, new_mixing_matrix, jax_use=True)
     #     invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, new_mixing_matrix, jax_use=True)
     #     BtinvN = get_BtinvN(self.freq_inverse_noise, new_mixing_matrix, jax_use=True)
         
     #     BtinvNd = jnp.einsum('cf, fsp -> csp', BtinvN, full_data)
+    #     BtinvNd = jnp.einsum('cf, fsp -> csp', BtinvN, full_data)
 
+    #     P = jnp.einsum('ef,fc,cg,lg,lh->eh', self.freq_inverse_noise, new_mixing_matrix, invBtinvNB, new_mixing_matrix, self.freq_inverse_noise)
     #     P = jnp.einsum('ef,fc,cg,lg,lh->eh', self.freq_inverse_noise, new_mixing_matrix, invBtinvNB, new_mixing_matrix, self.freq_inverse_noise)
 
     #     logL_dB = jnp.einsum('csp,ck,bfk,fg,gsp->b', BtinvNd, invBtinvNB, new_mixing_matrix_dB, self.freq_inverse_noise-P, full_data)
+    #     logL_dB = jnp.einsum('csp,ck,bfk,fg,gsp->b', BtinvNd, invBtinvNB, new_mixing_matrix_dB, self.freq_inverse_noise-P, full_data)
 
     #     return -logL_dB
+    #     return -logL_dB
 
+    # def spectral_likelihood_dB_f(self, new_params_mixing_matrix, full_data_without_CMB, **model_kwargs):
+    #     """
+    #     Returns a list of the derivatives of -log(L_sp)
+    #     per each spectral parameter
+    #     """
     # def spectral_likelihood_dB_f(self, new_params_mixing_matrix, full_data_without_CMB, **model_kwargs):
     #     """
     #     Returns a list of the derivatives of -log(L_sp)
@@ -344,14 +375,23 @@ class MICMAC_Sampler(Sampling_functions):
     #     # new_mixing_matrix_dB_fg = self._fake_mixing_matrix.get_B_db(jax_use=True)[:,:,1:]
     #     new_mixing_matrix_fg = self.get_B(jax_use=True)[:,1:]
     #     new_mixing_matrix_dB_fg = self.get_B_db(jax_use=True)[:,:,1:]
+    #     # new_mixing_matrix_fg = self._fake_mixing_matrix.get_B(jax_use=True)[:,1:]
+    #     # new_mixing_matrix_dB_fg = self._fake_mixing_matrix.get_B_db(jax_use=True)[:,:,1:]
+    #     new_mixing_matrix_fg = self.get_B(jax_use=True)[:,1:]
+    #     new_mixing_matrix_dB_fg = self.get_B_db(jax_use=True)[:,:,1:]
 
+    #     invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, new_mixing_matrix_fg, jax_use=True)
+    #     BtinvN = get_BtinvN(self.freq_inverse_noise, new_mixing_matrix_fg, jax_use=True)
     #     invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, new_mixing_matrix_fg, jax_use=True)
     #     BtinvN = get_BtinvN(self.freq_inverse_noise, new_mixing_matrix_fg, jax_use=True)
         
     #     BtinvNd = jnp.einsum('cf, fsp -> csp', BtinvN, full_data_without_CMB)
+    #     BtinvNd = jnp.einsum('cf, fsp -> csp', BtinvN, full_data_without_CMB)
 
     #     P = jnp.einsum('ef,fc,cg,lg,lh->eh', self.freq_inverse_noise, new_mixing_matrix_fg, invBtinvNB, new_mixing_matrix_fg, self.freq_inverse_noise)
+    #     P = jnp.einsum('ef,fc,cg,lg,lh->eh', self.freq_inverse_noise, new_mixing_matrix_fg, invBtinvNB, new_mixing_matrix_fg, self.freq_inverse_noise)
 
+    #     logL_dB = jnp.einsum('csp,ck,bfk,fg,gsp->b', BtinvNd, invBtinvNB, new_mixing_matrix_dB_fg, self.freq_inverse_noise-P, full_data_without_CMB)
     #     logL_dB = jnp.einsum('csp,ck,bfk,fg,gsp->b', BtinvNd, invBtinvNB, new_mixing_matrix_dB_fg, self.freq_inverse_noise-P, full_data_without_CMB)
 
     #     return -logL_dB
@@ -409,8 +449,8 @@ class MICMAC_Sampler(Sampling_functions):
             wiener_filter_term = jnp.zeros((self.nstokes,self.n_pix))
         else:
             assert len(initial_wiener_filter_term.shape) == 2
-            assert initial_wiener_filter_term.shape[0] == self.nstokes
-            assert initial_wiener_filter_term.shape[1] == self.n_pix
+            assert initial_wiener_filter_term.shape == (self.nstokes, self.npix)
+            # assert initial_wiener_filter_term.shape[1] == self.npix
             wiener_filter_term = initial_wiener_filter_term
 
         ## Testing the initial fluctuation term, initialize it properly
@@ -418,8 +458,8 @@ class MICMAC_Sampler(Sampling_functions):
             fluctuation_maps = jnp.zeros((self.nstokes,self.n_pix))
         else:
             assert len(initial_fluctuation_maps.shape) == 2
-            assert initial_fluctuation_maps.shape[0] == self.nstokes
-            assert initial_fluctuation_maps.shape[1] == self.n_pix
+            assert initial_fluctuation_maps.shape == (self.nstokes, self.npix)
+            # assert initial_fluctuation_maps.shape[1] == self.npix
             fluctuation_maps = initial_fluctuation_maps
 
         ## Testing the initial spectra given in case the sampling is done with r
@@ -431,6 +471,7 @@ class MICMAC_Sampler(Sampling_functions):
 
             theoretical_red_cov_r0_total = get_reduced_matrix_from_c_ell(theoretical_r0_total)
             theoretical_red_cov_r1_tensor  = get_reduced_matrix_from_c_ell(theoretical_r1_tensor)
+            assert theoretical_red_cov_r0_total.shape[1] == self.nstokes
         ## Testing the initial CMB spectra given
         if self.nstokes == 2 and (CMB_c_ell.shape[0] != len(indices_to_consider)):
             CMB_c_ell = CMB_c_ell[indices_to_consider,:]
@@ -438,14 +479,12 @@ class MICMAC_Sampler(Sampling_functions):
             c_ell_approx = c_ell_approx[indices_to_consider,:]
 
         ## testing the initial mixing matrix
-        assert np.shape(init_params_mixing_matrix)[0] == self.len_params
-        # if len(init_params_mixing_matrix.shape) == 1:
-        #     assert len(init_params_mixing_matrix) == (self.n_frequencies-len(self.pos_special_freqs))*(self.number_correlations-1)
-        # else:
-        #     # assert len(init_params_mixing_matrix.shape) == 2
-        #     assert init_params_mixing_matrix.shape[0] == (self.n_frequencies-len(self.pos_special_freqs))
-        #     assert init_params_mixing_matrix.shape[1] == (self.number_correlations-1)
-
+        if len(init_params_mixing_matrix.shape) == 1:
+            assert len(init_params_mixing_matrix) == (self.number_frequencies-len(self.pos_special_freqs))*(self.number_correlations-1)
+        else:
+            # assert len(init_params_mixing_matrix.shape) == 2
+            assert init_params_mixing_matrix.shape[0] == (self.number_frequencies-len(self.pos_special_freqs))
+            assert init_params_mixing_matrix.shape[1] == (self.number_correlations-1)
 
         ## Final set of tests
         assert len(CMB_c_ell.shape) == 2
@@ -454,11 +493,9 @@ class MICMAC_Sampler(Sampling_functions):
         assert c_ell_approx.shape[1] == self.lmax + 1
 
         assert len(input_freq_maps.shape) == 3
-        assert input_freq_maps.shape[0] == self.n_frequencies
-        assert input_freq_maps.shape[1] == self.nstokes
-        assert input_freq_maps.shape[2] == self.n_pix
-
-
+        assert input_freq_maps.shape == (self.number_frequencies, self.nstokes, self.npix)
+        # assert input_freq_maps.shape[1] == self.nstokes
+        # assert input_freq_maps.shape[2] == self.npix
 
         # Preparing for the full Gibbs sampling
         len_pos_special_freqs = len(self.pos_special_freqs)
@@ -479,7 +516,8 @@ class MICMAC_Sampler(Sampling_functions):
         ## Jitting the sampling function
         # jitted_sample_eta = jax.jit(self.get_sampling_eta_v2, static_argnames=['suppress_low_modes'])
 
-        func_fixed_covariance_eta = self.get_conditional_proba_correction_likelihood_JAX_v2c
+        # func_logproba_eta = self.get_conditional_proba_correction_likelihood_JAX_v2c
+        func_logproba_eta = self.get_conditional_proba_correction_likelihood_JAX_v2d
 
         # jitted_get_fluctuating_term = jax.jit(self.get_fluctuating_term_maps)
         # jitted_solve_wiener_filter_term = jax.jit(self.solve_generalized_wiener_filter_term)
@@ -487,8 +525,10 @@ class MICMAC_Sampler(Sampling_functions):
         # jitted_get_fluctuating_term = jax.jit(self.get_fluctuating_term_maps_v2)
         # jitted_solve_wiener_filter_term = jax.jit(self.solve_generalized_wiener_filter_term_v2)
 
-        sampling_func_WF = self.solve_generalized_wiener_filter_term_v2c
-        sampling_func_Fluct = self.get_fluctuating_term_maps_v2c
+        # sampling_func_WF = self.solve_generalized_wiener_filter_term_v2c
+        sampling_func_WF = self.solve_generalized_wiener_filter_term_v2d
+        # sampling_func_Fluct = self.get_fluctuating_term_maps_v2c
+        sampling_func_Fluct = self.get_fluctuating_term_maps_v2d
         # if self.use_old_s_c_sampling:
         #     sampling_func_WF = self.solve_generalized_wiener_filter_term
         #     sampling_func_Fluct = self.get_fluctuating_term_maps
@@ -520,7 +560,8 @@ class MICMAC_Sampler(Sampling_functions):
             print("Using biased version or perturbation version of mixing matrix sampling !!!", flush=True)
             # jitted_Bf_func_sampling = jax.jit(self.get_biased_conditional_proba_mixing_matrix_v2_JAX)
             jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_JAX, static_argnames=['biased_bool'])
-            sampling_func = separate_single_MH_step_index
+            # sampling_func = separate_single_MH_step_index
+            sampling_func = separate_single_MH_step_index_v2
 
 
         ## Preparing the scalar quantities
@@ -544,6 +585,19 @@ class MICMAC_Sampler(Sampling_functions):
             print("Sample for r instead of C !", flush=True)
         else:
             print("Sample for C with inverse Wishart !", flush=True)
+        
+        use_precond = False
+        if self.mask.sum() == self.npix and self.freq_noise_c_ell is not None:
+            assert len(self.freq_noise_c_ell.shape) == 3
+            assert self.freq_noise_c_ell.shape[0] == self.number_frequencies
+            assert self.freq_noise_c_ell.shape[1] == self.number_frequencies
+            assert (self.freq_noise_c_ell.shape[2] == self.lmax+1) or (self.freq_noise_c_ell.shape[2] == self.lmax+1-self.lmin)
+            if self.freq_noise_c_ell.shape[2] == self.lmax+1:
+                self.freq_noise_c_ell = self.freq_noise_c_ell[...,self.lmin:]
+            self.freq_noise_c_ell = jnp.array(self.freq_noise_c_ell)
+
+            print("Full sky case !", flush=True)
+            use_precond = True
 
         print(f"Starting {self.number_iterations_sampling} iterations from {self.number_iterations_done} iterations done", flush=True)
 
@@ -564,16 +618,25 @@ class MICMAC_Sampler(Sampling_functions):
             # Extracting the variables from the carry
             # eta_maps_sample, WF_term_maps, fluct_maps, red_cov_matrix_sample, _all_r_samples, _all_B_f_samples, PRNGKey, old_s_c_sample, inverse_term = carry
             # eta_maps_sample, WF_term_maps, fluct_maps, red_cov_matrix_sample, _all_r_samples, params_mixing_matrix_sample, PRNGKey, old_s_c_sample, inverse_term = carry
-            eta_maps_sample, WF_term_maps, fluct_maps, red_cov_matrix_sample, r_sample, params_mixing_matrix_sample, PRNGKey, old_s_c_sample, inverse_term = carry
+            # eta_maps_sample, WF_term_maps, fluct_maps, red_cov_matrix_sample, r_sample, params_mixing_matrix_sample, PRNGKey, old_s_c_sample, inverse_term = carry
+
+            # WF_term_maps = carry['WF_maps']
+            # fluct_maps = carry['fluct_maps']
+            # red_cov_matrix_sample = carry['red_cov_matrix_sample']
+            params_mixing_matrix_sample = carry['params_mixing_matrix_sample']
+
+            PRNGKey = carry['PRNGKey']
+            inverse_term = carry['inverse_term']
+
+            # Preparing the new carry
+            new_carry = dict()
+            all_samples = dict()
 
             # Preparing a new PRNGKey for eta sampling
             PRNGKey, subPRNGKey = random.split(PRNGKey)
 
             # Extracting the mixing matrix parameters and initializing the new one
-            # params_mixing_matrix_sample = params_mixing_matrix_sample.reshape((self.n_frequencies-len_pos_special_freqs,number_correlations-1),order='F')
-            # self.mixing_matrix_obj.update_params(params_mixing_matrix_sample)
-            # mixing_matrix_sampled = self.mixing_matrix_obj.get_B(jax_use=True)
-            self.update_params(params_mixing_matrix_sample)
+            self.update_params(carry['params_mixing_matrix_sample'])
             mixing_matrix_sampled = self.get_B(jax_use=True)
 
             # Few checks for the mixing matrix
@@ -588,84 +651,123 @@ class MICMAC_Sampler(Sampling_functions):
             del mixing_matrix_sampled
 
             # Sampling step 1 : sampling of Gaussian variable eta
+            
+            # Initialize the preconditioner for the eta contribution
+            precond_func_eta = None
+
             if self.sample_eta_B_f and not(self.biased_version):
                 # Preparing random variables
-                # map_random_x = jnp.empty(0)
-                # map_random_y = jnp.empty(0)
                 map_random_x = None
                 map_random_y = None
 
                 # Sampling eta maps
-                new_eta_maps_sample = self.get_sampling_eta_v2(red_cov_approx_matrix_sqrt, invBtinvNB, BtinvN_sqrt, 
+                new_carry['eta_maps'] = self.get_sampling_eta_v2(red_cov_approx_matrix_sqrt, invBtinvNB, BtinvN_sqrt, 
                                                                subPRNGKey, map_random_x=map_random_x, map_random_y=map_random_y, 
                                                                suppress_low_modes=True)
-                # new_eta_maps_sample = jitted_sample_eta(red_cov_approx_matrix, invBtinvNB, BtinvN_sqrt, 
-                #                                                subPRNGKey, map_random_x=map_random_x, map_random_y=map_random_y, 
-                #                                                suppress_low_modes=True)
-
-                eta_maps_sample = new_eta_maps_sample
+                # eta_maps_sample = new_eta_maps_sample
                 
                 # Checking shape of the resulting maps
-                chx.assert_shape(eta_maps_sample, (self.nstokes, self.n_pix))
+                chx.assert_shape(new_carry['eta_maps'], (self.nstokes, self.npix))
+
+                # Preparing the preconditioner
+                if use_precond:
+                    noise_c_ell = get_inv_BtinvNB_c_ell(self.freq_noise_c_ell, mixing_matrix_sampled)[0,0]
+                    red_inv_noise_c_ell = jnp.linalg.pinv(get_reduced_matrix_from_c_ell_jax(jnp.stack([noise_c_ell, noise_c_ell, jnp.zeros_like(noise_c_ell)])))#[self.lmin:]
+                    red_preconditioner_eta = jnp.linalg.pinv(jnp.eye(self.nstokes) 
+                                                            + jnp.einsum('lij,ljk,lkm->lim', 
+                                                            red_cov_approx_matrix_sqrt, 
+                                                            red_inv_noise_c_ell, 
+                                                            red_cov_approx_matrix_sqrt))
+                    precond_func_eta = lambda x: maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), 
+                                                                                red_preconditioner_eta, 
+                                                                                nside=self.nside, 
+                                                                                lmin=self.lmin, 
+                                                                                n_iter=self.n_iter).ravel()
 
                 # Computing the associated log proba term fixed correction covariance for the B_f sampling
-                # if self.fixed_eta_covariance:
-                #     log_proba_perturbation, inverse_term = func_fixed_covariance_eta(mixing_matrix_sampled, eta_maps_sample, red_cov_approx_matrix, previous_inverse=inverse_term, return_inverse=True)
-                # else:
-                #     log_proba_perturbation = None
-                
                 if self.perturbation_eta_covariance:
-                    _, inverse_term = func_fixed_covariance_eta(invBtinvNB, eta_maps_sample, red_cov_approx_matrix_sqrt, previous_inverse=inverse_term, return_inverse=True)
-                
+                    _, inverse_term = func_logproba_eta(mixing_matrix_sampled, 
+                                                                new_carry['eta_maps'], 
+                                                                red_cov_approx_matrix_sqrt, 
+                                                                previous_inverse=inverse_term, 
+                                                                return_inverse=True,
+                                                                precond_func=precond_func_eta)
+                if not(self.very_cheap_save):
+                    all_samples['eta_maps'] = new_carry['eta_maps']
 
             # Sampling step 2 : sampling of Gaussian variable s_c, contrained CMB map realization
 
             ## Geting the Wiener filter term, mean of the variable s_c
-            red_cov_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_cov_matrix_sample)
-            # wiener_filter_term = self.solve_generalized_wiener_filter_term(s_cML, red_cov_matrix_sample, invBtinvNB, initial_guess=jnp.copy(WF_term_maps))
-            # wiener_filter_term = self.solve_generalized_wiener_filter_term_v2(s_cML, red_cov_matrix_sample, invBtinvNB, initial_guess=jnp.copy(WF_term_maps))
-            # wiener_filter_term = self.solve_generalized_wiener_filter_term_v2c(s_cML, red_cov_matrix_sample, invBtinvNB, initial_guess=jnp.copy(WF_term_maps))
-            # wiener_filter_term = jitted_solve_wiener_filter_term(s_cML, red_cov_matrix_sample, invBtinvNB, initial_guess=jnp.copy(WF_term_maps))
-            initial_guess_WF = maps_x_red_covariance_cell_JAX(WF_term_maps, jnp.linalg.pinv(red_cov_matrix_sqrt), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
-            wiener_filter_term = sampling_func_WF(s_cML, red_cov_matrix_sqrt, invBtinvNB, initial_guess=initial_guess_WF)
+            red_cov_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(carry['red_cov_matrix_sample'])
+
+            # Preparing the preconditioner
+            precond_func_s_c = None
+            if use_precond:
+                noise_c_ell = get_inv_BtinvNB_c_ell(self.freq_noise_c_ell, mixing_matrix_sampled)[0,0]
+                red_inv_noise_c_ell = jnp.linalg.pinv(get_reduced_matrix_from_c_ell_jax(jnp.stack([noise_c_ell, noise_c_ell, jnp.zeros_like(noise_c_ell)])))#[self.lmin:]
+                red_preconditioner_s_c = jnp.linalg.pinv(jnp.eye(self.nstokes) 
+                                                        + jnp.einsum('lij,ljk,lkm->lim', 
+                                                        red_cov_matrix_sqrt, 
+                                                        red_inv_noise_c_ell, 
+                                                        red_cov_matrix_sqrt))
+
+                precond_func_s_c = lambda x: maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), 
+                                                                            red_preconditioner_s_c, 
+                                                                            nside=self.nside, 
+                                                                            lmin=self.lmin, 
+                                                                            n_iter=self.n_iter).ravel()
+
+            initial_guess_WF = maps_x_red_covariance_cell_JAX(carry['wiener_filter_term'], 
+                                                              jnp.linalg.pinv(red_cov_matrix_sqrt), 
+                                                              nside=self.nside, 
+                                                              lmin=self.lmin, 
+                                                              n_iter=self.n_iter)
+            # initial_guess_WF = jnp.zeros_like(s_cML)
+            new_carry['wiener_filter_term'] = sampling_func_WF(s_cML, 
+                                                               red_cov_matrix_sqrt, 
+                                                               invBtinvNB, 
+                                                               initial_guess=initial_guess_WF,
+                                                               precond_func=precond_func_s_c)
 
             ## Preparing the random variables for the fluctuation term
             PRNGKey, new_subPRNGKey = random.split(PRNGKey)
-            # map_random_realization_xi = jnp.empty(0)
-            # map_random_realization_chi = jnp.empty(0)
             map_random_realization_xi = None
             map_random_realization_chi = None
 
             ## Getting the fluctuation maps terms, for the variance of the variable s_c
-            # fluctuation_maps = self.get_fluctuating_term_maps_v2(red_cov_matrix_sample, invBtinvNB, BtinvN_sqrt, new_subPRNGKey, 
-            #                                                   map_random_realization_xi=map_random_realization_xi, map_random_realization_chi=map_random_realization_chi, 
-            #                                                   initial_guess=jnp.copy(fluct_maps))
-            # fluctuation_maps = self.get_fluctuating_term_maps_v2c(red_cov_matrix_sample, invBtinvNB, BtinvN_sqrt, new_subPRNGKey, 
-            #                                                   map_random_realization_xi=map_random_realization_xi, map_random_realization_chi=map_random_realization_chi, 
-            #                                                   initial_guess=jnp.copy(fluct_maps))
-            # fluctuation_maps = jitted_get_fluctuating_term(red_cov_matrix_sample, invBtinvNB, BtinvN_sqrt, new_subPRNGKey, 
-            #                                                   map_random_realization_xi=map_random_realization_xi, map_random_realization_chi=map_random_realization_chi, 
-            #                                                   initial_guess=jnp.copy(fluct_maps))
-            initial_guess_Fluct = maps_x_red_covariance_cell_JAX(fluct_maps, jnp.linalg.pinv(red_cov_matrix_sqrt), nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
-            fluctuation_maps = sampling_func_Fluct(red_cov_matrix_sqrt, invBtinvNB, BtinvN_sqrt, new_subPRNGKey, 
-                                                              map_random_realization_xi=map_random_realization_xi, map_random_realization_chi=map_random_realization_chi, 
-                                                              initial_guess=initial_guess_Fluct)
+            initial_guess_Fluct = maps_x_red_covariance_cell_JAX(carry['fluctuation_maps'], 
+                                                                jnp.linalg.pinv(red_cov_matrix_sqrt), 
+                                                                nside=self.nside, 
+                                                                lmin=self.lmin, 
+                                                                n_iter=self.n_iter)
+            # initial_guess_Fluct = jnp.zeros_like(carry['fluctuation_maps'])
+            new_carry['fluctuation_maps'] = sampling_func_Fluct(red_cov_matrix_sqrt, 
+                                                                invBtinvNB, 
+                                                                BtinvN_sqrt, 
+                                                                new_subPRNGKey, 
+                                                                map_random_realization_xi=map_random_realization_xi, 
+                                                                map_random_realization_chi=map_random_realization_chi, 
+                                                                initial_guess=initial_guess_Fluct,
+                                                                precond_func=precond_func_s_c)
 
-            s_c_sample = fluctuation_maps + wiener_filter_term
+            s_c_sample = new_carry['fluctuation_maps'] + new_carry['wiener_filter_term']
+
+            if not(self.very_cheap_save):
+                all_samples['wiener_filter_term'] = new_carry['wiener_filter_term']
+                all_samples['fluctuation_maps'] = new_carry['fluctuation_maps']
 
             ## Checking the shape of the resulting maps
-            chx.assert_shape(wiener_filter_term, (self.nstokes, self.n_pix))
-            chx.assert_shape(fluctuation_maps, (self.nstokes, self.n_pix))
-            chx.assert_shape(s_c_sample, (self.nstokes, self.n_pix))
+            chx.assert_shape(new_carry['wiener_filter_term'], (self.nstokes, self.npix))
+            chx.assert_shape(new_carry['fluctuation_maps'], (self.nstokes, self.npix))
+            chx.assert_shape(s_c_sample, (self.nstokes, self.npix))
 
 
             # Sampling step 3 : sampling of CMB covariance C
             
             ## Preparing the c_ell which will be used for the sampling
             c_ells_Wishart_ = get_cell_from_map_jax(s_c_sample, lmax=self.lmax, n_iter=self.n_iter)
-            # c_ells_Wishart_modified = c_ells_Wishart_*(2*jnp.arange(self.lmax+1) + 1)
+            
             ### Getting them in the format [lmax,nstokes,nstokes]
-            # red_c_ells_Wishart_modified = get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_modified)[self.lmin:]
             red_c_ells_Wishart_modified = get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_*(2*jnp.arange(self.lmax+1) + 1))[self.lmin:]
 
             ## Preparing the new PRNGkey
@@ -674,52 +776,38 @@ class MICMAC_Sampler(Sampling_functions):
             ## Performing the sampling
             if self.sample_C_inv_Wishart:
                 # Sampling C with inverse Wishart
-                # red_cov_matrix_sample = jitted_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_modified, PRNGKey=new_subPRNGKey_2)
-                # red_cov_matrix_sample = func_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_modified, PRNGKey=new_subPRNGKey_2)
-                # red_cov_matrix_sample = func_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_, PRNGKey=new_subPRNGKey_2)
-                # red_cov_matrix_sample = func_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_[:,self.lmin:], PRNGKey=new_subPRNGKey_2)
-                red_cov_matrix_sample = func_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_[:,self.lmin:], PRNGKey=new_subPRNGKey_2, 
-                                                                    old_sample=red_cov_matrix_sample, acceptance_posdef=self.acceptance_posdef)
+                new_carry['red_cov_matrix_sample'] = func_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_[:,self.lmin:], 
+                                                                    PRNGKey=new_subPRNGKey_2, 
+                                                                    old_sample=carry['red_cov_matrix_sample'], 
+                                                                    acceptance_posdef=self.acceptance_posdef)
+                all_samples['red_cov_matrix_sample'] = new_carry['red_cov_matrix_sample']
 
             elif self.sample_r_Metropolis:
                 # Sampling r which will parametrize C(r) = C_scalar + r*C_tensor
-
-                # Possibly use automatic step size
-                # if self.use_automatic_step_size:
-                #     step_size_r = jnp.where(iteration<self.num_sample_AM,  self.step_size_r, jnp.sqrt(self.compute_covariance_1d(iteration, _all_r_samples)))
-                # else:
-                #     step_size_r = self.step_size_r
-
-                # r_sample = r_sampling_MH(random_PRNGKey=new_subPRNGKey_2, old_sample=_all_r_samples[iteration],
-                #                                           step_size=step_size_r, log_proba=self.get_conditional_proba_C_from_r, 
-                #                                           red_sigma_ell=red_c_ells_Wishart_modified, theoretical_red_cov_r1_tensor=theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total=theoretical_red_cov_r0_total)
-                # _all_r_samples = _all_r_samples.at[iteration+1].set(r_sample)
-
-                r_sample = r_sampling_MH(random_PRNGKey=new_subPRNGKey_2, old_sample=r_sample,
+                new_carry['r_sample'] = r_sampling_MH(random_PRNGKey=new_subPRNGKey_2, old_sample=carry['r_sample'],
                                                           step_size=self.step_size_r, log_proba=self.get_conditional_proba_C_from_r, 
-                                                          red_sigma_ell=red_c_ells_Wishart_modified, theoretical_red_cov_r1_tensor=theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total=theoretical_red_cov_r0_total)
-                # _all_r_samples = _all_r_samples.at[iteration+1].set(r_sample)
+                                                          red_sigma_ell=red_c_ells_Wishart_modified, 
+                                                          theoretical_red_cov_r1_tensor=theoretical_red_cov_r1_tensor, 
+                                                          theoretical_red_cov_r0_total=theoretical_red_cov_r0_total)
 
-                red_cov_matrix_sample = theoretical_red_cov_r0_total + r_sample*theoretical_red_cov_r1_tensor
+                new_carry['red_cov_matrix_sample'] = theoretical_red_cov_r0_total + new_carry['r_sample']*theoretical_red_cov_r1_tensor
+                all_samples['r_sample'] = new_carry['r_sample']
             else:
                 raise Exception('C not sampled in any way !!! It must be either inv Wishart or through r sampling !')
-            
+
             ## Checking the shape of the resulting covariance matrix, and correcting it if needed
-            if red_cov_matrix_sample.shape[0] == self.lmax + 1:
-                red_cov_matrix_sample = red_cov_matrix_sample[self.lmin:]            
-            chx.assert_shape(red_cov_matrix_sample, (self.lmax + 1 - self.lmin, self.nstokes, self.nstokes))
+            if new_carry['red_cov_matrix_sample'].shape[0] == self.lmax + 1:
+                new_carry['red_cov_matrix_sample'] = new_carry['red_cov_matrix_sample'][self.lmin:]
+
+            chx.assert_shape(new_carry['red_cov_matrix_sample'], (self.lmax + 1 - self.lmin, self.nstokes, self.nstokes))
 
 
             # Sampling step 4 : sampling of mixing matrix B_f
 
             ## Preparation of sampling step 4
-            # extended_CMB_maps = jnp.zeros((self.n_components, self.nstokes, self.n_pix))
-            # extended_CMB_maps = extended_CMB_maps.at[0].set(s_c_sample)
-            # full_data_without_CMB = input_freq_maps - jnp.einsum('fc,csp->fsp',mixing_matrix_sampled, extended_CMB_maps)
-            # full_data_without_CMB = input_freq_maps - jnp.einsum('f,sp->fsp',mixing_matrix_sampled[:,0], s_c_sample)
-            # full_data_without_CMB = input_freq_maps - jnp.einsum('f,sp->fsp', jnp.ones(self.n_frequencies), s_c_sample)
-            full_data_without_CMB = input_freq_maps - jnp.einsum('fp,sp->fsp', self.get_B_cmb(jax_use=True)[:,0,:], s_c_sample)
-            chx.assert_shape(full_data_without_CMB, (self.n_frequencies, self.nstokes, self.n_pix))
+
+            full_data_without_CMB = input_freq_maps - jnp.einsum('f,sp->fsp', jnp.ones(self.number_frequencies), s_c_sample)
+            chx.assert_shape(full_data_without_CMB, (self.number_frequencies, self.nstokes, self.npix))
 
             ## Preparing the new PRNGKey
             PRNGKey, new_subPRNGKey_3 = random.split(PRNGKey)
@@ -728,61 +816,81 @@ class MICMAC_Sampler(Sampling_functions):
             if self.sample_eta_B_f:
                 # Preparing the step-size
                 step_size_Bf = initial_step_size_Bf
-                # if self.use_automatic_step_size:
-                #     covariance_matrix_B_f = jnp.where(iteration < self.num_sample_AM, 
-                #                                     self.covariance_B_f,
-                #                                     self.compute_covariance_nd(iteration, _all_B_f_samples))
-                #     step_size_Bf = jnp.array(jnp.diag(jsp.linalg.sqrtm(covariance_matrix_B_f)), dtype=jnp.float64)
 
                 # Sampling B_f
-
                 if self.perturbation_eta_covariance or self.biased_version:
-                    inverse_term_x_Capprox_root = maps_x_red_covariance_cell_JAX(inverse_term.reshape(self.nstokes,self.n_pix), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
-                    new_subPRNGKey_3, params_mixing_matrix_sample = sampling_func(random_PRNGKey=new_subPRNGKey_3, old_sample=params_mixing_matrix_sample, 
-                                                            step_size=step_size_Bf, indexes_params=self.indexes_free_Bf,
+                    inverse_term_x_Capprox_root = maps_x_red_covariance_cell_JAX(inverse_term.reshape(self.nstokes,self.npix), 
+                                                                                 red_cov_approx_matrix_sqrt, 
+                                                                                 nside=self.nside, 
+                                                                                 lmin=self.lmin, 
+                                                                                 n_iter=self.n_iter
+                                                                                 ).ravel()
+                    new_subPRNGKey_3, new_carry['params_mixing_matrix_sample'] = sampling_func(random_PRNGKey=new_subPRNGKey_3, old_sample=carry['params_mixing_matrix_sample'], 
+                                                            step_size=step_size_Bf, indexes_Bf=self.indexes_free_Bf,
                                                             log_proba=jitted_Bf_func_sampling,
-                                                            full_data_without_CMB=full_data_without_CMB, component_eta_maps=eta_maps_sample, 
+                                                            full_data_without_CMB=full_data_without_CMB, component_eta_maps=new_carry['eta_maps'], 
                                                             red_cov_approx_matrix_sqrt=red_cov_approx_matrix_sqrt, previous_inverse=inverse_term,
                                                             previous_inverse_x_Capprox_root=inverse_term_x_Capprox_root,
-                                                            old_params_mixing_matrix=params_mixing_matrix_sample,
+                                                            old_params_mixing_matrix=carry['params_mixing_matrix_sample'],
                                                             biased_bool=self.biased_version)
                 else:
-                    new_subPRNGKey_3, params_mixing_matrix_sample, inverse_term = sampling_func(random_PRNGKey=new_subPRNGKey_3, old_sample=params_mixing_matrix_sample, 
-                                                            step_size=step_size_Bf, indexes_params=self.indexes_free_Bf,
+                    new_subPRNGKey_3, new_carry['params_mixing_matrix_sample'], inverse_term = sampling_func(random_PRNGKey=new_subPRNGKey_3, old_sample=carry['params_mixing_matrix_sample'], 
+                                                            step_size=step_size_Bf, indexes_Bf=self.indexes_free_Bf,
                                                             log_proba=jitted_Bf_func_sampling,
-                                                            full_data_without_CMB=full_data_without_CMB, component_eta_maps=eta_maps_sample, 
+                                                            full_data_without_CMB=full_data_without_CMB, component_eta_maps=new_carry['eta_maps'], 
                                                             red_cov_approx_matrix_sqrt=red_cov_approx_matrix_sqrt,
                                                             previous_inverse=inverse_term,
-                                                            biased_bool=self.biased_version)
+                                                            biased_bool=self.biased_version,
+                                                            precond_func=precond_func_eta)
+                
+                all_samples['params_mixing_matrix_sample'] = new_carry['params_mixing_matrix_sample']
 
                 # Checking the shape of the resulting mixing matrix
-                # chx.assert_axis_dimension(params_mixing_matrix_sample, 0, self.n_frequencies-len_pos_special_freqs)
-                # chx.assert_axis_dimension(params_mixing_matrix_sample, 1, self.number_correlations-1)
-                # params_mixing_matrix_sample = params_mixing_matrix_sample.reshape((self.n_frequencies-len_pos_special_freqs,number_correlations-1),order='F')
+                chx.assert_axis_dimension(new_carry['params_mixing_matrix_sample'], 0, self.number_frequencies-len_pos_special_freqs)
+                chx.assert_axis_dimension(new_carry['params_mixing_matrix_sample'], 1, self.number_correlations-1)
+                # params_mixing_matrix_sample = params_mixing_matrix_sample.reshape((self.number_frequencies-len_pos_special_freqs,number_correlations-1),order='F')
+            else:
+                new_carry['params_mixing_matrix_sample'] = carry['params_mixing_matrix_sample']
+                all_samples['params_mixing_matrix_sample'] = new_carry['params_mixing_matrix_sample']
 
+            new_carry['inverse_term'] = inverse_term
+            new_carry['PRNGKey'] = PRNGKey
 
-            new_carry = (eta_maps_sample, wiener_filter_term, fluctuation_maps, red_cov_matrix_sample, r_sample, params_mixing_matrix_sample, PRNGKey, s_c_sample, inverse_term)
-            all_samples = (eta_maps_sample, wiener_filter_term, fluctuation_maps, red_cov_matrix_sample, r_sample, params_mixing_matrix_sample)
+            # new_carry = (new_eta_maps_sample, wiener_filter_term, fluctuation_maps, red_cov_matrix_sample, r_sample, params_mixing_matrix_sample, PRNGKey, s_c_sample, inverse_term)
+            # all_samples = (new_eta_maps_sample, wiener_filter_term, fluctuation_maps, red_cov_matrix_sample, r_sample, params_mixing_matrix_sample)
 
             return new_carry, all_samples
 
         # Initializing r and B_f samples
 
-        initial_carry = (initial_eta, 
-                         wiener_filter_term, fluctuation_maps, 
-                         red_cov_matrix,
-                         initial_guess_r,
-                         init_params_mixing_matrix,
-                         PRNGKey,
-                         wiener_filter_term+fluctuation_maps,
-                         jnp.zeros_like(initial_eta))
-        initial_carry_0 = (initial_eta, 
-                         wiener_filter_term, fluctuation_maps, 
-                         red_cov_matrix,
-                         initial_guess_r,
-                         init_params_mixing_matrix,
-                         PRNGKey)
-        self.update_one_sample(initial_carry_0)
+        # initial_carry = (initial_eta, 
+        #                  wiener_filter_term, fluctuation_maps, 
+        #                  red_cov_matrix,
+        #                  initial_guess_r,
+        #                  params_mixing_matrix_init_sample,
+        #                  PRNGKey,
+        #                  wiener_filter_term+fluctuation_maps,
+        #                  jnp.zeros_like(initial_eta))
+        # initial_carry_0 = (initial_eta, 
+        #                  wiener_filter_term, fluctuation_maps, 
+        #                  red_cov_matrix,
+        #                  initial_guess_r,
+        #                  params_mixing_matrix_init_sample,
+        #                  PRNGKey)
+
+        initial_carry = {'wiener_filter_term': wiener_filter_term,
+                            'fluctuation_maps': fluctuation_maps,
+                            'red_cov_matrix_sample': red_cov_matrix,
+                            'params_mixing_matrix_sample': params_mixing_matrix_init_sample,
+                            'PRNGKey': PRNGKey,
+                            'inverse_term': jnp.zeros_like(initial_eta)}
+
+        if self.sample_eta_B_f:
+            initial_carry['eta_maps'] = initial_eta
+        if self.sample_r_Metropolis:
+            initial_carry['r_sample'] = initial_guess_r
+        
+        self.update_one_sample(initial_carry)
 
         # jitted_all_sampling_steps = jax.jit(all_sampling_steps)
 

@@ -14,7 +14,7 @@ perturbation_eta_covariance = true
 use_binning=false
 
 # [Instrument_parameters]
-instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_noise and frequency_array will be taken from fgbuster, 
+instrument_name = 'LiteBIRD' # Either provide instrument name, then freq_inverse_noise and frequency_array will be taken from fgbuster, 
 # or provide expcitely freq_inverse_noise and frequency_array with instrument_name="customized_instrument"
 # freq_inverse_noise = []
 # frequency_array = []
@@ -30,7 +30,7 @@ lmax = 128
 nstokes = 2
 lmin = 2
 n_iter = 8 # Number of iterations for Python estimation of alms
-n_components = 3
+number_components = 3
 pos_special_freqs = [0,-1]
 
 # [CG_parameters]
@@ -49,6 +49,6 @@ step_size_r = 1e-3 #1e-4 #1e-5 ???
 
 # [Sampling_parameters]
 # overrelax = 0 #-0.995 # Overrelaxation parameter for the sampling
-number_iterations_sampling = 2350 # Maximum number of iterations for the sampling
+number_iterations_sampling = 50 # Maximum number of iterations for the sampling
 number_iterations_done = 0 # Number of iterations already accomplished, in case the chain is resuming from a previous run
 seed = 42

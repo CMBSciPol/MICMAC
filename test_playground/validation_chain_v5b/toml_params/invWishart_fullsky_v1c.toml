@@ -1,17 +1,17 @@
 # [Quick_test_parameters]
-sample_eta_B_f = true
-biased_version = false
+sample_eta_B_f = false
+biased_version = true
 cheap_save = true
 very_cheap_save = true
 # use_automatic_step_size = false
 # lognormal_r = false
 indexes_free_Bf = false
-# disable_chex = false
+disable_chex = false
 restrict_to_mask = true
 use_old_s_c_sampling = false
 # fixed_eta_covariance = false
 perturbation_eta_covariance = true
-use_binning=false
+use_binning=true
 
 # [Instrument_parameters]
 instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_noise and frequency_array will be taken from fgbuster, 
@@ -21,8 +21,8 @@ instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_n
 
 # [CMB_parameters]
 r_true = 1e-2
-sample_r_Metropolis = true
-sample_C_inv_Wishart = false
+sample_r_Metropolis = false
+sample_C_inv_Wishart = true
 
 # [Problem_parameters]
 nside = 64
@@ -30,7 +30,7 @@ lmax = 128
 nstokes = 2
 lmin = 2
 n_iter = 8 # Number of iterations for Python estimation of alms
-n_components = 3
+number_components = 3
 pos_special_freqs = [0,-1]
 
 # [CG_parameters]
@@ -49,6 +49,6 @@ step_size_r = 1e-3 #1e-4 #1e-5 ???
 
 # [Sampling_parameters]
 # overrelax = 0 #-0.995 # Overrelaxation parameter for the sampling
-number_iterations_sampling = 2350 # Maximum number of iterations for the sampling
+number_iterations_sampling = 100 # Maximum number of iterations for the sampling
 number_iterations_done = 0 # Number of iterations already accomplished, in case the chain is resuming from a previous run
 seed = 42

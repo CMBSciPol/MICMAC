@@ -501,8 +501,20 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
         # Saving the samples as attributes of the Sampler object
         self.update_samples_MH(posterior_samples)
         self.number_iterations_done = self.number_iterations_sampling
+    
 
+    def compute_covariance_from_samples(self):
+        """ Compute the covariance matrix from the samples
+        """
+        if self.number_iterations_done == 0:
+            raise ValueError("No iterations done yet, please perform some sampling before computing the covariance matrix")
 
+        print("Computing the covariance matrix from the samples", flush=True)
+        all_samples_B_f_r = np.zeros((self.number_iterations_sampling, (self.number_frequencies-len(self.pos_special_freqs))*2+1))
+        all_samples_B_f_r[:,:-1] = MICMAC_Harm_obj.all_params_mixing_matrix_samples.reshape((self.number_iterations_sampling, (self.number_frequencies-len(self.pos_special_freqs))*2))
+        all_samples_B_f_r[:,-1] = MICMAC_Harm_obj.all_samples_r
+
+        return jnp.cov(all_samples_B_f_r, rowvar=False)
 
 
 
