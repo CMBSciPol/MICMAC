@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='micmac',
-      version='1.0.7',
+      version='1.0.8',
       description='Minimally Informed CMB MAp Constructor (MICMAC) for CMB polarization data',
       author='',
       author_email='',

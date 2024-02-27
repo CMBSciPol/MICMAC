@@ -146,6 +146,12 @@ def build_empty_tree_spv(n_fgs_comp, n_betas):
 #### Higher level functions
 def tree_spv_config(yaml_file_path, n_betas, n_fgs_comp, print_tree=False):
     """From spv param file to tree of spv config"""
+    try:
+        open(yaml_file_path, 'r')
+    except:
+        print('No yaml file found in given path: ', yaml_file_path, flush=True)
+        yaml_file_path = ''
+
     if yaml_file_path != '':
         # Read in dict spv params from .yaml file
         dict_params_spv = read_spv_config(yaml_file_path)
@@ -162,6 +168,7 @@ def tree_spv_config(yaml_file_path, n_betas, n_fgs_comp, print_tree=False):
     else:
         # create default tree structure 
         # (corresponds to no spatial variability case)
+        print('No spatial variability case', flush=True)
         root = build_empty_tree_spv(n_fgs_comp, n_betas)
     
     if print_tree:

@@ -60,7 +60,9 @@ use_nhits = dictionary_additional_parameters['use_nhits']
 name_mask = dictionary_additional_parameters['name_mask']
 use_mask = dictionary_additional_parameters['use_mask']
 name_toml = dictionary_additional_parameters['name_toml']
+name_file_spv = dictionary_additional_parameters['name_file_spv']
 seed_realization_input = dictionary_additional_parameters['seed_realization_input']
+use_preconditioner = dictionary_additional_parameters['use_preconditioner']
 
 # Starting MPI
 from mpi4py import MPI
@@ -87,11 +89,12 @@ current_path = path_home_test_playground + current_repo + '/'
 
 path_mask = repo_mask + name_mask + ".fits"
 
-directory_toml_file = current_path + 'toml_params/'
-path_toml_file = directory_toml_file + name_toml
+directory_main_params_file = current_path + 'main_params/'
+path_toml_file = directory_main_params_file + name_toml
+path_file_spv = directory_main_params_file + name_file_spv
 
 # Creating MICMAC Sampler object
-MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv='')
+MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv=path_file_spv)
 
 # Preparing the seed
 MICMAC_obj.seed = MICMAC_obj.seed + MPI_rank
@@ -151,7 +154,7 @@ else:
 np.random.seed(seed_realization_input)
 freq_maps_fgs_denoised = get_observation(instrument, fgs_model_, nside=MICMAC_obj.nside, noise=False)[:, 1:, :]   # keep only Q and U
 np.random.seed(seed_realization_input)
-noise_map = get_noise_realization(MICMAC_obj.nside, instrument)[1, 1:, :]
+noise_map = get_noise_realization(MICMAC_obj.nside, instrument)[:, 1:, :]
 
 # noise_map = freq_maps_fgs_noised - freq_maps_fgs_denoised
 
@@ -168,7 +171,8 @@ print("Shape for input frequency maps :", freq_maps_fgs.shape)
 
 # Preparing the frequency noise covariance matrix, and masking it if needed
 freq_inverse_noise = micmac.get_noise_covar_extended(instrument['depth_p'], MICMAC_obj.nside) #MICMAC_obj.freq_inverse_noise
-
+assert freq_inverse_noise.shape == (MICMAC_obj.n_frequencies, MICMAC_obj.n_frequencies, MICMAC_obj.n_pix)
+assert (freq_inverse_noise[:,:,0] == freq_inverse_noise[:,:,100]).all()
 # freq_inverse_noise_masked = np.zeros((MICMAC_obj.n_frequencies,MICMAC_obj.n_frequencies,MICMAC_obj.n_pix))
 
 # nb_pixels_mask = int(template_mask.sum())
@@ -178,7 +182,9 @@ freq_inverse_noise = micmac.get_noise_covar_extended(instrument['depth_p'], MICM
 
 MICMAC_obj.freq_inverse_noise = freq_inverse_noise*template_mask
 
-
+if use_preconditioner:
+    print("Using preconditioner !", flush=True)
+    MICMAC_obj.freq_noise_c_ell = micmac.get_true_Cl_noise(np.array(instrument['depth_p']), MICMAC_obj.lmax)
 
 # Generation step-size from the Fisher matrix
 try :
@@ -215,7 +221,7 @@ theoretical_r0_total = micmac.get_c_ells_from_red_covariance_matrix(theoretical_
 theoretical_r1_tensor = micmac.get_c_ells_from_red_covariance_matrix(theoretical_red_cov_r1_tensor)#[partial_indices_polar,:]
 
 # Preparing params mixing matrix
-init_mixing_matrix_obj = micmac.InitMixingMatrix(MICMAC_obj.frequency_array, MICMAC_obj.n_components, pos_special_freqs=MICMAC_obj.pos_special_freqs, spv_nodes_b=MICMAC_obj.spv_nodes_b)
+init_mixing_matrix_obj = micmac.InitMixingMatrix(freqs=MICMAC_obj.frequency_array, ncomp=MICMAC_obj.n_components, pos_special_freqs=MICMAC_obj.pos_special_freqs, spv_nodes_b=MICMAC_obj.spv_nodes_b)
 exact_params_mixing_matrix = init_mixing_matrix_obj.init_params()
 
 # Preparing c_approx
@@ -244,13 +250,17 @@ first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
 init_params_mixing_matrix = first_guess
 initial_guess_r = initial_guess_r_ + np.random.uniform(low=-sigma_gap,high=sigma_gap, size=1)*MICMAC_obj.step_size_r
 
+# Redefine initial r if negative
+if initial_guess_r < 0:
+    initial_guess_r = 1e-8*np.random.uniform(low=-sigma_gap,high=sigma_gap, size=1)
+
 CMB_c_ell = np.zeros_like(c_ell_approx)
 # CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + MICMAC_obj.r_true*theoretical_r1_tensor)
 CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + initial_guess_r*theoretical_r1_tensor)
 
 if MICMAC_obj.sample_C_inv_Wishart and MICMAC_obj.use_binning:
     nb_bin = (MICMAC_obj.lmax-MICMAC_obj.lmin+1)//delta_ell
-    MICMAC_obj.bin_ell_distribution = MICMAC_obj.lmin + np.arange(nb_bin+1)*delta_ell
+    MICMAC_obj.bin_ell_distribution = MICMAC_obj.lmin + jnp.arange(nb_bin+1)*delta_ell
     MICMAC_obj.maximum_number_dof = int(MICMAC_obj.bin_ell_distribution[-1]**2 - MICMAC_obj.bin_ell_distribution[-2]**2)
 
 
@@ -279,6 +289,8 @@ if former_file_ver != '':
     MICMAC_obj.seed = MICMAC_obj.seed + MICMAC_obj.number_iterations_sampling
 
 
+print(f'Exact r : {MICMAC_obj.r_true}')
+print(f'Initial r : {initial_guess_r}')
 
 print(f'Exact param matrix : {exact_params_mixing_matrix}')
 print(f'Initial param matrix : {init_params_mixing_matrix}')

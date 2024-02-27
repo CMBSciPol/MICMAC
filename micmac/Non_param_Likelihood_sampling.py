@@ -504,7 +504,8 @@ class MICMAC_Sampler(Sampling_functions):
         initial_eta = jnp.zeros((self.nstokes,self.n_pix))
         # params_mixing_matrix_init_sample = jnp.copy(init_params_mixing_matrix).reshape(
         #                                     ((self.n_frequencies-len_pos_special_freqs),self.n_correlations-1), order='F')
-
+        params_mixing_matrix_init_sample = jnp.copy(init_params_mixing_matrix)
+        
         ## CMB covariance preparation in the format [lmax,nstokes,nstokes]
         red_cov_approx_matrix = jnp.array(get_reduced_matrix_from_c_ell(c_ell_approx)[self.lmin:,...])
         red_cov_matrix = get_reduced_matrix_from_c_ell(CMB_c_ell)[self.lmin:,...]

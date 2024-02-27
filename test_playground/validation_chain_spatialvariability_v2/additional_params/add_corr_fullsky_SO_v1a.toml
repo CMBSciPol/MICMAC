@@ -1,7 +1,7 @@
 ## These are parameters useful to have the tests general and easy to change
 ## will not be used in the final version of the code
 
-current_directory='validation_chain_spatialvariability/'
+current_directory='validation_chain_spatialvariability_v2/'
 MICMAC_directory = '/Users/arizzieri/APC/PhD/cmb_work/comp_sep/Non_param/MICMAC/'
 directory_mask = ''
 save_directory = '/Users/arizzieri/APC/PhD/cmb_work/comp_sep/Non_param/MICMAC/test_playground/'
@@ -11,12 +11,15 @@ delta_ell=1
 reduction_noise = 1
 factor_Fisher = 1
 relative_treshold = 1e-1
-sigma_gap = 0
+sigma_gap = 20
 fgs_model = 'd0s0'
-initial_guess_r=1e-3
+initial_guess_r=1e-4
 use_nhits = false
 name_mask = ''
 use_mask = false
-name_toml = 'params_v1.toml'
+use_preconditioner = false
+
+name_toml = 'corr_fullsky_SO_v1a.toml'
+name_file_spv = ''
 former_file_ver = ''
-file_ver = 'fullsky_spv0_v1'
+file_ver = 'corr_fullsky_SO_v108_v1a'
