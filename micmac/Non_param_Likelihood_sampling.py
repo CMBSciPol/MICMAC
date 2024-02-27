@@ -672,7 +672,7 @@ class MICMAC_Sampler(Sampling_functions):
 
                 # Preparing the preconditioner
                 if use_precond:
-                    noise_c_ell = get_inv_BtinvNB_c_ell(self.freq_noise_c_ell, mixing_matrix_sampled)[0,0]
+                    noise_c_ell = get_inv_BtinvNB_c_ell(self.freq_noise_c_ell, mixing_matrix_sampled.mean(axis=2))[0,0]
                     red_inv_noise_c_ell = jnp.linalg.pinv(get_reduced_matrix_from_c_ell_jax(jnp.stack([noise_c_ell, noise_c_ell, jnp.zeros_like(noise_c_ell)])))#[self.lmin:]
                     red_preconditioner_eta = jnp.linalg.pinv(jnp.eye(self.nstokes) 
                                                             + jnp.einsum('lij,ljk,lkm->lim', 
@@ -710,7 +710,7 @@ class MICMAC_Sampler(Sampling_functions):
             # Preparing the preconditioner
             precond_func_s_c = None
             if use_precond:
-                noise_c_ell = get_inv_BtinvNB_c_ell(self.freq_noise_c_ell, mixing_matrix_sampled)[0,0]
+                noise_c_ell = get_inv_BtinvNB_c_ell(self.freq_noise_c_ell, mixing_matrix_sampled.mean(axis=2))[0,0]
                 red_inv_noise_c_ell = jnp.linalg.pinv(get_reduced_matrix_from_c_ell_jax(jnp.stack([noise_c_ell, noise_c_ell, jnp.zeros_like(noise_c_ell)])))#[self.lmin:]
                 red_preconditioner_s_c = jnp.linalg.pinv(jnp.eye(self.nstokes) 
                                                         + jnp.einsum('lij,ljk,lkm->lim', 
