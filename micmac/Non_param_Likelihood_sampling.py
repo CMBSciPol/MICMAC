@@ -649,7 +649,7 @@ class MICMAC_Sampler(Sampling_functions):
             invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, mixing_matrix_sampled, jax_use=True)
             BtinvN_sqrt = get_BtinvN(jnp.sqrt(self.freq_inverse_noise), mixing_matrix_sampled, jax_use=True)
             s_cML = get_Wd(self.freq_inverse_noise, mixing_matrix_sampled, input_freq_maps, jax_use=True)[0]
-            del mixing_matrix_sampled
+            # del mixing_matrix_sampled
 
             # Sampling step 1 : sampling of Gaussian variable eta
             
