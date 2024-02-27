@@ -22,29 +22,29 @@ def get_reduced_matrix_from_c_ell_jax(c_ells_input):
 
     Parameters
     ----------
-    :param c_ells_input: array of shape (number_correlations, lmax)
+    :param c_ells_input: array of shape (n_correlations, lmax)
 
     Returns
     -------
     :return: reduced_matrix: array of shape (lmax, nstokes, nstokes)
     """
     c_ells_array = jnp.copy(c_ells_input)
-    number_correlations = c_ells_array.shape[0]
-    # assert number_correlations == 1 or number_correlations == 3 or number_correlations == 6
+    n_correlations = c_ells_array.shape[0]
+    # assert n_correlations == 1 or n_correlations == 3 or n_correlations == 6
     lmax_p1 = c_ells_array.shape[1]
 
     # Getting number of Stokes parameters from the number of correlations within the input spectrum
-    if number_correlations == 1:
+    if n_correlations == 1:
         nstokes = 1
-    elif number_correlations == 3:
+    elif n_correlations == 3:
         nstokes = 2
-    elif number_correlations == 4 or number_correlations == 6:
+    elif n_correlations == 4 or n_correlations == 6:
         nstokes = 3
-        if number_correlations != 6:
+        if n_correlations != 6:
             c_ells_array = jnp.vstack(
-                (c_ells_array, jnp.repeat(jnp.zeros(lmax_p1), 6 - number_correlations))
+                (c_ells_array, jnp.repeat(jnp.zeros(lmax_p1), 6 - n_correlations))
             )
-            number_correlations = 6
+            n_correlations = 6
     else:
         raise Exception(
             "C_ells must be given as TT for temperature only ; EE, BB, EB for polarization only ; TT, EE, BB, TE, (TB, EB) for both temperature and polarization"
@@ -68,10 +68,10 @@ def get_reduced_matrix_from_c_ell_jax(c_ells_input):
     #     reduced_matrix = reduced_matrix.at[:,i,i].set(c_ells_array[i,:])
 
     ## Then off-diagonal elements
-    if number_correlations > 1:
+    if n_correlations > 1:
         reduced_matrix = reduced_matrix.at[:, 0, 1].set(c_ells_array[nstokes, :])
         reduced_matrix = reduced_matrix.at[:, 1, 0].set(c_ells_array[nstokes, :])
-    if number_correlations == 6:
+    if n_correlations == 6:
         reduced_matrix = reduced_matrix.at[:, 0, 2].set(c_ells_array[5, :])
         reduced_matrix = reduced_matrix.at[:, 2, 0].set(c_ells_array[5, :])
 
@@ -92,9 +92,9 @@ def get_c_ells_from_red_covariance_matrix_JAX(red_cov_mat, nstokes=0):
     lmax = red_cov_mat.shape[0]
     nstokes = jnp.where(nstokes == 0, red_cov_mat.shape[1], nstokes)
 
-    number_correl = jnp.int32(jnp.ceil(nstokes**2 / 2) + jnp.floor(nstokes / 2))
-    # number_correl = jnp.array(jnp.ceil(nstokes**2/2) + jnp.floor(nstokes/2),int)
-    c_ells = jnp.zeros((number_correl, lmax))
+    n_correl = jnp.int32(jnp.ceil(nstokes**2 / 2) + jnp.floor(nstokes / 2))
+    # n_correl = jnp.array(jnp.ceil(nstokes**2/2) + jnp.floor(nstokes/2),int)
+    c_ells = jnp.zeros((n_correl, lmax))
 
     for i in range(nstokes):
         c_ells = c_ells.at[i, :].set(red_cov_mat[:, i, i])
@@ -185,7 +185,7 @@ def get_cell_from_map_jax(pixel_maps, lmax, n_iter=8):
 
     Parameters
     ----------
-    :param pixel_maps: array of shape (nstokes, npix)
+    :param pixel_maps: array of shape (nstokes, n_pix)
     :param lmax: maximum ell for the spectrum, int
     :param n_iter: number of iterations for harmonic operations, int
 
@@ -294,7 +294,7 @@ def maps_x_red_covariance_cell_JAX(
 
     Parameters
     ----------
-    :param maps_input: input maps of shape (nstokes, npix)
+    :param maps_input: input maps of shape (nstokes, n_pix)
     :param red_matrix_sqrt: input reduced spectra of shape (lmax+1-lmin, nstokes, nstokes)
     :param nside: nside of the input maps, int
     :param lmin: minimum ell for the spectrum, int
@@ -302,7 +302,7 @@ def maps_x_red_covariance_cell_JAX(
 
     Returns
     -------
-    :return: maps_output: output maps of shape (nstokes, npix)
+    :return: maps_output: output maps of shape (nstokes, n_pix)
     """
 
     all_params = 3
@@ -420,7 +420,7 @@ def alms_x_red_covariance_cell_JAX(
 
     Returns
     -------
-    :return: maps_output: output maps of shape (nstokes, npix)
+    :return: maps_output: output maps of shape (nstokes, n_pix)
     """
 
     # all_params = 3
@@ -503,7 +503,7 @@ def frequency_alms_x_obj_red_covariance_cell_JAX(
 
     Returns
     -------
-    :return: maps_output: output maps of shape (nstokes, npix)
+    :return: maps_output: output maps of shape (nstokes, n_pix)
     """
 
     # all_params = 3
@@ -511,15 +511,15 @@ def frequency_alms_x_obj_red_covariance_cell_JAX(
     # Getting scalar parameters from the input covariance
     lmax = freq_red_matrix.shape[2] - 1 + lmin
     first_dim_red_matrix = freq_red_matrix.shape[0]
-    number_frequencies = freq_red_matrix.shape[1]
+    n_frequencies = freq_red_matrix.shape[1]
     nstokes = freq_red_matrix.shape[3]
 
-    # chx.assert_shape(freq_red_matrix, (number_frequencies, number_frequencies, lmax + 1 - lmin, nstokes, nstokes))
-    chx.assert_axis_dimension(freq_red_matrix, 1, number_frequencies)
+    # chx.assert_shape(freq_red_matrix, (n_frequencies, n_frequencies, lmax + 1 - lmin, nstokes, nstokes))
+    chx.assert_axis_dimension(freq_red_matrix, 1, n_frequencies)
     chx.assert_axis_dimension(freq_red_matrix, 2, lmax + 1 - lmin)
     chx.assert_axis_dimension(freq_red_matrix, 3, nstokes)
     chx.assert_axis_dimension(freq_red_matrix, 4, nstokes)
-    chx.assert_shape(freq_alm_Stokes_input, (number_frequencies, nstokes, (lmax + 1) * (lmax // 2 + 1)))
+    chx.assert_shape(freq_alm_Stokes_input, (n_frequencies, nstokes, (lmax + 1) * (lmax // 2 + 1)))
 
     freq_alm_input = jnp.copy(freq_alm_Stokes_input)
 
@@ -535,7 +535,7 @@ def frequency_alms_x_obj_red_covariance_cell_JAX(
         return jlax.scan(
             scan_func,
             (jnp.zeros_like(freq_alm_input[0]), idx_i),
-            jnp.arange(number_frequencies),
+            jnp.arange(n_frequencies),
         )[0][0]
 
     # Multiplying the alms with the covariance matrix

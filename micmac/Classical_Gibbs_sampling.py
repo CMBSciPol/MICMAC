@@ -17,7 +17,7 @@ def get_inverse_wishart_sampling_from_c_ells(sigma_ell, q_prior=0, l_min=0, opti
 
         Parameters
         ----------
-        sigma_ell : initial power spectrum which will define the parameter matrix of the inverse Wishart distribution ; must be of dimension [number_correlations, lmax+1]
+        sigma_ell : initial power spectrum which will define the parameter matrix of the inverse Wishart distribution ; must be of dimension [n_correlations, lmax+1]
         
         q_prior : choice of prior for the distribution : 0 means uniform prior ; 1 means Jeffrey prior
         
@@ -105,8 +105,8 @@ def get_fluctuating_term_maps(param_dict, red_cov_matrix, red_inverse_noise, map
         red_cov_matrix : covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
         red_inverse_noise : matrices of inverse noise in harmonic domain (yet), dimension [lmin:lmax, nstokes, nstokes]
 
-        map_white_noise_xi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, npix]
-        map_white_noise_chi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, npix]
+        map_white_noise_xi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, n_pix]
+        map_white_noise_chi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, n_pix]
         
         lmin : minimum multipole to be considered, default 0
         
@@ -117,7 +117,7 @@ def get_fluctuating_term_maps(param_dict, red_cov_matrix, red_inverse_noise, map
 
         Returns
         -------
-        Fluctuation maps [nstokes, npix]
+        Fluctuation maps [nstokes, n_pix]
     """
 
     assert red_cov_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
@@ -173,8 +173,8 @@ def get_fluctuating_term_maps(param_dict, red_cov_matrix, red_inverse_noise, map
 #         red_cov_matrix : covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
 #         red_inverse_noise : matrices of inverse noise in harmonic domain (yet), dimension [lmin:lmax, nstokes, nstokes]
 
-#         map_white_noise_xi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, npix]
-#         map_white_noise_chi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, npix]
+#         map_white_noise_xi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, n_pix]
+#         map_white_noise_chi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, n_pix]
         
 #         lmin : minimum multipole to be considered, default 0
         
@@ -185,7 +185,7 @@ def get_fluctuating_term_maps(param_dict, red_cov_matrix, red_inverse_noise, map
 
 #         Returns
 #         -------
-#         Fluctuation maps [nstokes, npix]
+#         Fluctuation maps [nstokes, n_pix]
 #     """
 
 #     assert red_cov_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
@@ -239,13 +239,13 @@ def solve_generalized_wiener_filter_term(param_dict, data_var, red_cov_matrix, r
         ----------
         param_dict : dictionnary containing the following fields : nside, nstokes, lmax
 
-        data_var : data maps, for Wiener filter CG ; dimensions [nstokes, npix]
+        data_var : data maps, for Wiener filter CG ; dimensions [nstokes, n_pix]
         
         red_cov_matrix : covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
         red_inverse_noise : matrices of inverse noise in harmonic domain (yet), dimension [lmin:lmax, nstokes, nstokes]
 
-        map_white_noise_xi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, npix]
-        map_white_noise_chi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, npix]
+        map_white_noise_xi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, n_pix]
+        map_white_noise_chi : set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, n_pix]
         
         lmin : minimum multipole to be considered, default 0
         
@@ -256,7 +256,7 @@ def solve_generalized_wiener_filter_term(param_dict, data_var, red_cov_matrix, r
 
         Returns
         -------
-        Wiener filter maps [nstokes, npix]
+        Wiener filter maps [nstokes, n_pix]
     """
 
     assert red_cov_matrix.shape[0] == param_dict['lmax'] + 1 - lmin
@@ -327,11 +327,11 @@ class Gibbs_Sampling(object):
             # 2 : Sampling separately the TE and B blocks respectively, only for ell=2
 
     @property
-    def npix(self):
+    def n_pix(self):
         return 12*self.nside**2
 
     @property
-    def number_correlations(self):
+    def n_correlations(self):
         """ Maximum number of correlations depending of the number of Stokes parameters : 
             6 (TT,EE,BB,TE,EB,TB) for 3 Stokes parameters ; 3 (EE,BB,EB) for 2 Stokes parameters ; 1 (TT) for 1 Stokes parameter"""
         return int(np.ceil(self.nstokes**2/2) + np.floor(self.nstokes/2))
@@ -344,9 +344,9 @@ class Gibbs_Sampling(object):
         if self.nstokes != 1:
             assert initial_map.shape[0] == self.nstokes
         
-        param_dict = {'nside':self.nside, 'lmax':self.lmax, 'nstokes':self.nstokes, 'number_correlations':self.number_correlations}
+        param_dict = {'nside':self.nside, 'lmax':self.lmax, 'nstokes':self.nstokes, 'n_correlations':self.n_correlations}
         if len(initial_guess) == 0:
-            initial_guess = np.zeros((self.nstokes, self.npix))
+            initial_guess = np.zeros((self.nstokes, self.n_pix))
 
         map_white_noise_xi = []
         map_white_noise_chi = []
@@ -376,8 +376,8 @@ class Gibbs_Sampling(object):
         if self.nstokes != 1:
             assert initial_map.shape[0] == self.nstokes
 
-        all_maps = np.zeros((self.number_iterations_sampling+1, self.nstokes, self.npix))
-        all_samples = np.zeros((self.number_iterations_sampling+1, self.number_correlations, self.lmax+1))
+        all_maps = np.zeros((self.number_iterations_sampling+1, self.nstokes, self.n_pix))
+        all_samples = np.zeros((self.number_iterations_sampling+1, self.n_correlations, self.lmax+1))
 
         all_maps[0,...] = pixel_maps_sampled
         all_samples[0,...] = c_ell_sampled

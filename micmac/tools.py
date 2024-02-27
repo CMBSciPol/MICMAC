@@ -9,22 +9,22 @@ def get_reduced_matrix_from_c_ell(c_ells_input):
         Generate covariance matrix from c_ells assuming it's block diagonal
     """
     c_ells_array = np.copy(c_ells_input)
-    number_correlations = c_ells_array.shape[0]
-    assert number_correlations == 1 or number_correlations == 3 or number_correlations == 6
+    n_correlations = c_ells_array.shape[0]
+    assert n_correlations == 1 or n_correlations == 3 or n_correlations == 6
     lmax_p1 = c_ells_array.shape[1]
-    if number_correlations == 1:
+    if n_correlations == 1:
         nstokes = 1
-    elif number_correlations == 3:
+    elif n_correlations == 3:
         nstokes = 2
         # c_ells_array = np.vstack((c_ells_array, np.zeros(lmax)))
-        # number_correlations = 3
-    # elif number_correlations > 3:
-    elif number_correlations == 4 or number_correlations == 6 :
+        # n_correlations = 3
+    # elif n_correlations > 3:
+    elif n_correlations == 4 or n_correlations == 6 :
         nstokes = 3
-        if number_correlations != 6:
-            for i in range(6 - number_correlations):
+        if n_correlations != 6:
+            for i in range(6 - n_correlations):
                 c_ells_array = np.vstack((c_ells_array, np.zeros(lmax_p1)))
-            number_correlations = 6
+            n_correlations = 6
     else :
         raise Exception("C_ells must be given as TT for temperature only ; EE, BB, EB for polarization only ; TT, EE, BB, TE, (TB, EB) for both temperature and polarization")
 
@@ -33,12 +33,12 @@ def get_reduced_matrix_from_c_ell(c_ells_input):
     for i in range(nstokes):
         reduced_matrix[:,i,i] =  c_ells_array[i,:]
     
-    # for j in range(number_correlations-nstokes):
-    if number_correlations > 1:
+    # for j in range(n_correlations-nstokes):
+    if n_correlations > 1:
         reduced_matrix[:,0,1] =  c_ells_array[nstokes,:]
         reduced_matrix[:,1,0] =  c_ells_array[nstokes,:]
 
-    if number_correlations == 6:
+    if n_correlations == 6:
         # reduced_matrix[:,0,2] =  c_ells_array[4,:]
         # reduced_matrix[:,2,0] =  c_ells_array[4,:]
 
@@ -63,8 +63,8 @@ def get_c_ells_from_red_covariance_matrix(red_cov_mat):
     lmax = red_cov_mat.shape[0]
     nstokes = red_cov_mat.shape[1]
 
-    number_correl = int(np.ceil(nstokes**2/2) + np.floor(nstokes/2))
-    c_ells = np.zeros((number_correl, lmax))
+    n_correl = int(np.ceil(nstokes**2/2) + np.floor(nstokes/2))
+    c_ells = np.zeros((n_correl, lmax))
 
     for i in range(nstokes):
         c_ells[i,:] = red_cov_mat[:,i,i]

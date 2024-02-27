@@ -112,7 +112,7 @@ except:
 if fgs_model_ == '':
     print("No foregrounds, so no Fisher matrix !", flush=True)
     inv_r_stepsize = Fisher_matrix[-1,-1]
-    Fisher_matrix = np.zeros((MICMAC_obj.number_frequencies*2+1,MICMAC_obj.number_frequencies*2+1))
+    Fisher_matrix = np.zeros((MICMAC_obj.n_frequencies*2+1,MICMAC_obj.n_frequencies*2+1))
     Fisher_matrix[-1,-1] = inv_r_stepsize
 
 # get instrument from public database
@@ -146,7 +146,7 @@ if use_mask:
 
 else:
     # Then the mask have been initialized to 1 in the MICMAC_sampler object
-    # mask = np.ones(MICMAC_obj.npix)
+    # mask = np.ones(MICMAC_obj.n_pix)
     template_mask = np.copy(MICMAC_obj.mask)
 
 
@@ -172,11 +172,11 @@ print("Shape for input frequency maps :", freq_maps_fgs.shape)
 # Preparing the frequency noise covariance matrix, and masking it if needed
 freq_inverse_noise = micmac.get_noise_covar(instrument['depth_p'], MICMAC_obj.nside) #MICMAC_obj.freq_inverse_noise
 
-freq_inverse_noise_masked = np.zeros((MICMAC_obj.number_frequencies,MICMAC_obj.number_frequencies,MICMAC_obj.npix))
+freq_inverse_noise_masked = np.zeros((MICMAC_obj.n_frequencies,MICMAC_obj.n_frequencies,MICMAC_obj.n_pix))
 
 # nb_pixels_mask = int(template_mask.sum())
 nb_pixels_mask = int(len(template_mask[template_mask!=0]))
-freq_inverse_noise_masked[:,:,template_mask!=0] = np.repeat(freq_inverse_noise.ravel(order='F'), nb_pixels_mask).reshape((MICMAC_obj.number_frequencies,MICMAC_obj.number_frequencies,nb_pixels_mask), order='C')
+freq_inverse_noise_masked[:,:,template_mask!=0] = np.repeat(freq_inverse_noise.ravel(order='F'), nb_pixels_mask).reshape((MICMAC_obj.n_frequencies,MICMAC_obj.n_frequencies,nb_pixels_mask), order='C')
 
 MICMAC_obj.freq_inverse_noise = freq_inverse_noise_masked*template_mask
 
@@ -190,12 +190,12 @@ except:
     minimum_std_Fisher = np.sqrt(np.linalg.pinv(Fisher_matrix))
 minimum_std_Fisher_diag = np.diag(minimum_std_Fisher)
 
-col_dim_B_f = MICMAC_obj.number_frequencies-len(MICMAC_obj.pos_special_freqs)
+col_dim_B_f = MICMAC_obj.n_frequencies-len(MICMAC_obj.pos_special_freqs)
 
 len_pos_special_freqs = len(MICMAC_obj.pos_special_freqs)
 step_size_B_f = np.zeros((col_dim_B_f,2))
-step_size_B_f[:,0] = minimum_std_Fisher_diag[:MICMAC_obj.number_frequencies-len_pos_special_freqs]
-step_size_B_f[:,1] = minimum_std_Fisher_diag[MICMAC_obj.number_frequencies-len_pos_special_freqs:2*(MICMAC_obj.number_frequencies-len_pos_special_freqs)]
+step_size_B_f[:,0] = minimum_std_Fisher_diag[:MICMAC_obj.n_frequencies-len_pos_special_freqs]
+step_size_B_f[:,1] = minimum_std_Fisher_diag[MICMAC_obj.n_frequencies-len_pos_special_freqs:2*(MICMAC_obj.n_frequencies-len_pos_special_freqs)]
 
 MICMAC_obj.covariance_step_size_B_f = np.copy(np.linalg.pinv(Fisher_matrix))[:-1,:-1]/factor_Fisher
 
@@ -221,16 +221,16 @@ c_ell_approx[1,MICMAC_obj.lmin:] = theoretical_r0_total[1,:]
 
 
 # First guesses preparation
-initial_wiener_filter_term = np.zeros((MICMAC_obj.nstokes, MICMAC_obj.npix))
-initial_fluctuation_maps = np.zeros((MICMAC_obj.nstokes, MICMAC_obj.npix))
+initial_wiener_filter_term = np.zeros((MICMAC_obj.nstokes, MICMAC_obj.n_pix))
+initial_fluctuation_maps = np.zeros((MICMAC_obj.nstokes, MICMAC_obj.n_pix))
 
 len_pos_special_freqs = len(MICMAC_obj.pos_special_freqs)
 if len_pos_special_freqs == 0:
-    MICMAC_obj.indexes_free_Bf = np.arange(MICMAC_obj.number_frequencies*2)
+    MICMAC_obj.indexes_free_Bf = np.arange(MICMAC_obj.n_frequencies*2)
 dimension_free_param_B_f = jnp.size(MICMAC_obj.indexes_free_Bf)
 
 # Preparing params mixing matrix
-init_mixing_matrix_obj = micmac.InitMixingMatrix(MICMAC_obj.frequency_array, MICMAC_obj.number_components, pos_special_freqs=MICMAC_obj.pos_special_freqs)
+init_mixing_matrix_obj = micmac.InitMixingMatrix(MICMAC_obj.frequency_array, MICMAC_obj.n_components, pos_special_freqs=MICMAC_obj.pos_special_freqs)
 if fgs_model != '':
     exact_params_mixing_matrix = init_mixing_matrix_obj.init_params()
     first_guess = jnp.copy(jnp.ravel(exact_params_mixing_matrix,order='F'))
@@ -238,13 +238,13 @@ if fgs_model != '':
     print(f"First guess from {sigma_gap} $\sigma$ Fisher !", f"rank {MPI_rank} over {MPI_size}", flush=True)
     first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
         first_guess[MICMAC_obj.indexes_free_Bf] + minimum_std_Fisher_diag[:-1]*np.random.uniform(low=-sigma_gap,high=sigma_gap, size=(dimension_free_param_B_f)))
-    init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
+    init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.n_frequencies-len_pos_special_freqs),2,order='F')
 
 else:
-    exact_params_mixing_matrix = np.zeros((MICMAC_obj.number_frequencies-len_pos_special_freqs,2))
+    exact_params_mixing_matrix = np.zeros((MICMAC_obj.n_frequencies-len_pos_special_freqs,2))
 
     print(f"Not foregrounds given so first guess to 0 !!", f"rank {MPI_rank} over {MPI_size}", flush=True)
-    init_params_mixing_matrix = np.zeros((MICMAC_obj.number_frequencies-MICMAC_obj.number_components+1,2))
+    init_params_mixing_matrix = np.zeros((MICMAC_obj.n_frequencies-MICMAC_obj.n_components+1,2))
 
 
 

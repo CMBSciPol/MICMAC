@@ -18,14 +18,14 @@ lmax = 128
 nstokes = 2
 lmin = 2
 n_iter = 8 # Number of iterations for Python estimation of alms
-number_components = 3
+n_components = 3
 pos_special_freqs = [0,-1] # Position of the special frequencies in the frequency array
 
 
 # [Metropolis-Hastings_parameters]
 step_size_r = 1e-3 #1e-4 #1e-5 ???
 thinning=1
-number_chains_MH=5
+n_chains_MH=5
 
 # [Sampling_parameters]
 # overrelax = 0 #-0.995 # Overrelaxation parameter for the sampling

@@ -213,10 +213,10 @@ def personalized_get_inverse_wishart_sampling_from_c_ells(sigma_ell, lmax=None, 
 
     # sigma_ell = hp.anafast(pixel_maps, lmax=lmax, iter=n_iter)
 
-    # number_correl = c_ells_observed.shape[0]
-    # print("Test", nstokes, number_correl)
-    # c_ells_observed = np.vstack((np.zeros((number_correl,1)), c_ells_observed))
-    # c_ells_observed = np.hstack((np.zeros((number_correl,1)), c_ells_observed))
+    # n_correl = c_ells_observed.shape[0]
+    # print("Test", nstokes, n_correl)
+    # c_ells_observed = np.vstack((np.zeros((n_correl,1)), c_ells_observed))
+    # c_ells_observed = np.hstack((np.zeros((n_correl,1)), c_ells_observed))
     for i in range(nstokes):
         sigma_ell[i] *= 2*np.arange(lmax+1) + 1
 
