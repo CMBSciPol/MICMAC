@@ -17,7 +17,7 @@ def get_inverse_wishart_sampling_from_c_ells(sigma_ell, q_prior=0, l_min=0, opti
 
         Parameters
         ----------
-        sigma_ell : initial power spectrum which will define the parameter matrix of the inverse Wishart distribution ; must be of dimension [number_correlations, lmax+1]
+        sigma_ell : initial power spectrum which will define the parameter matrix of the inverse Wishart distribution ; must be of dimension [n_correlations, lmax+1]
         
         q_prior : choice of prior for the distribution : 0 means uniform prior ; 1 means Jeffrey prior
         
@@ -331,7 +331,7 @@ class Gibbs_Sampling(object):
         return 12*self.nside**2
 
     @property
-    def number_correlations(self):
+    def n_correlations(self):
         """ Maximum number of correlations depending of the number of Stokes parameters : 
             6 (TT,EE,BB,TE,EB,TB) for 3 Stokes parameters ; 3 (EE,BB,EB) for 2 Stokes parameters ; 1 (TT) for 1 Stokes parameter"""
         return int(np.ceil(self.nstokes**2/2) + np.floor(self.nstokes/2))
@@ -344,7 +344,7 @@ class Gibbs_Sampling(object):
         if self.nstokes != 1:
             assert initial_map.shape[0] == self.nstokes
         
-        param_dict = {'nside':self.nside, 'lmax':self.lmax, 'nstokes':self.nstokes, 'number_correlations':self.number_correlations}
+        param_dict = {'nside':self.nside, 'lmax':self.lmax, 'nstokes':self.nstokes, 'n_correlations':self.n_correlations}
         if len(initial_guess) == 0:
             initial_guess = np.zeros((self.nstokes, self.n_pix))
 
@@ -377,7 +377,7 @@ class Gibbs_Sampling(object):
             assert initial_map.shape[0] == self.nstokes
 
         all_maps = np.zeros((self.number_iterations_sampling+1, self.nstokes, self.n_pix))
-        all_samples = np.zeros((self.number_iterations_sampling+1, self.number_correlations, self.lmax+1))
+        all_samples = np.zeros((self.number_iterations_sampling+1, self.n_correlations, self.lmax+1))
 
         all_maps[0,...] = pixel_maps_sampled
         all_samples[0,...] = c_ell_sampled

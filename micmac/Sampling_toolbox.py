@@ -236,9 +236,9 @@ def get_fluctuating_term_maps(param_dict, red_cov_matrix, BtinvNB, BtinvN_sqrt, 
     first_term_left = lambda x : maps_x_reduced_matrix_generalized_sqrt_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), red_inverse_cov_matrix, lmin=lmin, n_iter=n_iter)
     
     ## Second left member : (E^t (B^t N^{-1} B) E)
-    def second_term_left(x, number_component=param_dict['n_components']):
+    def second_term_left(x, n_component=param_dict['n_components']):
         # cg_variable = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
-        # x_all_components = np.zeros((number_component, cg_variable.shape[0], cg_variable.shape[1]))
+        # x_all_components = np.zeros((n_component, cg_variable.shape[0], cg_variable.shape[1]))
         # x_all_components[0,...] =cg_variable
         # return np.einsum('kc,csp->ksp', np.linalg.pinv(BtinvNB), x_all_components)[0]
         return x/BtinvNB[0,0]
@@ -301,9 +301,9 @@ def solve_generalized_wiener_filter_term(param_dict, s_cML, red_cov_matrix, Btin
     first_term_left = lambda x : maps_x_reduced_matrix_generalized_sqrt_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), np.linalg.pinv(red_cov_matrix), lmin=lmin, n_iter=n_iter).ravel()
     
     ## Second left member : (E^t (B^t N^{-1} B)^{-1}
-    def second_term_left(x, number_component=param_dict['n_components']):
+    def second_term_left(x, n_component=param_dict['n_components']):
         # cg_variable = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
-        # x_all_components = np.zeros((number_component, cg_variable.shape[0], cg_variable.shape[1]))
+        # x_all_components = np.zeros((n_component, cg_variable.shape[0], cg_variable.shape[1]))
         # x_all_components[0,...] = cg_variable
         # return np.einsum('kc,csp->ksp', np.linalg.pinv(BtinvNB), x_all_components)[0]
         return x/BtinvNB[0,0]
@@ -335,7 +335,7 @@ def get_inverse_wishart_sampling_from_c_ells(sigma_ell, q_prior=0, l_min=0, opti
 
         Parameters
         ----------
-        sigma_ell : initial power spectrum which will define the parameter matrix of the inverse Wishart distribution ; must be of dimension [number_correlations, lmax+1]
+        sigma_ell : initial power spectrum which will define the parameter matrix of the inverse Wishart distribution ; must be of dimension [n_correlations, lmax+1]
         
         q_prior : choice of prior for the distribution : 0 means uniform prior ; 1 means Jeffrey prior
         
@@ -423,7 +423,7 @@ def get_inverse_gamma_sampling_only_BB_from_c_ells(sigma_ell, q_prior=0, l_min=0
 
         Parameters
         ----------
-        sigma_ell : initial power spectrum which will define the parameter matrix of the inverse Wishart distribution ; must be of dimension [number_correlations, lmax+1]
+        sigma_ell : initial power spectrum which will define the parameter matrix of the inverse Wishart distribution ; must be of dimension [n_correlations, lmax+1]
         
         q_prior : choice of prior for the distribution : 0 means uniform prior ; 1 means Jeffrey prior
         
@@ -488,9 +488,9 @@ def get_inverse_operators_harm_pixel(param_dict, right_member, operator_harmonic
     first_term_left = lambda x : maps_x_reduced_matrix_generalized_sqrt_sqrt(x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2)), operator_harmonic, lmin=lmin, n_iter=n_iter)
     
     ## Second left member : (E^t (B^t N^{-1} B)^{-1}
-    def second_term_left(x, number_component=param_dict['n_components']):
+    def second_term_left(x, n_component=param_dict['n_components']):
         cg_variable = x.reshape((param_dict["nstokes"],12*param_dict["nside"]**2))
-        x_all_components = np.zeros((number_component, cg_variable.shape[0], cg_variable.shape[1]))
+        x_all_components = np.zeros((n_component, cg_variable.shape[0], cg_variable.shape[1]))
         x_all_components[0,...] = cg_variable
         return np.einsum('kc,csp->ksp', operator_pixel, x_all_components)[0]
 

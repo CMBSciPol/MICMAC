@@ -31,7 +31,7 @@ class MICMAC_Sampler(Sampling_functions):
     def __init__(self, nside, lmax, nstokes, 
                  frequency_array, freq_inverse_noise, pos_special_freqs=[0,-1],
                  freq_noise_c_ell=None,
-                 number_components=3, lmin=2,
+                 n_components=3, lmin=2,
                  lmin_r=-1, lmax_r=-1,
                  n_iter=8, limit_iter_cg=2000, tolerance_CG=1e-10, atol_CG=1e-8,
                  limit_iter_cg_eta=200,
@@ -87,7 +87,7 @@ class MICMAC_Sampler(Sampling_functions):
         self.very_cheap_save = bool(very_cheap_save)
         self.disable_chex = disable_chex
         if indexes_free_Bf is False:
-            # indexes_free_Bf = jnp.arange((self.n_frequencies-len(pos_special_freqs))*(self.number_correlations-1))
+            # indexes_free_Bf = jnp.arange((self.n_frequencies-len(pos_special_freqs))*(self.n_correlations-1))
             indexes_free_Bf = jnp.arange(self.len_params)
         self.indexes_free_Bf = jnp.array(indexes_free_Bf)
         assert jnp.size(self.indexes_free_Bf) <= self.len_params
@@ -110,7 +110,7 @@ class MICMAC_Sampler(Sampling_functions):
         self.lognormal_r = lognormal_r
         # self.step_size_B_f = step_size_B_f
         # if covariance_B_f==-1:
-        #     self.covariance_B_f = jnp.diag((jnp.ravel(step_size_B_f,order='F')**2)*jnp.ones((self.n_frequencies-len(pos_special_freqs))*(self.number_correlations-1)))
+        #     self.covariance_B_f = jnp.diag((jnp.ravel(step_size_B_f,order='F')**2)*jnp.ones((self.n_frequencies-len(pos_special_freqs))*(self.n_correlations-1)))
         # else:
         #     self.covariance_B_f = covariance_B_f
         self.covariance_B_f = covariance_B_f
@@ -161,7 +161,7 @@ class MICMAC_Sampler(Sampling_functions):
 
         tensor_spectra_r1 = all_spectra_r1['tensor'][:self.lmax+1,partial_indices_polar]
 
-        theoretical_r1_tensor = np.zeros((self.number_correlations,self.lmax+1))
+        theoretical_r1_tensor = np.zeros((self.n_correlations,self.lmax+1))
         theoretical_r0_total = np.zeros_like(theoretical_r1_tensor)
 
         theoretical_r1_tensor[:self.nstokes,...] = tensor_spectra_r1.T
@@ -449,8 +449,8 @@ class MICMAC_Sampler(Sampling_functions):
             wiener_filter_term = jnp.zeros((self.nstokes,self.n_pix))
         else:
             assert len(initial_wiener_filter_term.shape) == 2
-            assert initial_wiener_filter_term.shape == (self.nstokes, self.npix)
-            # assert initial_wiener_filter_term.shape[1] == self.npix
+            assert initial_wiener_filter_term.shape == (self.nstokes, self.n_pix)
+            # assert initial_wiener_filter_term.shape[1] == self.n_pix
             wiener_filter_term = initial_wiener_filter_term
 
         ## Testing the initial fluctuation term, initialize it properly
@@ -458,8 +458,8 @@ class MICMAC_Sampler(Sampling_functions):
             fluctuation_maps = jnp.zeros((self.nstokes,self.n_pix))
         else:
             assert len(initial_fluctuation_maps.shape) == 2
-            assert initial_fluctuation_maps.shape == (self.nstokes, self.npix)
-            # assert initial_fluctuation_maps.shape[1] == self.npix
+            assert initial_fluctuation_maps.shape == (self.nstokes, self.n_pix)
+            # assert initial_fluctuation_maps.shape[1] == self.n_pix
             fluctuation_maps = initial_fluctuation_maps
 
         ## Testing the initial spectra given in case the sampling is done with r
@@ -480,11 +480,11 @@ class MICMAC_Sampler(Sampling_functions):
 
         ## testing the initial mixing matrix
         if len(init_params_mixing_matrix.shape) == 1:
-            assert len(init_params_mixing_matrix) == (self.number_frequencies-len(self.pos_special_freqs))*(self.number_correlations-1)
+            assert len(init_params_mixing_matrix) == (self.n_frequencies-len(self.pos_special_freqs))*(self.n_correlations-1)
         else:
             # assert len(init_params_mixing_matrix.shape) == 2
-            assert init_params_mixing_matrix.shape[0] == (self.number_frequencies-len(self.pos_special_freqs))
-            assert init_params_mixing_matrix.shape[1] == (self.number_correlations-1)
+            assert init_params_mixing_matrix.shape[0] == (self.n_frequencies-len(self.pos_special_freqs))
+            assert init_params_mixing_matrix.shape[1] == (self.n_correlations-1)
 
         ## Final set of tests
         assert len(CMB_c_ell.shape) == 2
@@ -493,9 +493,9 @@ class MICMAC_Sampler(Sampling_functions):
         assert c_ell_approx.shape[1] == self.lmax + 1
 
         assert len(input_freq_maps.shape) == 3
-        assert input_freq_maps.shape == (self.number_frequencies, self.nstokes, self.npix)
+        assert input_freq_maps.shape == (self.n_frequencies, self.nstokes, self.n_pix)
         # assert input_freq_maps.shape[1] == self.nstokes
-        # assert input_freq_maps.shape[2] == self.npix
+        # assert input_freq_maps.shape[2] == self.n_pix
 
         # Preparing for the full Gibbs sampling
         len_pos_special_freqs = len(self.pos_special_freqs)
@@ -503,7 +503,7 @@ class MICMAC_Sampler(Sampling_functions):
         ## Initial guesses
         initial_eta = jnp.zeros((self.nstokes,self.n_pix))
         # params_mixing_matrix_init_sample = jnp.copy(init_params_mixing_matrix).reshape(
-        #                                     ((self.n_frequencies-len_pos_special_freqs),self.number_correlations-1), order='F')
+        #                                     ((self.n_frequencies-len_pos_special_freqs),self.n_correlations-1), order='F')
 
         ## CMB covariance preparation in the format [lmax,nstokes,nstokes]
         red_cov_approx_matrix = jnp.array(get_reduced_matrix_from_c_ell(c_ell_approx)[self.lmin:,...])
@@ -587,10 +587,10 @@ class MICMAC_Sampler(Sampling_functions):
             print("Sample for C with inverse Wishart !", flush=True)
         
         use_precond = False
-        if self.mask.sum() == self.npix and self.freq_noise_c_ell is not None:
+        if self.mask.sum() == self.n_pix and self.freq_noise_c_ell is not None:
             assert len(self.freq_noise_c_ell.shape) == 3
-            assert self.freq_noise_c_ell.shape[0] == self.number_frequencies
-            assert self.freq_noise_c_ell.shape[1] == self.number_frequencies
+            assert self.freq_noise_c_ell.shape[0] == self.n_frequencies
+            assert self.freq_noise_c_ell.shape[1] == self.n_frequencies
             assert (self.freq_noise_c_ell.shape[2] == self.lmax+1) or (self.freq_noise_c_ell.shape[2] == self.lmax+1-self.lmin)
             if self.freq_noise_c_ell.shape[2] == self.lmax+1:
                 self.freq_noise_c_ell = self.freq_noise_c_ell[...,self.lmin:]
@@ -667,7 +667,7 @@ class MICMAC_Sampler(Sampling_functions):
                 # eta_maps_sample = new_eta_maps_sample
                 
                 # Checking shape of the resulting maps
-                chx.assert_shape(new_carry['eta_maps'], (self.nstokes, self.npix))
+                chx.assert_shape(new_carry['eta_maps'], (self.nstokes, self.n_pix))
 
                 # Preparing the preconditioner
                 if use_precond:
@@ -678,7 +678,7 @@ class MICMAC_Sampler(Sampling_functions):
                                                             red_cov_approx_matrix_sqrt, 
                                                             red_inv_noise_c_ell, 
                                                             red_cov_approx_matrix_sqrt))
-                    precond_func_eta = lambda x: maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), 
+                    precond_func_eta = lambda x: maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.n_pix)), 
                                                                                 red_preconditioner_eta, 
                                                                                 nside=self.nside, 
                                                                                 lmin=self.lmin, 
@@ -686,12 +686,18 @@ class MICMAC_Sampler(Sampling_functions):
 
                 # Computing the associated log proba term fixed correction covariance for the B_f sampling
                 if self.perturbation_eta_covariance:
-                    _, inverse_term = func_logproba_eta(mixing_matrix_sampled, 
-                                                                new_carry['eta_maps'], 
-                                                                red_cov_approx_matrix_sqrt, 
-                                                                previous_inverse=inverse_term, 
-                                                                return_inverse=True,
-                                                                precond_func=precond_func_eta)
+                    # _, inverse_term = func_logproba_eta(mixing_matrix_sampled, 
+                    #                                             new_carry['eta_maps'], 
+                    #                                             red_cov_approx_matrix_sqrt, 
+                    #                                             previous_inverse=inverse_term, 
+                    #                                             return_inverse=True,
+                    #                                             precond_func=precond_func_eta)
+                    _, inverse_term = func_logproba_eta(invBtinvNB,
+                                                        new_carry['eta_maps'], 
+                                                        red_cov_approx_matrix_sqrt, 
+                                                        previous_inverse=inverse_term, 
+                                                        return_inverse=True,
+                                                        precond_func=precond_func_eta)
                 if not(self.very_cheap_save):
                     all_samples['eta_maps'] = new_carry['eta_maps']
 
@@ -711,7 +717,7 @@ class MICMAC_Sampler(Sampling_functions):
                                                         red_inv_noise_c_ell, 
                                                         red_cov_matrix_sqrt))
 
-                precond_func_s_c = lambda x: maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.npix)), 
+                precond_func_s_c = lambda x: maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.n_pix)), 
                                                                             red_preconditioner_s_c, 
                                                                             nside=self.nside, 
                                                                             lmin=self.lmin, 
@@ -757,9 +763,9 @@ class MICMAC_Sampler(Sampling_functions):
                 all_samples['fluctuation_maps'] = new_carry['fluctuation_maps']
 
             ## Checking the shape of the resulting maps
-            chx.assert_shape(new_carry['wiener_filter_term'], (self.nstokes, self.npix))
-            chx.assert_shape(new_carry['fluctuation_maps'], (self.nstokes, self.npix))
-            chx.assert_shape(s_c_sample, (self.nstokes, self.npix))
+            chx.assert_shape(new_carry['wiener_filter_term'], (self.nstokes, self.n_pix))
+            chx.assert_shape(new_carry['fluctuation_maps'], (self.nstokes, self.n_pix))
+            chx.assert_shape(s_c_sample, (self.nstokes, self.n_pix))
 
 
             # Sampling step 3 : sampling of CMB covariance C
@@ -806,8 +812,8 @@ class MICMAC_Sampler(Sampling_functions):
 
             ## Preparation of sampling step 4
 
-            full_data_without_CMB = input_freq_maps - jnp.einsum('f,sp->fsp', jnp.ones(self.number_frequencies), s_c_sample)
-            chx.assert_shape(full_data_without_CMB, (self.number_frequencies, self.nstokes, self.npix))
+            full_data_without_CMB = input_freq_maps - jnp.einsum('f,sp->fsp', jnp.ones(self.n_frequencies), s_c_sample)
+            chx.assert_shape(full_data_without_CMB, (self.n_frequencies, self.nstokes, self.n_pix))
 
             ## Preparing the new PRNGKey
             PRNGKey, new_subPRNGKey_3 = random.split(PRNGKey)
@@ -819,7 +825,7 @@ class MICMAC_Sampler(Sampling_functions):
 
                 # Sampling B_f
                 if self.perturbation_eta_covariance or self.biased_version:
-                    inverse_term_x_Capprox_root = maps_x_red_covariance_cell_JAX(inverse_term.reshape(self.nstokes,self.npix), 
+                    inverse_term_x_Capprox_root = maps_x_red_covariance_cell_JAX(inverse_term.reshape(self.nstokes,self.n_pix), 
                                                                                  red_cov_approx_matrix_sqrt, 
                                                                                  nside=self.nside, 
                                                                                  lmin=self.lmin, 
@@ -846,9 +852,9 @@ class MICMAC_Sampler(Sampling_functions):
                 all_samples['params_mixing_matrix_sample'] = new_carry['params_mixing_matrix_sample']
 
                 # Checking the shape of the resulting mixing matrix
-                chx.assert_axis_dimension(new_carry['params_mixing_matrix_sample'], 0, self.number_frequencies-len_pos_special_freqs)
-                chx.assert_axis_dimension(new_carry['params_mixing_matrix_sample'], 1, self.number_correlations-1)
-                # params_mixing_matrix_sample = params_mixing_matrix_sample.reshape((self.number_frequencies-len_pos_special_freqs,number_correlations-1),order='F')
+                chx.assert_axis_dimension(new_carry['params_mixing_matrix_sample'], 0, self.n_frequencies-len_pos_special_freqs)
+                chx.assert_axis_dimension(new_carry['params_mixing_matrix_sample'], 1, self.n_correlations-1)
+                # params_mixing_matrix_sample = params_mixing_matrix_sample.reshape((self.n_frequencies-len_pos_special_freqs,n_correlations-1),order='F')
             else:
                 new_carry['params_mixing_matrix_sample'] = carry['params_mixing_matrix_sample']
                 all_samples['params_mixing_matrix_sample'] = new_carry['params_mixing_matrix_sample']

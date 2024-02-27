@@ -25,7 +25,7 @@ pos_special_freqs = [0,-1] # Position of the special frequencies in the frequenc
 # [Metropolis-Hastings_parameters]
 step_size_r = 1e-3 #1e-4 #1e-5 ???
 thinning=1
-number_chains_MH=5
+n_chains_MH=5
 
 # [Sampling_parameters]
 # overrelax = 0 #-0.995 # Overrelaxation parameter for the sampling

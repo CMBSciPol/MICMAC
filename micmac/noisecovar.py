@@ -140,8 +140,8 @@ def get_true_Cl_noise(depth_p, lmax):
 #     """
 #         Return cl noise from invBtinvNB if invBtinvNB is not multi-resolution
 #     """
-#     number_correlations = int(jnp.ceil(nstokes**2/2) + jnp.floor(nstokes/2))
-#     full_spectra = jnp.zeros((number_correlations,lmax+1))
+#     n_correlations = int(jnp.ceil(nstokes**2/2) + jnp.floor(nstokes/2))
+#     full_spectra = jnp.zeros((n_correlations,lmax+1))
 #     full_spectra = full_spectra.at[:nstokes,:].set(invBtinvNB*hp.nside2resol(nside)**2)
 #     return full_spectra
 

@@ -239,7 +239,7 @@ print(f"First guess from {sigma_gap} $\sigma$ Fisher !", f"rank {MPI_rank} over 
 np.random.seed(MICMAC_obj.seed)
 first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
     first_guess[MICMAC_obj.indexes_free_Bf] + minimum_std_Fisher_diag[:-1]*np.random.uniform(low=-sigma_gap,high=sigma_gap, size=(dimension_free_param_B_f)))
-init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.number_frequencies-len_pos_special_freqs),2,order='F')
+init_params_mixing_matrix = first_guess.reshape((MICMAC_obj.n_frequencies-len_pos_special_freqs),2,order='F')
 initial_guess_r = initial_guess_r_ + np.random.uniform(low=-sigma_gap,high=sigma_gap, size=1)*MICMAC_obj.step_size_r
 
 if initial_guess_r < 0:

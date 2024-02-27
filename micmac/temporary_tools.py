@@ -105,7 +105,7 @@ def get_Gelman_Rubin_statistics(all_chain_samples):
 
         Parameters
         ----------
-        :param all_chains_samples: all chains, with dimensions [number_chains, number_iterations, ...]
+        :param all_chains_samples: all chains, with dimensions [n_chains, number_iterations, ...]
     """
 
     mean_chain = all_chain_samples.mean(axis=0)
