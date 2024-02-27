@@ -143,7 +143,7 @@ if use_mask:
 else:
     # Then the mask have been initialized to 1 in the MICMAC_sampler object
     # mask = np.ones(MICMAC_obj.npix)
-    template_mask = np.copy(MICMAC_obj.mask)
+    template_mask = np.ones(MICMAC_obj.mask)
 
 
 # Generating foregrounds and noise maps
