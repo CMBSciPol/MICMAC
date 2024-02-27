@@ -18,7 +18,7 @@ from .mixingmatrix import *
 class Sampling_functions(MixingMatrix):
     def __init__(self, nside, lmax, nstokes, 
                  frequency_array, freq_inverse_noise, pos_special_freqs=[0,-1],
-                 spv_nodes_b=[],
+                 spv_nodes_b=None,
                  freq_noise_c_ell=None,
                  mask=None,
                  n_components=3, lmin=2,
@@ -1581,10 +1581,10 @@ class Sampling_functions(MixingMatrix):
         chx.assert_axis_dimension(noise_weighted_alm_data, 1, self.nstokes)
 
         r_param = sample_B_f_r[-1]
-        B_f = sample_B_f_r[:-1].reshape((self.n_frequencies-jnp.size(self.pos_special_freqs), self.n_components-1),order='F')
+        B_f = sample_B_f_r[:-1]#.reshape((self.n_frequencies-jnp.size(self.pos_special_freqs), self.n_components-1),order='F')
 
         self.update_params(B_f, jax_use=True)
-        mixing_matrix_sample = self.get_B(jax_use=True)
+        mixing_matrix_sample = self.get_B(jax_use=True).mean(axis=2)
 
         red_CMB_cell = theoretical_red_cov_r0_total + r_param*theoretical_red_cov_r1_tensor
 

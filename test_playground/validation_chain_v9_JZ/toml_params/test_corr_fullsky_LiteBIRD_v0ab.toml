@@ -40,7 +40,7 @@ tolerance_CG = 1e-6 # Tolerance for the different CGs
 atol_CG = 1e-8
 
 # [Metropolis-Hastings-within-Gibbs_parameters]
-step_size_B_f = 1e-3 #1e-4 #1e-6
+# step_size_B_f = 1e-3 #1e-4 #1e-6
 step_size_r = 1e-3 #1e-4 #1e-5 ???
 # number_steps_sampler_B_f = 100 # Maximum number of steps for the Metropolis-Hasting to sample the mixing matrix
 # number_steps_sampler_r = 100

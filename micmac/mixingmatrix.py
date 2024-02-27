@@ -90,7 +90,7 @@ class MixingMatrix():
         return
     
 
-    def get_params_long_python(self, params):
+    def get_params_long_python(self, params, print_bool=False):
         # only python version
         """From the params to all the entries of the mixing matrix"""
         n_unknown_freqs = self.n_frequencies-self.n_components+1
@@ -98,7 +98,8 @@ class MixingMatrix():
         params_long = np.zeros((n_unknown_freqs, n_comp_fgs, self.n_pix))
         ind_params = 0
         for ind_node_b, node_b in enumerate(self.spv_nodes_b):
-            print("node: ", node_b.parent.name, node_b.name)
+            if print_bool:
+                print("node: ", node_b.parent.name, node_b.name)
             # template of all the patches for this b
             spv_template_b = np.array(create_one_template(node_b, nside=self.nside, all_nsides=[], spv_templates=[]))
             # hp.mollview(spv_template_b)

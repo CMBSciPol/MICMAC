@@ -85,9 +85,10 @@ def print_node_with_value(node):
     return
 
 
-def create_template_map(spv_nside, nside, use_jax=False):
+def create_template_map(spv_nside, nside, use_jax=False, print_bool=False):
     """Create one spv template map"""
-    print('>>> Creating new template for: ', spv_nside)
+    if print_bool:
+        print('>>> Creating new template for: ', spv_nside)
     if use_jax:
         # multires case # TODO: implement the case adaptive
         chx.assert_shape(spv_nside, (1,))
@@ -186,30 +187,30 @@ def tree_spv_config(yaml_file_path, n_betas, n_fgs_comp, print_tree=False):
     return root
 
 
-def create_one_template_from_bdefaultvalue(nside_b, all_nsides, spv_templates, nside, use_jax=False):
+def create_one_template_from_bdefaultvalue(nside_b, all_nsides, spv_templates, nside, use_jax=False, print_bool=False):
     try:
         idx = all_nsides.index(nside_b)
         spv_template_b = spv_templates[idx]
     except ValueError:
-        spv_template_b = create_template_map(nside_b, nside, use_jax=use_jax)
+        spv_template_b = create_template_map(nside_b, nside, use_jax=use_jax, print_bool=print_bool)
     all_nsides.append(nside_b)
 
     return spv_template_b
 
 
-def create_one_template(node, all_nsides, spv_templates, nside):
+def create_one_template(node, all_nsides, spv_templates, nside, print_bool=False):
     nside_b = node.children[0].value
-    spv_template_b = create_one_template_from_bdefaultvalue(nside_b, all_nsides, spv_templates, nside)
+    spv_template_b = create_one_template_from_bdefaultvalue(nside_b, all_nsides, spv_templates, nside, print_bool=print_bool)
     
     return spv_template_b
 
 
-def create_templates_spv_old(node, nside_out, all_nsides=[], spv_templates=[]):
+def create_templates_spv_old(node, nside_out, all_nsides=[], spv_templates=[], print_bool=False):
     """Create templates of spatial variability for all betas
     (it creates all the templates at once and keep them in a list)"""
     # loop over betas and create template maps for spv
     if node.name.startswith('b'):
-        spv_template_b = create_one_template(node, all_nsides, spv_templates, nside_out)
+        spv_template_b = create_one_template(node, all_nsides, spv_templates, nside_out, print_bool=print_bool)
         spv_templates.append(spv_template_b)
     for child in node.children:
         create_templates_spv_old(child, nside_out, all_nsides, spv_templates)

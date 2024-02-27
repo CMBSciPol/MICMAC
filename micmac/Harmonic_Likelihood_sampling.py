@@ -23,6 +23,7 @@ from .proba_functions import *
 from .mixingmatrix import *
 from .noisecovar import *
 from .jax_Sampling_toolbox import *
+from .templates_spv import *
 from .temporary_tools import *
 
 from jax import config
@@ -34,6 +35,7 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
                  n_components=3, lmin=2,
                  n_iter=8,
                  mask=None,
+                 spv_nodes_b=None,
 
                  biased_version=False,
                  
@@ -56,7 +58,8 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
                                             frequency_array=frequency_array,
                                             pos_special_freqs=pos_special_freqs,n_components=n_components,
                                             n_iter=n_iter, 
-                                            mask=mask)
+                                            mask=mask, 
+                                            spv_nodes_b=spv_nodes_b)
 
         # Quick test parameters
         self.instrument_name = instrument_name
@@ -540,12 +543,19 @@ def create_Harmonic_MICMAC_sampler_from_MICMAC_sampler_obj(MICMAC_sampler_obj, d
     """ Create a Harmonic_MICMAC_Sampler object from a MICMAC_Sampler object
     """
 
-    first_dict = ['nside','lmax', 'nstokes', 'frequency_array']
+    first_dict = ['nside','lmax', 'nstokes', 'frequency_array', 'pos_special_freqs', 'n_components']
     dictionary_parameters = dict()
     for attr in first_dict:
         dictionary_parameters[attr] = getattr(MICMAC_sampler_obj, attr)
 
     dictionary_parameters['freq_noise_c_ell'] = get_true_Cl_noise(depth_p_array, MICMAC_sampler_obj.lmax)[...,MICMAC_sampler_obj.lmin:]
+
+    # total number of params in the mixing matrix for a specific pixel
+    n_free_B_f = (np.size(dictionary_parameters['frequency_array'])-len(dictionary_parameters['pos_special_freqs']))*(dictionary_parameters['n_components']-1)
+    # Create spv config
+    spv_nodes_b = get_nodes_b(tree_spv_config("", n_free_B_f, dictionary_parameters['n_components']-1, print_tree=False))
+    dictionary_parameters['spv_nodes_b'] = spv_nodes_b
+
     Harmonic_MICMAC_Sampler_obj = Harmonic_MICMAC_Sampler(**dictionary_parameters)
 
     list_attributes = ['pos_special_freqs', 
@@ -571,4 +581,5 @@ def create_Harmonic_MICMAC_sampler_from_MICMAC_sampler_obj(MICMAC_sampler_obj, d
 
     if covariance_B_f is not None:
         Harmonic_MICMAC_Sampler_obj.covariance_B_f = covariance_B_f
+
     return Harmonic_MICMAC_Sampler_obj
