@@ -24,7 +24,7 @@ module load python
 
 #conda activate /gpfswork/rech/nih/commun/micmac_soft/micmac_env
 # source /gpfswork/rech/nih/ube74zo/MICMAC/.bash_env
-source /gpfswork/rech/nih/ube74zo/MICMAC/.bash_env_spv
+source /gpfswork/rech/nih/ube74zo/MICMAC/.bash_env
 
 
 export PYSM_LOCAL_DATA=/gpfswork/rech/nih/commun/micmac_soft/pysm-data
