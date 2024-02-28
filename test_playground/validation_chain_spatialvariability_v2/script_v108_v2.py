@@ -63,7 +63,7 @@ name_toml = dictionary_additional_parameters['name_toml']
 name_file_spv = dictionary_additional_parameters['name_file_spv']
 seed_realization_input = dictionary_additional_parameters['seed_realization_input']
 use_preconditioner = dictionary_additional_parameters['use_preconditioner']
-use_uncorrelated_patches = dictionary_additional_parameters['use_uncorrelated_patches']
+# use_uncorrelated_patches = dictionary_additional_parameters['use_uncorrelated_patches']
 
 # Starting MPI
 from mpi4py import MPI
