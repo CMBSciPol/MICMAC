@@ -6,7 +6,7 @@ very_cheap_save = true
 # use_automatic_step_size = false
 # lognormal_r = false
 indexes_free_Bf = false
-# disable_chex = false
+disable_chex = true
 restrict_to_mask = true
 use_old_s_c_sampling = false
 # fixed_eta_covariance = false
@@ -28,7 +28,7 @@ sample_C_inv_Wishart = false
 nside = 64
 lmax = 128
 nstokes = 2
-lmin = 30
+lmin = 2
 n_iter = 8 # Number of iterations for Python estimation of alms
 n_components = 3
 pos_special_freqs = [0,-1]
@@ -40,7 +40,6 @@ tolerance_CG = 1e-6 # Tolerance for the different CGs
 atol_CG = 1e-8
 
 # [Metropolis-Hastings-within-Gibbs_parameters]
-# step_size_B_f = 1e-3 #1e-4 #1e-6
 step_size_r = 1e-3 #1e-4 #1e-5 ???
 # number_steps_sampler_B_f = 100 # Maximum number of steps for the Metropolis-Hasting to sample the mixing matrix
 # number_steps_sampler_r = 100
@@ -49,6 +48,6 @@ step_size_r = 1e-3 #1e-4 #1e-5 ???
 
 # [Sampling_parameters]
 # overrelax = 0 #-0.995 # Overrelaxation parameter for the sampling
-number_iterations_sampling = 2500 # Maximum number of iterations for the sampling
+number_iterations_sampling = 4000 # Maximum number of iterations for the sampling
 number_iterations_done = 0 # Number of iterations already accomplished, in case the chain is resuming from a previous run
 seed = 42

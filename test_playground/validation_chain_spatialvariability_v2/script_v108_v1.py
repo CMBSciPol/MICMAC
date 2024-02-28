@@ -83,8 +83,10 @@ file_ver = dictionary_additional_parameters['file_ver'] + f"_{MPI_rank}_{MPI_siz
 
 
 # Defining directories for saving and loading files
-directory_save_file = repo_save + current_repo + 'save_directory/'
 path_home_test_playground = MICMAC_repo + '/test_playground/'
+if repo_save == '':
+    repo_save = path_home_test_playground
+directory_save_file = repo_save + current_repo + 'save_directory/'
 current_path = path_home_test_playground + current_repo + '/'
 
 path_mask = repo_mask + name_mask + ".fits"
@@ -92,6 +94,15 @@ path_mask = repo_mask + name_mask + ".fits"
 directory_main_params_file = current_path + 'main_params/'
 path_toml_file = directory_main_params_file + name_toml
 path_file_spv = directory_main_params_file + name_file_spv
+
+# Few tests for directories
+if not os.path.exists(directory_save_file):
+    raise Exception(f"Directory {directory_save_file} does not exist to save outputs !")
+else:
+    print(f"Directory {directory_save_file} exists to save outputs !", flush=True)
+
+if not os.path.exists(directory_main_params_file):
+    raise Exception(f"Directory {directory_main_params_file} does not exist to load input param files !")
 
 # Creating MICMAC Sampler object
 MICMAC_obj = micmac.create_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv=path_file_spv)
@@ -204,6 +215,13 @@ if MICMAC_obj.sample_eta_B_f:
 
     MICMAC_obj.covariance_B_f = np.copy(np.linalg.inv(Fisher_matrix))[:-1,:-1]/factor_Fisher  # TODO: extend to case of many spv params
 
+    # if MICMAC_obj.len_params > (MICMAC_obj.n_frequencies-len_pos_special_freqs)*len(MICMAC_obj.pos_special_freqs):
+    #     MICMAC_obj.covariance_B_f = np.repeat(MICMAC_obj.covariance_B_f, 
+    #                                           MICMAC_obj.len_params//(MICMAC_obj.n_frequencies-len_pos_special_freqs), 
+    #                                           axis=0)
+
+    print("Covariance B_f :", MICMAC_obj.covariance_B_f)
+
 MICMAC_obj.step_size_r = minimum_std_Fisher_diag[-1]
 
 # Generation input maps
@@ -236,6 +254,7 @@ initial_fluctuation_maps = np.zeros((MICMAC_obj.nstokes, MICMAC_obj.n_pix))
 
 len_pos_special_freqs = len(MICMAC_obj.pos_special_freqs)
 dimension_free_param_B_f = jnp.size(MICMAC_obj.indexes_free_Bf)
+dimension_free_param_B_f = MICMAC_obj.len_params #- len_pos_special_freqs
 
 first_guess = jnp.copy(exact_params_mixing_matrix)
 
@@ -243,10 +262,16 @@ print('MICMAC_obj.indexes_free_Bf', MICMAC_obj.indexes_free_Bf)
 print('dimension_free_param_B_f', dimension_free_param_B_f)
 print('len_params', MICMAC_obj.len_params)
 print(f"First guess from {sigma_gap} $\sigma$ Fisher !", f"rank {MPI_rank} over {MPI_size}", flush=True)
+step_size_B_f = minimum_std_Fisher_diag[:-1]
+
+if dimension_free_param_B_f != step_size_B_f.shape[0]:
+    expend_factor = dimension_free_param_B_f//step_size_B_f.shape[0]
+    step_size_B_f = np.repeat(step_size_B_f, expend_factor)
+
 np.random.seed(MICMAC_obj.seed)
 first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
                 first_guess[MICMAC_obj.indexes_free_Bf] + 
-                minimum_std_Fisher_diag[:-1]*np.random.uniform(low=-sigma_gap,high=sigma_gap, size=(dimension_free_param_B_f,)))
+                step_size_B_f*np.random.uniform(low=-sigma_gap,high=sigma_gap, size=(dimension_free_param_B_f,)))
 init_params_mixing_matrix = first_guess
 initial_guess_r = initial_guess_r_ + np.random.uniform(low=-sigma_gap,high=sigma_gap, size=1)*MICMAC_obj.step_size_r
 
@@ -339,6 +364,8 @@ if former_file_ver != '':
 
 
 # Saving all files
+time_saving = time.time()
+
 initial_freq_maps_path = directory_save_file+file_ver+'_initial_data.npy'
 print("FINAL SAVE - #### params_mixing_matrix :", initial_freq_maps_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
 np.save(initial_freq_maps_path, input_freq_maps)
@@ -377,3 +404,5 @@ if MICMAC_obj.sample_r_Metropolis:
 all_params_mixing_matrix_samples_path = directory_save_file+file_ver+'_all_params_mixing_matrix_samples.npy'
 print("FINAL SAVE - #### params_mixing_matrix :", all_params_mixing_matrix_samples_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
 np.save(all_params_mixing_matrix_samples_path, all_params_mixing_matrix_samples)
+
+print("End of saving in {} minutes !".format((time.time()-time_saving)/60), f"rank {MPI_rank} over {MPI_size}", flush=True)

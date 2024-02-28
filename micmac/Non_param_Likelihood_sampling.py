@@ -479,12 +479,15 @@ class MICMAC_Sampler(Sampling_functions):
             c_ell_approx = c_ell_approx[indices_to_consider,:]
 
         ## testing the initial mixing matrix
-        if len(init_params_mixing_matrix.shape) == 1:
-            assert len(init_params_mixing_matrix) == (self.n_frequencies-len(self.pos_special_freqs))*(self.n_correlations-1)
-        else:
-            # assert len(init_params_mixing_matrix.shape) == 2
-            assert init_params_mixing_matrix.shape[0] == (self.n_frequencies-len(self.pos_special_freqs))
-            assert init_params_mixing_matrix.shape[1] == (self.n_correlations-1)
+        ## testing the initial mixing matrix
+        # if len(init_params_mixing_matrix.shape) == 1:
+        #     assert len(init_params_mixing_matrix) == (self.n_frequencies-len(self.pos_special_freqs))*(self.n_correlations-1)
+        # else:
+        #     # assert len(init_params_mixing_matrix.shape) == 2
+        #     assert init_params_mixing_matrix.shape[0] == (self.n_frequencies-len(self.pos_special_freqs))
+        #     assert init_params_mixing_matrix.shape[1] == (self.n_correlations-1)
+        assert len(init_params_mixing_matrix) == self.len_params
+
 
         ## Final set of tests
         assert len(CMB_c_ell.shape) == 2
@@ -573,12 +576,17 @@ class MICMAC_Sampler(Sampling_functions):
 
 
         ## Preparing the step-size for Metropolis-within-Gibbs of B_f sampling
+        
         try :
             initial_step_size_Bf = jnp.array(jnp.diag(jsp.linalg.sqrtm(self.covariance_B_f)), dtype=jnp.float64)
         except:
             initial_step_size_Bf = jnp.array(jnp.diag(jnp.sqrt(self.covariance_B_f)), dtype=jnp.float64)
         print('Step-size B_f', initial_step_size_Bf, flush=True)
-
+        if self.covariance_B_f.shape[0] != self.len_params:
+            print("Covariance matrix for B_f is not of the right shape !", flush=True)
+            initial_step_size_Bf = jnp.repeat(initial_step_size_Bf, self.len_params//self.covariance_B_f.shape[0], axis=0)
+            print('New step-size B_f', initial_step_size_Bf, flush=True)
+            
         ## Few prints to re-check the toml parameters chosen
         if not(self.sample_eta_B_f):
             print("Not sampling for eta and B_f, only for s_c and the covariance !", flush=True)
