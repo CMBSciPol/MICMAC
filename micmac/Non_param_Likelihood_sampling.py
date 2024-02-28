@@ -43,9 +43,11 @@ class MICMAC_Sampler(Sampling_functions):
                  bin_ell_distribution=None,
                  use_old_s_c_sampling=False,
                  perturbation_eta_covariance=False,
-                 acceptance_posdef=False,
+                 use_uncorrelated_patches=False,
 
+                 acceptance_posdef=False,
                  use_binning=False,
+
                  cheap_save=True, very_cheap_save=False,
                  biased_version=False, lognormal_r=False,
                  r_true=0,
@@ -94,6 +96,7 @@ class MICMAC_Sampler(Sampling_functions):
         # self.use_old_s_c_sampling = bool(use_old_s_c_sampling)
         # self.fixed_eta_covariance = bool(fixed_eta_covariance)
         self.perturbation_eta_covariance = bool(perturbation_eta_covariance)
+        self.use_uncorrelated_patches = bool(use_uncorrelated_patches)
         self.use_binning = bool(use_binning)
         self.acceptance_posdef = bool(acceptance_posdef)
 
@@ -567,6 +570,11 @@ class MICMAC_Sampler(Sampling_functions):
             # sampling_func = separate_single_MH_step_index
             sampling_func = separate_single_MH_step_index_v2
 
+            if self.use_uncorrelated_patches:
+                print("Using uncorrelated patches version of mixing matrix sampling !!!", flush=True)
+                # sampling_func = jax.jit(separate_single_MH_step_index_v3, static_argnames=['max_len_patches_Bf','biased_bool'])
+                sampling_func = separate_single_MH_step_index_v3
+
 
         ## Preparing the scalar quantities
         PRNGKey = random.PRNGKey(self.seed)
@@ -840,14 +848,23 @@ class MICMAC_Sampler(Sampling_functions):
                                                                                  lmin=self.lmin, 
                                                                                  n_iter=self.n_iter
                                                                                  ).ravel()
+                    dict_parameters_sampling_B_f = {'indexes_Bf':self.indexes_free_Bf,
+                                                    'full_data_without_CMB':full_data_without_CMB, 
+                                                    'component_eta_maps':new_carry['eta_maps'],
+                                                    'red_cov_approx_matrix_sqrt':red_cov_approx_matrix_sqrt, 
+                                                    'previous_inverse':inverse_term,
+                                                    'previous_inverse_x_Capprox_root':inverse_term_x_Capprox_root,
+                                                    'old_params_mixing_matrix':carry['params_mixing_matrix_sample'],
+                                                    'biased_bool':self.biased_version}
+                    if self.use_uncorrelated_patches:
+                        dict_parameters_sampling_B_f['size_patches'] = self.size_patches
+                        dict_parameters_sampling_B_f['max_len_patches_Bf'] = self.max_len_patches_Bf
+                        dict_parameters_sampling_B_f['indexes_patches_Bf'] = jnp.array(self.indexes_b.ravel(order='F'), dtype=jnp.int64)
+
                     new_subPRNGKey_3, new_carry['params_mixing_matrix_sample'] = sampling_func(random_PRNGKey=new_subPRNGKey_3, old_sample=carry['params_mixing_matrix_sample'], 
-                                                            step_size=step_size_Bf, indexes_Bf=self.indexes_free_Bf,
+                                                            step_size=step_size_Bf,
                                                             log_proba=jitted_Bf_func_sampling,
-                                                            full_data_without_CMB=full_data_without_CMB, component_eta_maps=new_carry['eta_maps'], 
-                                                            red_cov_approx_matrix_sqrt=red_cov_approx_matrix_sqrt, previous_inverse=inverse_term,
-                                                            previous_inverse_x_Capprox_root=inverse_term_x_Capprox_root,
-                                                            old_params_mixing_matrix=carry['params_mixing_matrix_sample'],
-                                                            biased_bool=self.biased_version)
+                                                            **dict_parameters_sampling_B_f)
                 else:
                     new_subPRNGKey_3, new_carry['params_mixing_matrix_sample'], inverse_term = sampling_func(random_PRNGKey=new_subPRNGKey_3, old_sample=carry['params_mixing_matrix_sample'], 
                                                             step_size=step_size_Bf, indexes_Bf=self.indexes_free_Bf,
@@ -857,7 +874,8 @@ class MICMAC_Sampler(Sampling_functions):
                                                             previous_inverse=inverse_term,
                                                             biased_bool=self.biased_version,
                                                             precond_func=precond_func_eta)
-                
+                    # TODO: add the precond_func_eta to the sampling_func
+
                 all_samples['params_mixing_matrix_sample'] = new_carry['params_mixing_matrix_sample']
 
                 # Checking the shape of the resulting mixing matrix

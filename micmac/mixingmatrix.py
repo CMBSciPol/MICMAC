@@ -27,6 +27,14 @@ def get_indexes_b(n_frequencies, n_components, spv_nodes_b):
     indexes[0,0] = 0
     return indexes.ravel(order='F').cumsum().reshape((n_frequencies, n_components),order='F')
 
+def get_indexes_patches(indexes_b, len_params, jax_use=False):
+    """ Return indexes of params for all patches of a b
+    """
+    indexes_patches_list = []
+    for i in range(indexes_b.shape[0]-1):
+        indexes_patches_list.append(jnp.arange(indexes_b[i],indexes_b[i+1]))
+    indexes_patches_list.append(jnp.arange(indexes_b[-1],len_params))
+    return indexes_patches_list
 
 def get_len_params(spv_nodes_b):
     len_params = 0
@@ -67,8 +75,10 @@ class MixingMatrix():
 
         self.values_b = get_values_b(self.spv_nodes_b, self.n_frequencies-len(self.pos_special_freqs), self.n_components-1)        
         self.indexes_b = get_indexes_b(self.n_frequencies-len(self.pos_special_freqs), self.n_components-1, self.spv_nodes_b)
-
-
+        self.size_patches = jnp.array([get_n_patches_b(node) for node in self.spv_nodes_b])
+        self.max_len_patches_Bf = int(self.size_patches.max())
+        
+        
     @property
     def n_pix(self):
         """ Number of pixels of one input freq map
