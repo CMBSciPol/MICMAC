@@ -860,6 +860,8 @@ class MICMAC_Sampler(Sampling_functions):
                         dict_parameters_sampling_B_f['size_patches'] = self.size_patches
                         dict_parameters_sampling_B_f['max_len_patches_Bf'] = self.max_len_patches_Bf
                         dict_parameters_sampling_B_f['indexes_patches_Bf'] = jnp.array(self.indexes_b.ravel(order='F'), dtype=jnp.int64)
+                        dict_parameters_sampling_B_f['len_indexes_Bf'] = self.len_params
+                        #TODO: Accelerate by removing indexes of indexes_patches_Bf if the corresponding patches are not in indexes_free_Bf, nor in the mask
 
                     new_subPRNGKey_3, new_carry['params_mixing_matrix_sample'] = sampling_func(random_PRNGKey=new_subPRNGKey_3, old_sample=carry['params_mixing_matrix_sample'], 
                                                             step_size=step_size_Bf,
@@ -977,6 +979,6 @@ def create_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv=''):
     # Read or create spv config
     root_tree = tree_spv_config(path_file_spv, n_betas, n_fgs_comp, print_tree=True)
     dictionary_parameters['spv_nodes_b'] = get_nodes_b(root_tree)
-    
+
     # del dictionary_parameters['instrument_name']
     return MICMAC_Sampler(**dictionary_parameters)

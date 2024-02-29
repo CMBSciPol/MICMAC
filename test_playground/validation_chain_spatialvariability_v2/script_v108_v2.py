@@ -255,7 +255,7 @@ initial_fluctuation_maps = np.zeros((MICMAC_obj.nstokes, MICMAC_obj.n_pix))
 
 len_pos_special_freqs = len(MICMAC_obj.pos_special_freqs)
 dimension_free_param_B_f = jnp.size(MICMAC_obj.indexes_free_Bf)
-dimension_free_param_B_f = MICMAC_obj.len_params #- len_pos_special_freqs
+# dimension_free_param_B_f = MICMAC_obj.len_params #- len_pos_special_freqs
 
 first_guess = jnp.copy(exact_params_mixing_matrix)
 
@@ -265,14 +265,14 @@ print('len_params', MICMAC_obj.len_params)
 print(f"First guess from {sigma_gap} $\sigma$ Fisher !", f"rank {MPI_rank} over {MPI_size}", flush=True)
 step_size_B_f = minimum_std_Fisher_diag[:-1]
 
-if dimension_free_param_B_f != step_size_B_f.shape[0]:
+if MICMAC_obj.len_param != step_size_B_f.shape[0]:
     expend_factor = dimension_free_param_B_f//step_size_B_f.shape[0]
     step_size_B_f = np.repeat(step_size_B_f, expend_factor)
 
 np.random.seed(MICMAC_obj.seed)
 first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
                 first_guess[MICMAC_obj.indexes_free_Bf] + 
-                step_size_B_f*np.random.uniform(low=-sigma_gap,high=sigma_gap, size=(dimension_free_param_B_f,)))
+                step_size_B_f[MICMAC_obj.indexes_free_Bf]*np.random.uniform(low=-sigma_gap,high=sigma_gap, size=(dimension_free_param_B_f,)))
 init_params_mixing_matrix = first_guess
 initial_guess_r = initial_guess_r_ + np.random.uniform(low=-sigma_gap,high=sigma_gap, size=1)*MICMAC_obj.step_size_r
 
@@ -357,7 +357,7 @@ if former_file_ver != '':
     elif not(MICMAC_obj.very_cheap_save):
         all_s_c = np.hstack([dict_all_params['all_s_c_samples'], all_s_c[1:]])
     if MICMAC_obj.sample_r_Metropolis:
-        all_r_samples = np.hstack([dict_all_params['all_r_samples'], all_r_samples[1:]])
+        all_r_samples = np.hstack([dict_all_params['all_r_samples'].squeeze(), all_r_samples[1:].squeeze()])
     elif MICMAC_obj.sample_C_inv_Wishart:
         all_cell_samples = np.hstack([dict_all_params['all_cell_samples'], all_cell_samples[1:]])
 
