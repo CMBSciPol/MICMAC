@@ -117,8 +117,10 @@ class MixingMatrix():
             # loop over the patches of this b
             params_long_b = np.zeros((self.n_pix))
             for b in range(get_n_patches_b(node_b)):
-                params_long_b += np.where(spv_template_b == b+1, 1, 0)*params[ind_params]
+                params_long_b += np.where(spv_template_b == b, 1, 0)*params[ind_params]
                 ind_params += 1
+            # hp.mollview(params_long_b)
+            # plt.show()
             ind_freq = np.where(ind_node_b<n_unknown_freqs, ind_node_b, ind_node_b-n_unknown_freqs)
             ind_comp = np.where(ind_node_b<n_unknown_freqs, 0, 1)
 

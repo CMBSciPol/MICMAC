@@ -2,32 +2,26 @@
 
 nside_spv:
   default: 
-    - 4
+  - 1
   f1:
     default:
+    - 1
+    b0:
+      default:
+      - 1
     b1:
       default:
-        - 32
     b2:
       default:
-        - 8
     b3:
       default:
-        - 4
-    b4:
-      default:
-        - 4
   f2:
     default:
-      - 4
+    b0:
+      default:
     b1:
       default:
-        - 32
     b2:
       default:
-        - 8
     b3:
       default:
-    b4:
-      default:
-        - 4

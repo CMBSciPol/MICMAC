@@ -18,6 +18,7 @@ def read_spv_config(yaml_file_path):
     """Reads yaml file with info of spv configuration
     and creates a dictionary from there"""
     with open(yaml_file_path, 'r') as file:
+        print(file)
         dict_params_spv = yaml.safe_load(file)
 
     return dict_params_spv
@@ -133,11 +134,11 @@ def build_empty_tree_spv(n_fgs_comp, n_betas):
     default_nside_spv = Node('default', parent=nside_spv)
     default_nside_spv.value = [0]
     for i in range(n_fgs_comp):
-        f_node = Node('f'+str(i+1), parent=nside_spv)
+        f_node = Node('f'+str(i), parent=nside_spv)
         default_f_node = Node('default', parent=f_node)
         default_f_node.value = None
         for j in range(n_betas//n_fgs_comp):
-            b_node = Node('b'+str(j+1), parent=f_node)
+            b_node = Node('b'+str(j), parent=f_node)
             default_b_node = Node('default', parent=b_node)
             default_b_node.value = None
 
@@ -147,12 +148,6 @@ def build_empty_tree_spv(n_fgs_comp, n_betas):
 #### Higher level functions
 def tree_spv_config(yaml_file_path, n_betas, n_fgs_comp, print_tree=False):
     """From spv param file to tree of spv config"""
-    try:  # TODO shouldn't go afterwards inside if?
-        open(yaml_file_path, 'r')
-    except:
-        print('No yaml file found in given path: ', yaml_file_path, flush=True)
-        yaml_file_path = ''
-
     if yaml_file_path != '':
         # Read in dict spv params from .yaml file
         dict_params_spv = read_spv_config(yaml_file_path)
@@ -173,6 +168,7 @@ def tree_spv_config(yaml_file_path, n_betas, n_fgs_comp, print_tree=False):
         root = build_empty_tree_spv(n_fgs_comp, n_betas)
     
     if print_tree:
+        print('\n>>> Tree of spv config as passed by the User:')
         for _, _, node in RenderTree(root):
             print_node_with_value(node)
     
@@ -181,6 +177,7 @@ def tree_spv_config(yaml_file_path, n_betas, n_fgs_comp, print_tree=False):
 
     # Print the tree structure with names and values if present
     if print_tree:
+        print('\n>>> Tree of spv config after filling the missing values:')
         for _, _, node in RenderTree(root):
             print_node_with_value(node)
 
