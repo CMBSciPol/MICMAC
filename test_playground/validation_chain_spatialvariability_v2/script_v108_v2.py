@@ -295,7 +295,7 @@ if former_file_ver != '':
     print("### Continuing from previous run !", former_file_ver, f"rank {MPI_rank} over {MPI_size}", flush=True)
     dict_all_params = micmac.loading_params(directory_save_file, former_file_ver, MICMAC_obj)
 
-    init_params_mixing_matrix = dict_all_params['all_params_mixing_matrix_samples'][-1,:,:]
+    init_params_mixing_matrix = dict_all_params['all_params_mixing_matrix_samples'][-1,:]
 
     if not(MICMAC_obj.cheap_save):
         initial_wiener_filter_term = dict_all_params['all_s_c_WF_maps'][-1,:,:]
