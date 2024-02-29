@@ -147,7 +147,7 @@ def build_empty_tree_spv(n_fgs_comp, n_betas):
 #### Higher level functions
 def tree_spv_config(yaml_file_path, n_betas, n_fgs_comp, print_tree=False):
     """From spv param file to tree of spv config"""
-    try:
+    try:  # TODO shouldn't go afterwards inside if?
         open(yaml_file_path, 'r')
     except:
         print('No yaml file found in given path: ', yaml_file_path, flush=True)
@@ -187,6 +187,45 @@ def tree_spv_config(yaml_file_path, n_betas, n_fgs_comp, print_tree=False):
     return root
 
 
+def get_nodes_b(root_tree):
+    """Returns a list of nodes b from the tree of spv config"""
+    nodes = []
+    for _, _, node in RenderTree(root_tree):
+        if node.name.startswith('b'):
+            nodes.append(node)
+    return nodes
+    
+
+def get_n_patches_b(node_b, jax_use=False):
+    """Returns the number of patches for a given node b"""
+    # TODO: genralize to pathces w kmeans
+    if jax_use:
+        # node_b expected to be list of default values of nodes n
+        n_patches_b = jnp.where(node_b == 0, 1, 12*node_b**2)
+        return n_patches_b
+
+    # node_b expected to be list of the nodes b
+    patches_config = node_b.children[0].value
+    if patches_config == [0]:
+        n_patches_b = 1
+    elif len(patches_config) == 1:
+        # multires but not adaptive case
+        n_patches_b = 12*patches_config[0]**2
+    else:
+        # adaptive multires case
+        NotImplementedError("Adaptive multires case not implemented yet")
+    return n_patches_b
+
+
+def get_values_b(nodes_b, n_frequencies, n_components):
+    """get default values of b"""
+    return np.array([nodes_b[i].children[0].value for i in range((n_frequencies*n_components))])
+
+
+
+
+### Old functions
+### Correct but creating all the templates at once
 def create_one_template_from_bdefaultvalue(nside_b, all_nsides, spv_templates, nside, use_jax=False, print_bool=False):
     try:
         idx = all_nsides.index(nside_b)
@@ -216,36 +255,3 @@ def create_templates_spv_old(node, nside_out, all_nsides=[], spv_templates=[], p
         create_templates_spv_old(child, nside_out, all_nsides, spv_templates)
 
     return spv_templates
-
-
-def get_nodes_b(root_tree):
-    nodes = []
-    for _, _, node in RenderTree(root_tree):
-        if node.name.startswith('b'):
-            nodes.append(node)
-    return nodes
-    
-
-def get_n_patches_b(node_b, jax_use=False):
-    # TODO: genralize to pathces w kmeans
-    if jax_use:
-        # node_b expected to be list of default values of nodes n
-        n_patches_b = jnp.where(node_b == 0, 1, 12*node_b**2)
-        return n_patches_b
-
-    # node_b expected to be list of the nodes b
-    patches_config = node_b.children[0].value
-    if patches_config == [0]:
-        n_patches_b = 1
-    elif len(patches_config) == 1:
-        # multires but not adaptive case
-        n_patches_b = 12*patches_config[0]**2
-    else:
-        # adaptive multires case
-        NotImplementedError("Adaptive multires case not implemented yet")
-    return n_patches_b
-
-
-def get_values_b(nodes_b, n_frequencies, n_components):
-    """get default values of b"""
-    return np.array([nodes_b[i].children[0].value for i in range((n_frequencies*n_components))])
