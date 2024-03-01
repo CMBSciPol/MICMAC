@@ -267,7 +267,7 @@ step_size_B_f = minimum_std_Fisher_diag[:-1]
 
 if MICMAC_obj.len_params != step_size_B_f.shape[0]:
     print("Expanding step_size_Bf !!", flush=True)
-    expend_factor = dimension_free_param_B_f// MICMAC_obj.len_params.shape[0]
+    expend_factor = dimension_free_param_B_f// MICMAC_obj.len_params#.shape[0]
     step_size_B_f = np.repeat(step_size_B_f, expend_factor)
 
 np.random.seed(MICMAC_obj.seed)
