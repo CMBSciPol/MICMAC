@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=biased_spv_fullsky_SO_2e_1nodes
+#SBATCH --job-name=biased_spv_fullsky_SO_2f_1nodes
 #SBATCH --account=nih@cpu          # use CPU allocation
 #SBATCH --qos=qos_cpu-dev          # dev qos (10 jobs, 2h max.)
 #SBATCH --mail-user=magdy.morshed.fr@gmail.com
@@ -38,8 +38,10 @@ export OMP_PLACES=cores
 
 
 
-export VER=biased_fullsky_SO_d0s0_nside1_v108_v2e
-export additional_config_file=add_biased_fullsky_SO_d0s0_nside1_v2e.toml
+# export VER=biased_fullsky_SO_d0s0_nside1_v108_v2e
+# export additional_config_file=add_biased_fullsky_SO_d0s0_nside1_v2e.toml
+export VER=biased_fullsky_SO_d0s0_nside1_v108_v2f
+export additional_config_file=add_biased_fullsky_SO_d0s0_nside1_v2f.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_spatialvariability_v2
 
