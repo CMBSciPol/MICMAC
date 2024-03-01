@@ -922,7 +922,7 @@ class MICMAC_Sampler(Sampling_functions):
                             'PRNGKey': PRNGKey,
                             'inverse_term': jnp.zeros_like(initial_eta)}
 
-        if self.sample_eta_B_f or not(self.biased_version):
+        if self.sample_eta_B_f and not(self.biased_version):
             initial_carry['eta_maps'] = initial_eta
         if self.sample_r_Metropolis:
             initial_carry['r_sample'] = initial_guess_r
