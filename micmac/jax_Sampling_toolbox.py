@@ -1522,7 +1522,11 @@ class Sampling_functions(MixingMatrix):
             inverse_term = 0
         else:
             invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, new_mixing_matrix, jax_use=True)
-            log_proba_perturbation_likelihood, inverse_term = self.get_conditional_proba_correction_likelihood_JAX_v2d(invBtinvNB, component_eta_maps, red_cov_approx_matrix_sqrt, previous_inverse=previous_inverse,return_inverse=True)
+            log_proba_perturbation_likelihood, inverse_term = self.get_conditional_proba_correction_likelihood_JAX_v2d(invBtinvNB, 
+                                                                                                                       component_eta_maps, 
+                                                                                                                       red_cov_approx_matrix_sqrt, 
+                                                                                                                       previous_inverse=previous_inverse,
+                                                                                                                       return_inverse=True)
 
         return (log_proba_spectral_likelihood + log_proba_perturbation_likelihood), inverse_term
     
