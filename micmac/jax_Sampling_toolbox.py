@@ -1482,10 +1482,10 @@ class Sampling_functions(MixingMatrix):
 
     def get_conditional_proba_mixing_matrix_v2b_JAX(self, 
                                                     new_params_mixing_matrix, 
-                                                    full_data_without_CMB, 
-                                                    component_eta_maps, 
+                                                    full_data_without_CMB,  
                                                     red_cov_approx_matrix_sqrt, 
-                                                    previous_inverse, 
+                                                    component_eta_maps=None,
+                                                    previous_inverse=None, 
                                                     biased_bool=False,
                                                     precond_func=None):
         """ Get conditional probability of the conditional probability associated with the B_f parameters
@@ -1531,7 +1531,15 @@ class Sampling_functions(MixingMatrix):
         return (log_proba_spectral_likelihood + log_proba_perturbation_likelihood), inverse_term
     
 
-    def get_conditional_proba_mixing_matrix_v3_JAX(self, new_params_mixing_matrix, old_params_mixing_matrix, full_data_without_CMB, component_eta_maps, red_cov_approx_matrix_sqrt, previous_inverse, previous_inverse_x_Capprox_root=None, biased_bool=False):
+    def get_conditional_proba_mixing_matrix_v3_JAX(self, 
+                                                   new_params_mixing_matrix, 
+                                                   old_params_mixing_matrix, 
+                                                   full_data_without_CMB, 
+                                                   red_cov_approx_matrix_sqrt, 
+                                                   component_eta_maps=None,
+                                                   previous_inverse=None,
+                                                   previous_inverse_x_Capprox_root=None, 
+                                                   biased_bool=False):
         """ Get conditional probability of the conditional probability associated with the B_f parameters
             
             The associated conditional probability is given by : 

@@ -850,12 +850,13 @@ class MICMAC_Sampler(Sampling_functions):
                                                                                  ).ravel()
                     dict_parameters_sampling_B_f = {'indexes_Bf':self.indexes_free_Bf,
                                                     'full_data_without_CMB':full_data_without_CMB, 
-                                                    'component_eta_maps':new_carry['eta_maps'],
                                                     'red_cov_approx_matrix_sqrt':red_cov_approx_matrix_sqrt, 
                                                     'previous_inverse':inverse_term,
                                                     'previous_inverse_x_Capprox_root':inverse_term_x_Capprox_root,
                                                     'old_params_mixing_matrix':carry['params_mixing_matrix_sample'],
                                                     'biased_bool':self.biased_version}
+                    if not(self.biased_version):
+                        dict_parameters_sampling_B_f['component_eta_maps'] = new_carry['eta_maps']
                     if self.use_uncorrelated_patches:
                         dict_parameters_sampling_B_f['size_patches'] = self.size_patches
                         dict_parameters_sampling_B_f['max_len_patches_Bf'] = self.max_len_patches_Bf
@@ -863,10 +864,11 @@ class MICMAC_Sampler(Sampling_functions):
                         dict_parameters_sampling_B_f['len_indexes_Bf'] = self.len_params
                         #TODO: Accelerate by removing indexes of indexes_patches_Bf if the corresponding patches are not in indexes_free_Bf, nor in the mask
 
-                    new_subPRNGKey_3, new_carry['params_mixing_matrix_sample'] = sampling_func(random_PRNGKey=new_subPRNGKey_3, old_sample=carry['params_mixing_matrix_sample'], 
-                                                            step_size=step_size_Bf,
-                                                            log_proba=jitted_Bf_func_sampling,
-                                                            **dict_parameters_sampling_B_f)
+                    new_subPRNGKey_3, new_carry['params_mixing_matrix_sample'] = sampling_func(random_PRNGKey=new_subPRNGKey_3, 
+                                                                                                old_sample=carry['params_mixing_matrix_sample'], 
+                                                                                                step_size=step_size_Bf,
+                                                                                                log_proba=jitted_Bf_func_sampling,
+                                                                                                **dict_parameters_sampling_B_f)
                 else:
                     new_subPRNGKey_3, new_carry['params_mixing_matrix_sample'], inverse_term = sampling_func(random_PRNGKey=new_subPRNGKey_3, old_sample=carry['params_mixing_matrix_sample'], 
                                                             step_size=step_size_Bf, indexes_Bf=self.indexes_free_Bf,
