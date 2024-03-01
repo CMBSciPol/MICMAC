@@ -1199,7 +1199,10 @@ class Sampling_functions(MixingMatrix):
         return -( jnp.einsum('lij,lji->l', red_sigma_ell[self.lmin_r-self.lmin:self.lmax_r], jnp.linalg.pinv(red_cov_matrix_sampled)).sum() + sum_dets)/2
 
 
-    def get_conditional_proba_spectral_likelihood_JAX(self, complete_mixing_matrix, full_data_without_CMB, suppress_low_modes=True):
+    def get_conditional_proba_spectral_likelihood_JAX(self, 
+                                                      complete_mixing_matrix, 
+                                                      full_data_without_CMB, 
+                                                      suppress_low_modes=True):
         """ Get conditional probability of spectral likelihood from the full mixing matrix
 
             The associated conditional probability is given by : 
@@ -1565,7 +1568,8 @@ class Sampling_functions(MixingMatrix):
         new_mixing_matrix = self.get_B(jax_use=True)
         
         # Compute spectral likelihood : (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
-        log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(new_mixing_matrix, jnp.array(full_data_without_CMB))
+        log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(new_mixing_matrix, 
+                                                                                           jnp.array(full_data_without_CMB))
 
         # Compute correction term to the likelihood : (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta)
         if biased_bool:
@@ -1809,8 +1813,9 @@ def separate_single_MH_step_index_v3(random_PRNGKey, old_sample, step_size, log_
         # accept_prob = -(log_proba(carry[1], **model_kwargs) - log_proba(proposal_params, **model_kwargs))
         accept_prob = -(carry['log_proba'] - proposal_log_proba)
 
-        new_param = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, sample_proposal, carry['sample'][indexes_to_consider])
-        new_log_proba = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, proposal_log_proba, carry['log_proba'])
+        log_proba_uniform = jnp.log(dist.Uniform().sample(key_accept))
+        new_param = jnp.where(log_proba_uniform < accept_prob, sample_proposal, carry['sample'][indexes_to_consider])
+        new_log_proba = jnp.where(log_proba_uniform < accept_prob, proposal_log_proba, carry['log_proba'])
 
         proposal_params = proposal_params.at[indexes_to_consider].set(new_param)
         new_carry = {'PRNGKey':rng_key, 'sample':proposal_params, 'log_proba':new_log_proba}
@@ -1835,7 +1840,8 @@ def separate_single_MH_step_index_v3(random_PRNGKey, old_sample, step_size, log_
     # latest_PRNGKey = carry[0]
     latest_PRNGKey = carry['PRNGKey']
     # return latest_PRNGKey, new_sample.reshape(old_sample.shape,order='F')
-    return latest_PRNGKey, jnp.reshape(new_sample, old_sample.shape,order='F')
+    # return latest_PRNGKey, jnp.reshape(new_sample, old_sample.shape,order='F')
+    return latest_PRNGKey, new_sample
 
 def separate_single_MH_step_index_accelerated(random_PRNGKey, old_sample, step_size, log_proba, indexes_Bf, previous_inverse, **model_kwargs):
     
