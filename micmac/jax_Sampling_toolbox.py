@@ -1233,7 +1233,7 @@ class Sampling_functions(MixingMatrix):
             full_data_without_CMB_with_noise = jax.vmap(fmap)(jnp.arange(self.n_components-1))
 
         ## Computation of the spectral likelihood
-        first_term_complete = jnp.einsum('psc,cmp,msp', full_data_without_CMB_with_noise.T, invBtinvNB_fg, full_data_without_CMB_with_noise)
+        first_term_complete = jnp.einsum('csp,cmp,msp', full_data_without_CMB_with_noise, invBtinvNB_fg, full_data_without_CMB_with_noise)
         return -(-first_term_complete + 0)/2.
 
 

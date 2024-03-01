@@ -5,23 +5,23 @@ nside_spv:
     - 0
   f1:
     default:
+    b0:
+      default:
     b1:
       default:
     b2:
       default:
     b3:
-      default:
-    b4:
       default:
   f2:
     default:
      - 0
+    b0:
+      default:
     b1:
       default:
     b2:
       default:
     b3:
-      default:
-    b4:
       default:
 

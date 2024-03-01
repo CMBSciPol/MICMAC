@@ -22,5 +22,6 @@ use_preconditioner = true
 
 name_toml = 'corr_fullsky_SO_v2c.toml' # only 1 patch
 name_file_spv = 'params_spv_SAT_nside1.yaml'
-former_file_ver = ''
-file_ver = 'corr_fullsky_SO_d0s0_nside1_v108_v2c' # only 1 patch
+former_file_ver = 'corr_fullsky_SO_d0s0_nside1_v108_v2c'
+# file_ver = 'corr_fullsky_SO_d0s0_nside1_v108_v2c' # only 1 patch
+file_ver = 'corr_fullsky_SO_d0s0_nside1_v108_v2cb' # only 1 patch
