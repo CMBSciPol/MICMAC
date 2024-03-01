@@ -489,7 +489,7 @@ class MICMAC_Sampler(Sampling_functions):
         #     # assert len(init_params_mixing_matrix.shape) == 2
         #     assert init_params_mixing_matrix.shape[0] == (self.n_frequencies-len(self.pos_special_freqs))
         #     assert init_params_mixing_matrix.shape[1] == (self.n_correlations-1)
-        assert len(init_params_mixing_matrix) == self.len_params
+        assert init_params_mixing_matrix.shape == (self.len_params,)
 
 
         ## Final set of tests
@@ -883,8 +883,9 @@ class MICMAC_Sampler(Sampling_functions):
                 all_samples['params_mixing_matrix_sample'] = new_carry['params_mixing_matrix_sample']
 
                 # Checking the shape of the resulting mixing matrix
-                chx.assert_axis_dimension(new_carry['params_mixing_matrix_sample'], 0, self.n_frequencies-len_pos_special_freqs)
-                chx.assert_axis_dimension(new_carry['params_mixing_matrix_sample'], 1, self.n_correlations-1)
+                # chx.assert_axis_dimension(new_carry['params_mixing_matrix_sample'], 0, self.n_frequencies-len_pos_special_freqs)
+                # chx.assert_axis_dimension(new_carry['params_mixing_matrix_sample'], 1, self.n_correlations-1)
+                chx.assert_shape(new_carry['params_mixing_matrix_sample'], (self.len_params,))
                 # params_mixing_matrix_sample = params_mixing_matrix_sample.reshape((self.n_frequencies-len_pos_special_freqs,n_correlations-1),order='F')
             else:
                 new_carry['params_mixing_matrix_sample'] = carry['params_mixing_matrix_sample']
