@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=corr_spv_fullsky_SO_1a_1nodes
+#SBATCH --job-name=corr_spv_fullsky_SO_0a_1nodes
 #SBATCH --account=nih@cpu          # use CPU allocation
 #SBATCH --qos=qos_cpu-dev          # dev qos (10 jobs, 2h max.)
 #SBATCH --mail-user=magdy.morshed.fr@gmail.com

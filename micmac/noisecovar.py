@@ -24,7 +24,7 @@ def get_noise_covar(depth_p, nside):
 def get_noise_covar_extended(depth_p, nside):
     invN = get_noise_covar(depth_p, nside)
     # invN_extended = np.repeat(invN.ravel(order='F'), 12*nside**2).reshape((invN.shape[0],invN.shape[0],12*nside**2), order='C')
-    invN_extended = np.broadcast_to(invN, (12*MICMAC_sampler_obj.nside**2,invN.shape[0],invN.shape[0])).swapaxes(0,2)
+    invN_extended = np.broadcast_to(invN, (12*nside**2,invN.shape[0],invN.shape[0])).swapaxes(0,2)
     return invN_extended
 
 
