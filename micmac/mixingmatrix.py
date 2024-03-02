@@ -62,7 +62,7 @@ class MixingMatrix():
             except:
                 raise Exception("params must be of dimensions", self.len_params, flush=True)
             
-            self.params = params
+        self.params = params
 
         ### checks on pos_special_freqs
         # check no duplicates

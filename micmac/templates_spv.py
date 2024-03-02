@@ -97,7 +97,7 @@ def create_template_map(spv_nside, nside, use_jax=False, print_bool=False):
         def wrapper_ud_grade(nside_in_):
             nside_in = nside_in_[0]
             if nside_in == 0:
-                map_out = np.ones(12*nside**2)
+                map_out = np.zeros(12*nside**2)
             else:
                 map_in = np.arange(12*nside_in**2)
                 map_out = hp.ud_grade(map_in, nside_out=nside)
@@ -115,7 +115,7 @@ def create_template_map(spv_nside, nside, use_jax=False, print_bool=False):
         # multires case
         ns = spv_nside[0]
         if ns == 0:
-            spv_template = np.ones(12*nside**2)
+            spv_template = np.zeros(12*nside**2)
         else:
             spv_template = hp.ud_grade(np.arange(12*ns**2), nside_out=nside)
     else:
@@ -218,11 +218,6 @@ def get_values_b(nodes_b, n_frequencies, n_components):
     """get default values of b"""
     return np.array([nodes_b[i].children[0].value for i in range((n_frequencies*n_components))])
 
-
-
-
-### Old functions
-### Correct but creating all the templates at once
 def create_one_template_from_bdefaultvalue(nside_b, all_nsides, spv_templates, nside, use_jax=False, print_bool=False):
     try:
         idx = all_nsides.index(nside_b)
@@ -241,6 +236,8 @@ def create_one_template(node, all_nsides, spv_templates, nside, print_bool=False
     return spv_template_b
 
 
+### Old functions
+### Correct but creating all the templates at once
 def create_templates_spv_old(node, nside_out, all_nsides=[], spv_templates=[], print_bool=False):
     """Create templates of spatial variability for all betas
     (it creates all the templates at once and keep them in a list)"""
