@@ -589,12 +589,16 @@ class MICMAC_Sampler(Sampling_functions):
             initial_step_size_Bf = jnp.array(jnp.diag(jsp.linalg.sqrtm(self.covariance_B_f)), dtype=jnp.float64)
         except:
             initial_step_size_Bf = jnp.array(jnp.diag(jnp.sqrt(self.covariance_B_f)), dtype=jnp.float64)
+        assert len(initial_step_size_Bf.shape) == 1
         print('Step-size B_f', initial_step_size_Bf, flush=True)
         if self.covariance_B_f.shape[0] != self.len_params:
             print("Covariance matrix for B_f is not of the right shape !", flush=True)
-            initial_step_size_Bf = jnp.repeat(initial_step_size_Bf, self.len_params//self.covariance_B_f.shape[0], axis=0)
+            # initial_step_size_Bf = jnp.repeat(initial_step_size_Bf, self.len_params//self.covariance_B_f.shape[0], axis=0)
+            initial_step_size_Bf = jnp.broadcast_to(initial_step_size_Bf, 
+                                                    (self.len_params//self.covariance_B_f.shape[0],self.covariance_B_f.shape[0])
+                                                    ).ravel(order='F')
             print('New step-size B_f', initial_step_size_Bf, flush=True)
-            
+
         ## Few prints to re-check the toml parameters chosen
         if not(self.sample_eta_B_f):
             print("Not sampling for eta and B_f, only for s_c and the covariance !", flush=True)

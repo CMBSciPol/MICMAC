@@ -269,7 +269,8 @@ if MICMAC_obj.len_params != step_size_B_f.shape[0]:
     print("Expanding step_size_Bf !!", flush=True)
     # expend_factor = dimension_free_param_B_f//step_size_B_f.shape[0]
     expend_factor = MICMAC_obj.len_params//step_size_B_f.shape[0]
-    step_size_B_f = np.repeat(step_size_B_f, expend_factor)
+    # step_size_B_f = np.repeat(step_size_B_f, expend_factor)
+    step_size_B_f = np.broadcast_to(step_size_B_f, (expend_factor, step_size_B_f.shape[0])).ravel()
 
 np.random.seed(MICMAC_obj.seed)
 first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(

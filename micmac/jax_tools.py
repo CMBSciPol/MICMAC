@@ -41,8 +41,11 @@ def get_reduced_matrix_from_c_ell_jax(c_ells_input):
     elif n_correlations == 4 or n_correlations == 6:
         nstokes = 3
         if n_correlations != 6:
+            # c_ells_array = jnp.vstack(
+            #     (c_ells_array, jnp.repeat(jnp.zeros(lmax_p1), 6 - n_correlations))
+            # )
             c_ells_array = jnp.vstack(
-                (c_ells_array, jnp.repeat(jnp.zeros(lmax_p1), 6 - n_correlations))
+                (c_ells_array, jnp.broadcast_to(jnp.zeros(lmax_p1), (6 - n_correlations,lmax_p1)).ravel(order='F'))
             )
             n_correlations = 6
     else:
