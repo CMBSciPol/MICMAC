@@ -1083,6 +1083,9 @@ class Sampling_functions(MixingMatrix):
 
         # Building the spectral_likelihood : - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
 
+        chx.assert_shape(complete_mixing_matrix, (self.n_frequencies, self.n_components, self.n_pix))
+        chx.assert_shape(full_data_without_CMB, (self.n_frequencies, self.nstokes, self.n_pix))
+
         ## Getting B_fg, mixing matrix part for foregrounds
         complete_mixing_matrix_fg = complete_mixing_matrix[:,1:,:]
 
@@ -1638,6 +1641,43 @@ def separate_single_MH_step_index_v2(random_PRNGKey, old_sample, step_size, log_
     latest_PRNGKey = carry['PRNGKey']
     # return latest_PRNGKey, new_sample.reshape(old_sample.shape,order='F')
     return latest_PRNGKey, jnp.reshape(new_sample, old_sample.shape,order='F')
+
+def separate_single_MH_step_index_v2b(random_PRNGKey, old_sample, step_size, log_proba, indexes_Bf, **model_kwargs):
+        
+    def map_func(carry, index_Bf):
+        rng_key, key_proposal, key_accept = random.split(carry['PRNGKey'], 3)
+
+        sample_proposal = dist.Normal(carry['sample'][index_Bf], step_size[index_Bf]).sample(key_proposal)
+
+        proposal_params = jnp.copy(carry['sample'], order='K')
+        proposal_params = proposal_params.at[index_Bf].set(sample_proposal)
+
+        proposal_log_proba = log_proba(proposal_params, **model_kwargs)
+
+        # accept_prob = -(log_proba(carry[1], **model_kwargs) - log_proba(proposal_params, **model_kwargs))
+        accept_prob = -(carry['log_proba'] - proposal_log_proba)
+        
+        log_proba_uniform = jnp.log(dist.Uniform().sample(key_accept))
+        new_param = jnp.where(log_proba_uniform < accept_prob, sample_proposal, carry['sample'][index_Bf])
+        new_log_proba = jnp.where(log_proba_uniform < accept_prob, proposal_log_proba, carry['log_proba'])
+
+        proposal_params = proposal_params.at[index_Bf].set(new_param)
+        new_carry = {'PRNGKey':rng_key, 'sample':proposal_params, 'log_proba':new_log_proba}
+        return new_carry, new_param
+        # return (rng_key, proposal_params), new_param
+
+    initial_carry = {'PRNGKey':random_PRNGKey, 
+                     'sample':old_sample, 
+                     'log_proba':log_proba(old_sample, **model_kwargs)}
+    # carry, new_params = jlax.scan(map_func, (random_PRNGKey, jnp.ravel(old_sample,order='F')), indexes_Bf)
+    carry, new_params = jlax.scan(map_func, initial_carry, indexes_Bf)
+    new_sample = jnp.copy(old_sample, order='K')
+    new_sample = new_sample.at[indexes_Bf].set(new_params)
+
+    # latest_PRNGKey = carry[0]
+    latest_PRNGKey = carry['PRNGKey']
+    # return latest_PRNGKey, new_sample.reshape(old_sample.shape,order='F')
+    return latest_PRNGKey, new_sample
 
 def separate_single_MH_step_index_v3(random_PRNGKey, old_sample, step_size, log_proba, indexes_Bf, indexes_patches_Bf, size_patches, max_len_patches_Bf, len_indexes_Bf, **model_kwargs):
     """  

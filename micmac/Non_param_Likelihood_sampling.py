@@ -568,7 +568,8 @@ class MICMAC_Sampler(Sampling_functions):
             # jitted_Bf_func_sampling = jax.jit(self.get_biased_conditional_proba_mixing_matrix_v2_JAX)
             jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_JAX, static_argnames=['biased_bool'])
             # sampling_func = separate_single_MH_step_index
-            sampling_func = separate_single_MH_step_index_v2
+            # sampling_func = separate_single_MH_step_index_v2
+            sampling_func = separate_single_MH_step_index_v2b
 
             if self.use_uncorrelated_patches:
                 print("Using uncorrelated patches version of mixing matrix sampling !!!", flush=True)
