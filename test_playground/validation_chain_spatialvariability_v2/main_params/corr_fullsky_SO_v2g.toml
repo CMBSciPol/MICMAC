@@ -1,8 +1,8 @@
 # [Quick_test_parameters]
 sample_eta_B_f = true
 biased_version = false
-cheap_save = true
-very_cheap_save = true
+cheap_save = false
+very_cheap_save = false
 # use_automatic_step_size = false
 # lognormal_r = false
 # indexes_free_Bf = false
