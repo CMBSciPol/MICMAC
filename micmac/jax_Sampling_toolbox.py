@@ -1671,9 +1671,10 @@ def separate_single_MH_step_index_v2b(random_PRNGKey, old_sample, step_size, log
                      'sample':old_sample, 
                      'log_proba':log_proba(old_sample, **model_kwargs)}
     # carry, new_params = jlax.scan(map_func, (random_PRNGKey, jnp.ravel(old_sample,order='F')), indexes_Bf)
-    carry, new_params = jlax.scan(map_func, initial_carry, indexes_Bf)
-    new_sample = jnp.copy(old_sample, order='K')
-    new_sample = new_sample.at[indexes_Bf].set(new_params)
+    last_carry, new_params = jlax.scan(map_func, initial_carry, indexes_Bf)
+    # new_sample = jnp.copy(old_sample, order='K')
+    # new_sample = new_sample.at[indexes_Bf].set(new_params)
+    new_sample = jnp.copy(last_carry['sample'], order='K')
 
     # latest_PRNGKey = carry[0]
     latest_PRNGKey = carry['PRNGKey']
