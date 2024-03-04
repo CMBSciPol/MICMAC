@@ -53,6 +53,7 @@ class MICMAC_Sampler(Sampling_functions):
                  r_true=0,
                  sample_eta_B_f=True,
                  sample_r_Metropolis=True, sample_C_inv_Wishart=False,
+                 fixed_r_value=False,
                  step_size_r=1e-4,
                  covariance_B_f=-1,
                  indexes_free_Bf=False,
@@ -99,6 +100,7 @@ class MICMAC_Sampler(Sampling_functions):
         self.use_uncorrelated_patches = bool(use_uncorrelated_patches)
         self.use_binning = bool(use_binning)
         self.acceptance_posdef = bool(acceptance_posdef)
+        self.fixed_r_value = bool(fixed_r_value)
 
         # CMB parameters
         self.r_true = float(r_true)
@@ -812,11 +814,14 @@ class MICMAC_Sampler(Sampling_functions):
 
             elif self.sample_r_Metropolis:
                 # Sampling r which will parametrize C(r) = C_scalar + r*C_tensor
-                new_carry['r_sample'] = r_sampling_MH(random_PRNGKey=new_subPRNGKey_2, old_sample=carry['r_sample'],
-                                                          step_size=self.step_size_r, log_proba=self.get_conditional_proba_C_from_r, 
-                                                          red_sigma_ell=red_c_ells_Wishart_modified, 
-                                                          theoretical_red_cov_r1_tensor=theoretical_red_cov_r1_tensor, 
-                                                          theoretical_red_cov_r0_total=theoretical_red_cov_r0_total)
+                if self.fixed_r_value:
+                    new_carry['r_sample'] = self.r_true
+                else:
+                    new_carry['r_sample'] = r_sampling_MH(random_PRNGKey=new_subPRNGKey_2, old_sample=carry['r_sample'],
+                                                            step_size=self.step_size_r, log_proba=self.get_conditional_proba_C_from_r, 
+                                                            red_sigma_ell=red_c_ells_Wishart_modified, 
+                                                            theoretical_red_cov_r1_tensor=theoretical_red_cov_r1_tensor, 
+                                                            theoretical_red_cov_r0_total=theoretical_red_cov_r0_total)
 
                 new_carry['red_cov_matrix_sample'] = theoretical_red_cov_r0_total + new_carry['r_sample']*theoretical_red_cov_r1_tensor
                 all_samples['r_sample'] = new_carry['r_sample']
