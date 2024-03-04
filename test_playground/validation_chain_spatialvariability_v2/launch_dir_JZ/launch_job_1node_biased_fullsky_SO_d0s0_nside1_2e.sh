@@ -40,8 +40,8 @@ export OMP_PLACES=cores
 
 # export VER=biased_fullsky_SO_d0s0_nside1_v108_v2e
 # export additional_config_file=add_biased_fullsky_SO_d0s0_nside1_v2e.toml
-export VER=biased_fullsky_SO_d0s0_nside1_v108_v2fb
-export additional_config_file=add_biased_fullsky_SO_d0s0_nside1_v2fb.toml
+export VER=biased_fullsky_SO_d0s0_nside1_v108_v2h
+export additional_config_file=add_biased_fullsky_SO_d0s0_nside1_v2h.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_spatialvariability_v2
 
