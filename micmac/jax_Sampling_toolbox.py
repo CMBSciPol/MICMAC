@@ -1677,7 +1677,7 @@ def separate_single_MH_step_index_v2b(random_PRNGKey, old_sample, step_size, log
     new_sample = jnp.copy(last_carry['sample'], order='K')
 
     # latest_PRNGKey = carry[0]
-    latest_PRNGKey = carry['PRNGKey']
+    latest_PRNGKey = last_carry['PRNGKey']
     # return latest_PRNGKey, new_sample.reshape(old_sample.shape,order='F')
     return latest_PRNGKey, new_sample
 
