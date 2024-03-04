@@ -1085,6 +1085,7 @@ class Sampling_functions(MixingMatrix):
 
         chx.assert_shape(complete_mixing_matrix, (self.n_frequencies, self.n_components, self.n_pix))
         chx.assert_shape(full_data_without_CMB, (self.n_frequencies, self.nstokes, self.n_pix))
+        chx.assert_shape(self.freq_inverse_noise, (self.n_frequencies, self.n_frequencies, self.n_pix))
 
         ## Getting B_fg, mixing matrix part for foregrounds
         complete_mixing_matrix_fg = complete_mixing_matrix[:,1:,:]

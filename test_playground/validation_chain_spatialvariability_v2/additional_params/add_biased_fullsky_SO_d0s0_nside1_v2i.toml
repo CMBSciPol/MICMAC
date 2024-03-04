@@ -20,7 +20,7 @@ name_mask = ''
 use_mask = false
 use_preconditioner = true
 
-name_toml = 'biased_fullsky_SO_v2h.toml' # only 1 patch
+name_toml = 'biased_fullsky_SO_v2i.toml' # only 1 patch
 name_file_spv = 'params_spv_SAT_nside1.yaml'
 former_file_ver = ''
-file_ver = 'biased_fullsky_SO_d0s0_nside1_v108_v2h' # only 1 patch
+file_ver = 'biased_fullsky_SO_d0s0_nside1_v108_v2i' # only 1 patch

@@ -834,7 +834,8 @@ class MICMAC_Sampler(Sampling_functions):
 
             ## Preparation of sampling step 4
 
-            full_data_without_CMB = input_freq_maps - jnp.einsum('f,sp->fsp', jnp.ones(self.n_frequencies), s_c_sample)
+            # full_data_without_CMB = input_freq_maps - jnp.einsum('f,sp->fsp', jnp.ones(self.n_frequencies), s_c_sample)
+            full_data_without_CMB = input_freq_maps - jnp.broadcast_to(s_c_sample, (self.n_frequencies, self.nstokes, self.n_pix))
             chx.assert_shape(full_data_without_CMB, (self.n_frequencies, self.nstokes, self.n_pix))
 
             ## Preparing the new PRNGKey
