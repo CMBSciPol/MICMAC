@@ -815,7 +815,7 @@ class MICMAC_Sampler(Sampling_functions):
             elif self.sample_r_Metropolis:
                 # Sampling r which will parametrize C(r) = C_scalar + r*C_tensor
                 if self.fixed_r_value:
-                    new_carry['r_sample'] = self.r_true
+                    new_carry['r_sample'] = jnp.expand_dims(jnp.array(self.r_true), axis=0)
                 else:
                     new_carry['r_sample'] = r_sampling_MH(random_PRNGKey=new_subPRNGKey_2, old_sample=carry['r_sample'],
                                                             step_size=self.step_size_r, log_proba=self.get_conditional_proba_C_from_r, 
