@@ -38,8 +38,8 @@ export OMP_PLACES=cores
 
 
 
-export VER=corr_fullsky_SO_d0s0_nside1_v108_v2d
-export additional_config_file=add_corr_fullsky_SO_d0s0_nside1_v2d.toml
+export VER=corr_fullsky_SO_d0s0_nside1_v108_v2j
+export additional_config_file=add_corr_fullsky_SO_d0s0_nside1_v2j.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_spatialvariability_v2
 
