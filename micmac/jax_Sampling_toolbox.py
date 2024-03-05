@@ -1097,7 +1097,7 @@ class Sampling_functions(MixingMatrix):
         if suppress_low_modes:
             def fmap(index):
                 return self.get_band_limited_maps(full_data_without_CMB[index])
-            full_data_without_CMB = jax.vmap(fmap)(jnp.arange(self.n_components-1))
+            full_data_without_CMB = jax.vmap(fmap)(jnp.arange(self.n_frequencies))
 
         full_data_without_CMB_with_noise = jnp.einsum('cfp,fsp->csp', BtinvN_fg, full_data_without_CMB)
         # if suppress_low_modes:
