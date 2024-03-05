@@ -506,10 +506,12 @@ class MICMAC_Sampler(Sampling_functions):
         # Preparing for the full Gibbs sampling
         len_pos_special_freqs = len(self.pos_special_freqs)
 
+        input_freq_maps_ = jnp.array(input_freq_maps)
         if suppress_low_modes_input_freq_maps:
             def fmap(index):
-                return self.get_band_limited_maps(input_freq_maps[index])
-            input_freq_maps = jnp.copy(jax.vmap(fmap)(jnp.arange(self.n_frequencies)))
+                return self.get_band_limited_maps(input_freq_maps_[index])
+            input_freq_maps = jax.vmap(fmap)(jnp.arange(self.n_frequencies))
+        del input_freq_maps_
 
         ## Initial guesses
         initial_eta = jnp.zeros((self.nstokes,self.n_pix))
