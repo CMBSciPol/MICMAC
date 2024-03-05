@@ -987,7 +987,8 @@ def create_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv=''):
     if dictionary_parameters['instrument_name'] != 'customized_instrument':
         instrument = fgbuster.get_instrument(dictionary_parameters['instrument_name'])
         dictionary_parameters['frequency_array'] = jnp.array(instrument['frequency'])
-        dictionary_parameters['freq_inverse_noise'] = get_noise_covar(instrument['depth_p'], dictionary_parameters['nside'])
+        # dictionary_parameters['freq_inverse_noise'] = get_noise_covar(instrument['depth_p'], dictionary_parameters['nside'])
+        dictionary_parameters['freq_inverse_noise'] = get_noise_covar_extended(instrument['depth_p'], dictionary_parameters['nside'])
 
     ### Spatial variability params
     n_fgs_comp = dictionary_parameters['n_components']-1
