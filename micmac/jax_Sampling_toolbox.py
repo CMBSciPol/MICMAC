@@ -1100,7 +1100,7 @@ class Sampling_functions(MixingMatrix):
                 return self.get_band_limited_maps(full_data_without_CMB_with_noise[index])
             full_data_without_CMB_with_noise = jax.vmap(fmap)(jnp.arange(self.n_components-1))
 
-        chx.assert_shape(full_datfull_data_without_CMB_with_noisea_without_CMB, (self.n_components-1, self.nstokes, self.n_pix))
+        chx.assert_shape(full_data_without_CMB_with_noise, (self.n_components-1, self.nstokes, self.n_pix))
 
         ## Computation of the spectral likelihood
         first_term_complete = jnp.einsum('csp,cmp,msp', full_data_without_CMB_with_noise, invBtinvNB_fg, full_data_without_CMB_with_noise)
