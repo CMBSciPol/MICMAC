@@ -1652,7 +1652,7 @@ def separate_single_MH_step_index_v2b(random_PRNGKey, old_sample, step_size, log
 
         sample_proposal = dist.Normal(carry['sample'][index_Bf], step_size[index_Bf]).sample(key_proposal)
         chx.assert_equal_shape((sample_proposal, carry['sample'][index_Bf]))
-        chx.assert_shape(sample_proposal, (1,))
+        chx.assert_scalar(sample_proposal)
 
         proposal_params = jnp.copy(carry['sample'], order='K')
         proposal_params = proposal_params.at[index_Bf].set(sample_proposal)
@@ -1661,8 +1661,8 @@ def separate_single_MH_step_index_v2b(random_PRNGKey, old_sample, step_size, log
 
         # accept_prob = -(log_proba(carry[1], **model_kwargs) - log_proba(proposal_params, **model_kwargs))
         accept_prob = -(carry['log_proba'] - proposal_log_proba)
-        chx.assert_shape(carry['log_proba'], (1,))
-        chx.assert_shape(proposal_log_proba, (1,))
+        chx.assert_scalar(carry['log_proba'])
+        chx.assert_scalar(proposal_log_proba)
         
         log_proba_uniform = jnp.log(dist.Uniform().sample(key_accept))
         new_param = jnp.where(log_proba_uniform < accept_prob, sample_proposal, carry['sample'][index_Bf])
