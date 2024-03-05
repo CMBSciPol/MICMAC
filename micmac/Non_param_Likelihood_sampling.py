@@ -32,14 +32,12 @@ class MICMAC_Sampler(Sampling_functions):
                  frequency_array, freq_inverse_noise, pos_special_freqs=[0,-1],
                  freq_noise_c_ell=None,
                  n_components=3, lmin=2,
-                 lmin_r=-1, lmax_r=-1,
                  n_iter=8, limit_iter_cg=2000, tolerance_CG=1e-10, atol_CG=1e-8,
                  limit_iter_cg_eta=200,
                  mask=None,
                  use_automatic_step_size=False, num_sample_AM = 100000000, 
                  epsilon_cov = 1e-20, scale_param = 2.38**2,
 
-                 restrict_to_mask=True,
                  bin_ell_distribution=None,
                  perturbation_eta_covariance=False,
                  use_uncorrelated_patches=False,
@@ -67,13 +65,12 @@ class MICMAC_Sampler(Sampling_functions):
         """
 
         super(MICMAC_Sampler,self).__init__(nside=nside,lmax=lmax,nstokes=nstokes,lmin=lmin,
-                                            lmin_r=lmin_r, lmax_r=lmax_r,
                                             frequency_array=frequency_array,freq_inverse_noise=freq_inverse_noise, 
                                             spv_nodes_b=spv_nodes_b,
                                             pos_special_freqs=pos_special_freqs,n_components=n_components,
                                             n_iter=n_iter, limit_iter_cg=limit_iter_cg, limit_iter_cg_eta=limit_iter_cg_eta, 
                                             tolerance_CG=tolerance_CG, atol_CG=atol_CG, 
-                                            mask=mask, restrict_to_mask=restrict_to_mask, bin_ell_distribution=bin_ell_distribution)
+                                            mask=mask, bin_ell_distribution=bin_ell_distribution)
 
         # Quick test parameters
         self.instrument_name = instrument_name
