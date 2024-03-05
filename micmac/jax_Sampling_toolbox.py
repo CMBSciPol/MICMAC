@@ -1094,11 +1094,16 @@ class Sampling_functions(MixingMatrix):
         BtinvN_fg = get_BtinvN(self.freq_inverse_noise, complete_mixing_matrix_fg, jax_use=True)
 
         ## Prepraring the data without CMB
-        full_data_without_CMB_with_noise = jnp.einsum('cfp,fsp->csp', BtinvN_fg, full_data_without_CMB)
         if suppress_low_modes:
             def fmap(index):
-                return self.get_band_limited_maps(full_data_without_CMB_with_noise[index])
-            full_data_without_CMB_with_noise = jax.vmap(fmap)(jnp.arange(self.n_components-1))
+                return self.get_band_limited_maps(full_data_without_CMB[index])
+            full_data_without_CMB = jax.vmap(fmap)(jnp.arange(self.n_components-1))
+
+        full_data_without_CMB_with_noise = jnp.einsum('cfp,fsp->csp', BtinvN_fg, full_data_without_CMB)
+        # if suppress_low_modes:
+        #     def fmap(index):
+        #         return self.get_band_limited_maps(full_data_without_CMB_with_noise[index])
+        #     full_data_without_CMB_with_noise = jax.vmap(fmap)(jnp.arange(self.n_components-1))
 
         chx.assert_shape(full_data_without_CMB_with_noise, (self.n_components-1, self.nstokes, self.n_pix))
 
@@ -1360,7 +1365,8 @@ class Sampling_functions(MixingMatrix):
                                                     component_eta_maps=None,
                                                     previous_inverse=None, 
                                                     biased_bool=False,
-                                                    precond_func=None):
+                                                    precond_func=None,
+                                                    suppress_low_modes=True):
         """ Get conditional probability of the conditional probability associated with the B_f parameters
 
             The associated conditional probability is given by : 
@@ -1387,7 +1393,8 @@ class Sampling_functions(MixingMatrix):
         
         # Compute spectral likelihood : (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
         log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(new_mixing_matrix, 
-                                                                                           full_data_without_CMB)
+                                                                                           full_data_without_CMB,
+                                                                                           suppress_low_modes=suppress_low_modes)
 
         # Compute correction term to the likelihood : (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta)
         if biased_bool:
