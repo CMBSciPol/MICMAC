@@ -41,7 +41,6 @@ class MICMAC_Sampler(Sampling_functions):
 
                  restrict_to_mask=True,
                  bin_ell_distribution=None,
-                 use_old_s_c_sampling=False,
                  perturbation_eta_covariance=False,
                  use_uncorrelated_patches=False,
 
@@ -407,7 +406,8 @@ class MICMAC_Sampler(Sampling_functions):
 
     def perform_Gibbs_sampling(self, input_freq_maps, c_ell_approx, CMB_c_ell, init_params_mixing_matrix, 
                          initial_guess_r=0, initial_wiener_filter_term=jnp.empty(0), initial_fluctuation_maps=jnp.empty(0),
-                         theoretical_r0_total=jnp.empty(0), theoretical_r1_tensor=jnp.empty(0)):
+                         theoretical_r0_total=jnp.empty(0), theoretical_r1_tensor=jnp.empty(0),
+                         suppress_low_modes_input_freq_maps=True):
         """ Perform sampling steps with :
                 1. A CG on variable eta for (S_approx + mixed_noise) eta = S_approx^(1/2) x + E^t (B^t N^{-1} B)^{-1} E noise^(1/2) y
                 2. A CG for the Wiener filter variable s_c : (s_c - s_c,ML)^t (S_c + E^t (B^t N^{-1} B)^{-1} E) (s_c - s_c,ML)
@@ -502,11 +502,17 @@ class MICMAC_Sampler(Sampling_functions):
 
         assert len(input_freq_maps.shape) == 3
         assert input_freq_maps.shape == (self.n_frequencies, self.nstokes, self.n_pix)
+
         # assert input_freq_maps.shape[1] == self.nstokes
         # assert input_freq_maps.shape[2] == self.n_pix
 
         # Preparing for the full Gibbs sampling
         len_pos_special_freqs = len(self.pos_special_freqs)
+
+        if suppress_low_modes_input_freq_maps:
+            def fmap(index):
+                return self.get_band_limited_maps(input_freq_maps[index])
+            input_freq_maps = jnp.copy(jax.vmap(fmap)(jnp.arange(self.n_frequencies)))
 
         ## Initial guesses
         initial_eta = jnp.zeros((self.nstokes,self.n_pix))

@@ -8,8 +8,8 @@ very_cheap_save = true
 # indexes_free_Bf = false
 indexes_free_Bf = [0,12,24,36,48,60,72,84]
 disable_chex = false
-restrict_to_mask = true
-use_old_s_c_sampling = false
+# restrict_to_mask = true
+# use_old_s_c_sampling = false
 # fixed_eta_covariance = false
 perturbation_eta_covariance = true
 use_uncorrelated_patches = true
@@ -51,6 +51,6 @@ step_size_r = 1e-3 #1e-4 #1e-5 ???
 
 # [Sampling_parameters]
 # overrelax = 0 #-0.995 # Overrelaxation parameter for the sampling
-number_iterations_sampling = 1500 # Maximum number of iterations for the sampling
+number_iterations_sampling = 700 # Maximum number of iterations for the sampling
 number_iterations_done = 0 # Number of iterations already accomplished, in case the chain is resuming from a previous run
 seed = 42
