@@ -488,8 +488,8 @@ class Sampling_functions(MixingMatrix):
         right_member_2_part = jnp.einsum('kcp,cfp,fsp->ksp', invBtinvNB, BtinvN_sqrt, map_random_realization_chi)[0]*N_c_inv # [0] for selecting CMB component of the random variable
         right_member_2 = maps_x_red_covariance_cell_JAX(right_member_2_part, red_cov_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
 
-        # right_member = (right_member_1 + right_member_2).ravel()
-        right_member = self.get_band_limited_maps(right_member_1 + right_member_2).ravel()
+        right_member = (right_member_1 + right_member_2).ravel()
+        # right_member = self.get_band_limited_maps(right_member_1 + right_member_2).ravel()
 
         # Computation of the left side member of the CG
 
