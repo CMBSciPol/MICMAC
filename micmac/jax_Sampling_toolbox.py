@@ -1100,6 +1100,8 @@ class Sampling_functions(MixingMatrix):
                 return self.get_band_limited_maps(full_data_without_CMB_with_noise[index])
             full_data_without_CMB_with_noise = jax.vmap(fmap)(jnp.arange(self.n_components-1))
 
+        chx.assert_shape(full_datfull_data_without_CMB_with_noisea_without_CMB, (self.n_components-1, self.nstokes, self.n_pix))
+
         ## Computation of the spectral likelihood
         first_term_complete = jnp.einsum('csp,cmp,msp', full_data_without_CMB_with_noise, invBtinvNB_fg, full_data_without_CMB_with_noise)
         return -(-first_term_complete + 0)/2.
@@ -1649,6 +1651,8 @@ def separate_single_MH_step_index_v2b(random_PRNGKey, old_sample, step_size, log
         rng_key, key_proposal, key_accept = random.split(carry['PRNGKey'], 3)
 
         sample_proposal = dist.Normal(carry['sample'][index_Bf], step_size[index_Bf]).sample(key_proposal)
+        chx.assert_equal_shape(sample_proposal, carry['sample'][index_Bf])
+        chx.assert_shape(sample_proposal, (1,))
 
         proposal_params = jnp.copy(carry['sample'], order='K')
         proposal_params = proposal_params.at[index_Bf].set(sample_proposal)
@@ -1657,6 +1661,8 @@ def separate_single_MH_step_index_v2b(random_PRNGKey, old_sample, step_size, log
 
         # accept_prob = -(log_proba(carry[1], **model_kwargs) - log_proba(proposal_params, **model_kwargs))
         accept_prob = -(carry['log_proba'] - proposal_log_proba)
+        chx.assert_shape(carry['log_proba'], (1,))
+        chx.assert_shape(proposal_log_proba, (1,))
         
         log_proba_uniform = jnp.log(dist.Uniform().sample(key_accept))
         new_param = jnp.where(log_proba_uniform < accept_prob, sample_proposal, carry['sample'][index_Bf])
@@ -1666,6 +1672,8 @@ def separate_single_MH_step_index_v2b(random_PRNGKey, old_sample, step_size, log
         new_carry = {'PRNGKey':rng_key, 'sample':proposal_params, 'log_proba':new_log_proba}
         return new_carry, new_param
         # return (rng_key, proposal_params), new_param
+
+    chx.assert_equal_shape((old_sample, step_size))
 
     initial_carry = {'PRNGKey':random_PRNGKey, 
                      'sample':old_sample, 
