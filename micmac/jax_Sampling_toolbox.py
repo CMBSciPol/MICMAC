@@ -714,7 +714,7 @@ class Sampling_functions(MixingMatrix):
             -------
             :return: log-proba of C parametrized by r_param
         """
-        chx.assert_equal_shape(red_sigma_ell, red_cov_matrix_sampled)
+        chx.assert_equal_shape((red_sigma_ell, red_cov_matrix_sampled))
 
         # Getting determinant of the covariance matrix
         sum_dets = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(jnp.linalg.det(red_cov_matrix_sampled)) ).sum()
@@ -1651,7 +1651,7 @@ def separate_single_MH_step_index_v2b(random_PRNGKey, old_sample, step_size, log
         rng_key, key_proposal, key_accept = random.split(carry['PRNGKey'], 3)
 
         sample_proposal = dist.Normal(carry['sample'][index_Bf], step_size[index_Bf]).sample(key_proposal)
-        chx.assert_equal_shape(sample_proposal, carry['sample'][index_Bf])
+        chx.assert_equal_shape((sample_proposal, carry['sample'][index_Bf]))
         chx.assert_shape(sample_proposal, (1,))
 
         proposal_params = jnp.copy(carry['sample'], order='K')
