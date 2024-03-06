@@ -254,7 +254,7 @@ class Sampling_functions(MixingMatrix):
             # If no random maps are provided, then it is computed within the routine
             print("Recalculating chi !")
             def fmap(random_key):
-                random_map = jax.random.normal(random_key, shape=(self.nstokes,self.n_pix))#/jhp.nside2resol(nside)
+                random_map = jax.random.normal(random_key, shape=(self.nstokes,self.n_pix))
                 # return self.get_band_limited_maps(random_map)
                 return random_map
             map_random_realization_chi = jax.vmap(fmap)(jnp.array(jax_key_PNRG_chi)) # Generating a different random Gaussian map for each frequency
