@@ -183,8 +183,8 @@ class Sampling_functions(MixingMatrix):
 
         # Getting final solution : C_approx^(1/2) ( N_c^{-1/2} x + C_approx^(-1/2) y)
 
-        full_first_member = maps_x_red_covariance_cell_JAX(first_member, red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
         ## First getting the full first member C_approx^(1/2) N_c^{-1/2} x
+        full_first_member = maps_x_red_covariance_cell_JAX(first_member, red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
 
         ## The second member is simply C_approx^(1/2) C_approx^(-1/2) y
 
@@ -208,10 +208,10 @@ class Sampling_functions(MixingMatrix):
         """ Sampling step 2 : fluctuating term
 
             Solve fluctuation term:
-            (Id + C^{1/2} N_c^{-1} C^{1/2}) C^{-1/2} \zeta = xi + C^{1/2} N_c^{-1/2} \chi
+                (Id + C^{1/2} N_c^{-1} C^{1/2}) C^{-1/2} \zeta = xi + C^{1/2} N_c^{-1/2} \chi
 
             Or, fully developped:
-            (Id + C^{1/2} (E^t (B^t N^{-1} B)^{-1} E)^{-1} C^{1/2}) \zeta = C^{1/2} C^{-1/2} xi + C^{1/2} (E^t (B^t N^{-1} B)^{-1} E)^{-1} E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2} \chi
+                (Id + C^{1/2} (E^t (B^t N^{-1} B)^{-1} E)^{-1} C^{1/2}) \zeta = C^{1/2} C^{-1/2} xi + C^{1/2} (E^t (B^t N^{-1} B)^{-1} E)^{-1} E^t (B^t N^{-1} B)^{-1} B^t N^{-1/2} \chi
 
             This ensures:
             <\zeta \zeta^t> = (C^{-1} + N_c^{-1})^{-1}
@@ -242,7 +242,7 @@ class Sampling_functions(MixingMatrix):
         chx.assert_axis_dimension(BtinvN_sqrt, 2, self.n_pix)
 
         jax_key_PNRG, jax_key_PNRG_xi = random.split(jax_key_PNRG) # Splitting of the random key to generate a new one
-        
+
         # Creation of the random maps if they are not given
         if map_random_realization_xi is None:
             # If no random maps are provided, then it is computed within the routine
@@ -255,7 +255,8 @@ class Sampling_functions(MixingMatrix):
             print("Recalculating chi !")
             def fmap(random_key):
                 random_map = jax.random.normal(random_key, shape=(self.nstokes,self.n_pix))#/jhp.nside2resol(nside)
-                return self.get_band_limited_maps(random_map)
+                # return self.get_band_limited_maps(random_map)
+                return random_map
             map_random_realization_chi = jax.vmap(fmap)(jnp.array(jax_key_PNRG_chi)) # Generating a different random Gaussian map for each frequency
 
             chx.assert_shape(map_random_realization_chi, (self.n_frequencies, self.nstokes, self.n_pix))
@@ -278,8 +279,8 @@ class Sampling_functions(MixingMatrix):
         right_member_2 = maps_x_red_covariance_cell_JAX(right_member_2_part, red_cov_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
         # Then apply C^{1/2} to N_c^{-1/2} \chi
 
-        right_member = (right_member_1 + right_member_2).ravel()
-        # right_member = self.get_band_limited_maps(right_member_1 + right_member_2).ravel()
+        # right_member = (right_member_1 + right_member_2).ravel()
+        right_member = self.get_band_limited_maps(right_member_1 + right_member_2).ravel()
 
         # Computation of the left side member of the equation
 
@@ -310,9 +311,15 @@ class Sampling_functions(MixingMatrix):
                                                                     right_member.ravel(), 
                                                                     x0=initial_guess.ravel(), 
                                                                     tol=self.tolerance_CG,
-                                                                    atol=self.atol_CG,
                                                                     maxiter=self.limit_iter_cg, 
                                                                     M=precond_func)
+        # fluctuating_map_z, number_iterations = jsp.sparse.linalg.cg(func_left_term, 
+        #                                                             right_member.ravel(), 
+        #                                                             x0=initial_guess.ravel(), 
+        #                                                             tol=self.tolerance_CG,
+        #                                                             atol=self.atol_CG,
+        #                                                             maxiter=self.limit_iter_cg, 
+        #                                                             M=precond_func)
         ## Computing the term C^{-1/2} \zeta
 
         # solution = lx.linear_solve(func_lineax, right_member.ravel(), solver=CG_obj, throw=False, options=options_dict)
@@ -878,7 +885,7 @@ class Sampling_functions(MixingMatrix):
         chx.assert_shape(full_data_without_CMB, (self.n_frequencies, self.nstokes, self.n_pix))
         chx.assert_shape(self.freq_inverse_noise, (self.n_frequencies, self.n_frequencies, self.n_pix))
 
-        ## Getting B_fg, mixing matrix part for foregrounds
+        ## Getting B_fg, foreground part of the mixing matrix
         complete_mixing_matrix_fg = complete_mixing_matrix[:,1:,:]
 
         # Computing (B_f^t N^{-1} B_f)^{-1}
@@ -900,7 +907,7 @@ class Sampling_functions(MixingMatrix):
                                                             invBtinvNB_, 
                                                             component_eta_maps, 
                                                             red_cov_approx_matrix_sqrt, 
-                                                            previous_inverse=None, 
+                                                            first_guess=None, 
                                                             return_inverse=False,
                                                             precond_func=None):
         """ Get conditional probability of correction term in the likelihood from the full mixing matrix
@@ -915,7 +922,7 @@ class Sampling_functions(MixingMatrix):
             :param invBtinvNB_: pixel covariance matrix (B^t N^{-1} B)^{-1}, of dimension [component, component, n_pix]
             :param component_eta_maps: set of eta maps of dimension [component, n_pix]            
             :param red_cov_approx_matrix_sqrt: square root of the approximate covariance matrix, of dimension [component, component, n_pix]
-            :param previous_inverse: previous inverse term to be used as initial guess for the CG algorithm, of dimension [component, n_pix]
+            :param first_guess: initial guess for the CG algorithm, of dimension [component, n_pix]
             :param return_inverse: boolean to return the inverse term or not (default is False)
             :param precond_func: preconditioning function to be used in the CG algorithm
 
@@ -950,8 +957,8 @@ class Sampling_functions(MixingMatrix):
 
         ## Preparation of the initial guess
         initial_guess = jnp.copy(component_eta_maps)
-        if previous_inverse is not None:
-            initial_guess = jnp.copy(previous_inverse)
+        if first_guess is not None:
+            initial_guess = jnp.copy(first_guess)
 
         ## Preparation of the right member of the CG
         right_member = component_eta_maps
@@ -992,7 +999,7 @@ class Sampling_functions(MixingMatrix):
         """ Get conditional probability of correction term in the likelihood from the full mixing matrix,
             assuming the difference between the old and new mixing matrix is small
 
-            The associated conditional probability is given by: 
+            With notation C_approx instead of \tilde{C}, the associated conditional probability is given by: 
                 - (\eta ^t ( Id + C_approx^{1/2} N_c^{-1} C_approx^{1/2} )^{-1} \eta
             Or:
                 - (\eta^t ( Id + C_approx^{1/2} (E^t (B^t N^{-1} B)^{-1} E)^{-1} C_approx^{1/2}) \eta
@@ -1018,62 +1025,59 @@ class Sampling_functions(MixingMatrix):
             :param inverse_term: previous inverse term computed with N_{c,old}, of dimension [component, n_pix]
             :param component_eta_maps: set of eta maps of dimension [component, n_pix]
             :param red_cov_approx_matrix: covariance matrice approx (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+            :param inverse_term_x_Capprox_root: optional, C_approx^{1/2} A^{-1} eta, of dimension [component, n_pix] (otherwise it will be recomputed here)
 
             Returns
             -------
-            :return: computation of correction term to the likelihood
+            :return: computation of the log-proba of the correction term to the likelihood
         """
 
+        ## Retrieving the mixing matrix B_{old} from the old set of parameters
         self.update_params(old_params_mixing_matrix, jax_use=True)
         old_mixing_matrix = self.get_B(jax_use=True)
+        
 
-        # self.update_params(new_params_mixing_matrix.reshape(old_params_mixing_matrix.shape,order='F'), jax_use=True)
+        ## Retrieving the mixing matrix B_{new} from the new set of parameters
         self.update_params(new_params_mixing_matrix, jax_use=True)
         new_mixing_matrix = self.get_B(jax_use=True)
 
-        ## Preparing the mixing matrix and C_approx^{-1/2}
+        ## Preparing both mixing matrix
         old_invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, old_mixing_matrix, jax_use=True)*jhp.nside2resol(self.nside)**2
         new_invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, new_mixing_matrix, jax_use=True)*jhp.nside2resol(self.nside)**2
 
+        ## Preparing N_c^{-1} for both mixing matrix
         old_N_c_inv = jnp.zeros_like(old_invBtinvNB[0,0])
         old_N_c_inv = old_N_c_inv.at[...,self.mask!=0].set(1/old_invBtinvNB[0,0,self.mask!=0])
-        # old_N_c_inv_repeat = jnp.repeat(old_N_c_inv.ravel(order='C'), self.nstokes).reshape((self.nstokes,self.n_pix), order='F').ravel()
         old_N_c_inv_repeat = jnp.broadcast_to(old_N_c_inv, (self.nstokes,self.n_pix)).ravel()
 
         new_N_c_inv = jnp.zeros_like(new_invBtinvNB[0,0])
         new_N_c_inv = new_N_c_inv.at[...,self.mask!=0].set(1/new_invBtinvNB[0,0,self.mask!=0])
-        # new_N_c_inv_repeat = jnp.repeat(new_N_c_inv.ravel(order='C'), self.nstokes).reshape((self.nstokes,self.n_pix), order='F').ravel()
         new_N_c_inv_repeat = jnp.broadcast_to(new_N_c_inv, (self.nstokes,self.n_pix)).ravel()
 
-        # first_part_left = lambda x : maps_x_red_covariance_cell_JAX(x.reshape((self.nstokes,self.n_pix)), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
-
+        ## Preparing the operator (N_{c,new}^{-1} - N_{c,old}^{-1})
         def second_part_left(x):
             return x*(new_N_c_inv_repeat-old_N_c_inv_repeat)
-
         func_to_apply = lambda x : second_part_left(x)
 
+        ## If not precomputed, we compute C_approx^{1/2} A^{-1} eta
         if inverse_term_x_Capprox_root is None:
-            # red_cov_approx_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(red_cov_approx_matrix)
             inverse_term_x_Capprox_root = maps_x_red_covariance_cell_JAX(inverse_term.reshape(self.nstokes,self.n_pix), red_cov_approx_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter).ravel()
 
-        ## Getting new inverse
-        # if self.restrict_to_mask:
-        #     central_term = self.mask
-        # else:
-        #     central_term = jnp.ones_like(self.mask)
-
-
-        # perturbation_term = func_to_apply(inverse_term).reshape(self.nstokes,self.n_pix)
+        ## Applying the operator (N_{c,new}^{-1} - N_{c,old}^{-1}) to C_approx^{1/2} A^{-1} eta
         perturbation_term = func_to_apply(inverse_term_x_Capprox_root).reshape(self.nstokes,self.n_pix)
         
-        previous_inverse_x_eta = inverse_term.reshape(self.nstokes,self.n_pix)
-        previous_inverse_x_Capprox_root_x_eta = inverse_term_x_Capprox_root.reshape(self.nstokes,self.n_pix)
 
-        # new_log_proba = jnp.einsum('sp,p,sp', component_eta_maps, central_term, previous_inverse_x_eta) - jnp.einsum('sp,p,sp', previous_inverse_x_eta, central_term, perturbation_term)
-        # new_log_proba = jnp.einsum('sp,p,sp', component_eta_maps - perturbation_term, central_term, previous_inverse_x_eta)
-        first_order_term = jnp.einsum('sp,p,sp', component_eta_maps, self.mask, previous_inverse_x_eta)
-        perturbation_term = jnp.einsum('sp,p,sp', perturbation_term, self.mask, previous_inverse_x_Capprox_root_x_eta)
+        # previous_inverse_x_eta = inverse_term.reshape(self.nstokes,self.n_pix)
+        # previous_inverse_x_Capprox_root_x_eta = inverse_term_x_Capprox_root.reshape(self.nstokes,self.n_pix)
+
+        ## Computing contribution of \eta A^{-1} \eta
+        first_order_term = jnp.einsum('sp,p,sp', component_eta_maps, self.mask, inverse_term.reshape(self.nstokes,self.n_pix))
+
+        ## Computing contribution of \eta A^{-1} C_approx^{1/2} (N_{c,new}^{-1} - N_{c,old}^{-1}) C_approx^{1/2} A^{-1} \eta
+        perturbation_term = jnp.einsum('sp,p,sp', perturbation_term, self.mask, inverse_term_x_Capprox_root.reshape(self.nstokes,self.n_pix))
+
         # new_log_proba = jnp.einsum('sp,p,sp', component_eta_maps, self.mask, previous_inverse_x_eta) - jnp.einsum('sp,p,sp', perturbation_term, self.mask, previous_inverse_x_Capprox_root_x_eta)
+        ## Assembling everything
         new_log_proba = first_order_term - perturbation_term
         print("First order :", first_order_term)
         print("Perturbation :", -perturbation_term)
@@ -1087,20 +1091,21 @@ class Sampling_functions(MixingMatrix):
                                                     full_data_without_CMB,  
                                                     red_cov_approx_matrix_sqrt, 
                                                     component_eta_maps=None,
-                                                    previous_inverse=None, 
+                                                    first_guess=None, 
                                                     biased_bool=False,
                                                     precond_func=None):
         """ Get conditional probability of the conditional probability associated with the B_f parameters
-
-            The associated conditional probability is given by : 
-                - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c) + eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta
+            
+            With notation C_approx instead of \tilde{C}, the associated conditional probability is given by : 
+                - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c) + \eta^t ( Id + C_approx^{1/2} N_c^{-1} C_approx^{1/2} )^{-1} \eta
             
             Parameters
             ----------
             :param new_params_mixing_matrix: new B_f parameters of the mixing matrix to compute the log-proba, dimensions [nfreq-len(pos_special_frequencies), ncomp-1]
             :param full_data_without_CMB: data without from which the CMB (sample) was substracted, of dimension [frequencies, n_pix]
+            :param red_cov_approx_matrix_sqrt: matrix square root of the covariance of C_approx, of dimension [lmin:lmax, nstokes, nstokes]
             :param component_eta_maps: set of eta maps of dimension [component, n_pix]
-            :param red_cov_approx_matrix: covariance matrice approx (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+            :param first_guess: initial guess for the CG
 
             Returns
             -------
@@ -1127,7 +1132,7 @@ class Sampling_functions(MixingMatrix):
             log_proba_perturbation_likelihood, inverse_term = self.get_conditional_proba_correction_likelihood_JAX_v2d(invBtinvNB, 
                                                                                                                        component_eta_maps, 
                                                                                                                        red_cov_approx_matrix_sqrt, 
-                                                                                                                       previous_inverse=previous_inverse,
+                                                                                                                       first_guess=first_guess,
                                                                                                                        return_inverse=True)
 
         return (log_proba_spectral_likelihood + log_proba_perturbation_likelihood), inverse_term
@@ -1139,7 +1144,7 @@ class Sampling_functions(MixingMatrix):
                                                    full_data_without_CMB, 
                                                    red_cov_approx_matrix_sqrt, 
                                                    component_eta_maps=None,
-                                                   previous_inverse=None,
+                                                   first_guess=None,
                                                    previous_inverse_x_Capprox_root=None, 
                                                    biased_bool=False):
         """ Get conditional probability of the conditional probability associated with the B_f parameters
@@ -1176,7 +1181,7 @@ class Sampling_functions(MixingMatrix):
         else:    
             log_proba_perturbation_likelihood = self.get_conditional_proba_correction_likelihood_JAX_v2db(old_params_mixing_matrix, 
                                                                                                           new_params_mixing_matrix, 
-                                                                                                          previous_inverse, 
+                                                                                                          first_guess, 
                                                                                                           component_eta_maps, 
                                                                                                           red_cov_approx_matrix_sqrt, 
                                                                                                           inverse_term_x_Capprox_root=previous_inverse_x_Capprox_root)
@@ -1486,7 +1491,7 @@ def separate_single_MH_step_index_v3(random_PRNGKey, old_sample, step_size, log_
     # return latest_PRNGKey, jnp.reshape(new_sample, old_sample.shape,order='F')
     return latest_PRNGKey, new_sample
 
-def separate_single_MH_step_index_accelerated(random_PRNGKey, old_sample, step_size, log_proba, indexes_Bf, previous_inverse, **model_kwargs):
+def separate_single_MH_step_index_accelerated(random_PRNGKey, old_sample, step_size, log_proba, indexes_Bf, first_guess, **model_kwargs):
     
     def map_func(carry, index_Bf):
         rng_key, key_proposal, key_accept = random.split(carry[0], 3)
@@ -1498,8 +1503,8 @@ def separate_single_MH_step_index_accelerated(random_PRNGKey, old_sample, step_s
         proposal_params = jnp.copy(carry[1])
         proposal_params = proposal_params.at[index_Bf].set(sample_proposal)
 
-        accept_prob_0, inverse_term_0 = log_proba(carry[1], previous_inverse=old_inverse, **model_kwargs)
-        accept_prob_1, inverse_term_1 = log_proba(proposal_params, previous_inverse=old_inverse, **model_kwargs)
+        accept_prob_0, inverse_term_0 = log_proba(carry[1], first_guess=old_inverse, **model_kwargs)
+        accept_prob_1, inverse_term_1 = log_proba(proposal_params, first_guess=old_inverse, **model_kwargs)
         accept_prob = -(accept_prob_0 - accept_prob_1)
         new_param = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, sample_proposal, carry[1][index_Bf])
         new_inverse_term = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, inverse_term_1, inverse_term_0)
@@ -1507,7 +1512,7 @@ def separate_single_MH_step_index_accelerated(random_PRNGKey, old_sample, step_s
         proposal_params = proposal_params.at[index_Bf].set(new_param)
         return (rng_key, proposal_params, new_inverse_term), new_param
 
-    carry, new_params = jlax.scan(map_func, (random_PRNGKey, jnp.ravel(old_sample,order='F'), previous_inverse), indexes_params)
+    carry, new_params = jlax.scan(map_func, (random_PRNGKey, jnp.ravel(old_sample,order='F'), first_guess), indexes_params)
     new_sample = jnp.copy(jnp.ravel(old_sample,order='F'))
     new_sample = new_sample.at[indexes_params].set(new_params)
     latest_PRNGKey = carry[0]
