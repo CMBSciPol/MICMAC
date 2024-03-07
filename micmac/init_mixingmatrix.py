@@ -15,7 +15,7 @@ h_over_k = constants.h * 1e9 / constants.k
 
 
 class InitMixingMatrix:
-    def __init__(self, freqs, ncomp, pos_special_freqs, spv_nodes_b):
+    def __init__(self, freqs, ncomp, pos_special_freqs, spv_nodes_b, beta_mbb=1.54, temp_mbb=20.0, beta_pl=-3.0):
         """
         Note: units are K_CMB.
         """
@@ -23,6 +23,9 @@ class InitMixingMatrix:
         self.ncomp = ncomp  # all comps (also cmb)
         self.pos_special_freqs = pos_special_freqs
         self.spv_nodes_b = spv_nodes_b   # tree containing info to build spv_templates
+        self.beta_mbb = beta_mbb
+        self.temp_mbb = temp_mbb
+        self.beta_pl = beta_pl
 
     def K_rj2K_cmb(self, nu):
         Tcmb = Planck15.Tcmb(0).value
@@ -43,13 +46,10 @@ class InitMixingMatrix:
         """
         in K_CMB
         """
-        beta_mbb = 1.54
-        temp = 20.0
-
         analytic_expr = (
-            (np.exp(nu0 / temp * h_over_k) - 1)
-            / (np.exp(nu / temp * h_over_k) - 1)
-            * (nu / nu0) ** (1 + beta_mbb)
+            (np.exp(nu0 / self.temp_mbb * h_over_k) - 1)
+            / (np.exp(nu / self.temp_mbb * h_over_k) - 1)
+            * (nu / nu0) ** (1 + self.beta_mbb)
         )
         # conversion to K_CMB units
         analytic_expr *= self.K_rj2K_cmb_nu0(nu, nu0)
@@ -60,9 +60,7 @@ class InitMixingMatrix:
         """
         in K_CMB
         """
-        beta_pl = -3.0
-
-        analytic_expr = (nu / nu0) ** (beta_pl)
+        analytic_expr = (nu / nu0) ** (self.beta_pl)
         # conversion to K_CMB units
         analytic_expr *= self.K_rj2K_cmb_nu0(nu, nu0)
 
