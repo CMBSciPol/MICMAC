@@ -6,14 +6,11 @@ import scipy.linalg
 def get_reduced_matrix_from_c_ell(c_ells_input):
     """ 
         Returns the input spectra in the format [lmax+1-lmin, nstokes, nstokes]
-        
         Expect c_ells_input to be sorted as TT, EE, BB, TE, TB, EB if 6 spectra are given
         or EE, BB, EB if 3 spectra are given
         or TT if 1 spectrum is given
-
         Generate covariance matrix from c_ells assuming it's block diagonal,
         in the "reduced" (prefix red) format, i.e. : [ell, nstokes, nstokes]
-
         The input spectra doesn't have to start from ell=0,
         and the output matrix spectra will start from the same lmin as the input spectra
 

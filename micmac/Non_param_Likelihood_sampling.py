@@ -15,7 +15,6 @@ import numpyro
 
 from .tools import *
 from .jax_tools import *
-from .algorithm_toolbox import *
 from .mixingmatrix import *
 from .templates_spv import *
 from .noisecovar import *
@@ -272,7 +271,7 @@ class MICMAC_Sampler(Sampling_functions):
 
         # Generate input frequency maps
         input_cmb_maps_alt = hp.synfast(true_cmb_specra_extended, nside=self.nside, new=True, lmax=self.lmax)[1:,...]
-        input_cmb_maps = np.broadcast_to(input_cmb_maps, (self.n_frequencies,self.nstokes,self.n_pix))
+        input_cmb_maps = np.broadcast_to(input_cmb_maps_alt, (self.n_frequencies,self.nstokes,self.n_pix))
         input_freq_maps = input_cmb_maps + freq_maps_fgs
 
         if return_only_freq_maps:

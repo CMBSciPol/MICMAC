@@ -20,7 +20,7 @@ from .templates_spv import get_n_patches_b, get_nodes_b, create_one_template, ge
 def get_indexes_b(n_frequencies, n_components, spv_nodes_b):
     """ Return indexes of params for all frequencies and components
     """
-    indexes = np.zeros((n_frequencies, n_components))
+    indexes = np.zeros((n_frequencies, n_components), dtype=int)
     for freq in range(n_frequencies):
         for comp in range(n_components):
             indexes[freq, comp] = get_n_patches_b(spv_nodes_b[freq + comp*n_frequencies - 1])

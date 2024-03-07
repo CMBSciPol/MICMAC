@@ -17,9 +17,6 @@ import numpyro
 
 from .tools import *
 from .jax_tools import *
-from .algorithm_toolbox import *
-from .proba_functions import *
-# from .Sampling_toolbox import *
 from .mixingmatrix import *
 from .noisecovar import *
 from .jax_Sampling_toolbox import *
@@ -195,7 +192,7 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
 
         # Generate input frequency maps
         input_cmb_maps_alt = hp.synfast(true_cmb_specra_extended, nside=self.nside, new=True, lmax=self.lmax)[1:,...]
-        input_cmb_maps = np.broadcast_to(input_cmb_maps, (self.n_frequencies,self.nstokes,self.n_pix))
+        input_cmb_maps = np.broadcast_to(input_cmb_maps_alt, (self.n_frequencies,self.nstokes,self.n_pix))
         input_freq_maps = input_cmb_maps + freq_maps_fgs
 
         if return_only_freq_maps:
@@ -224,7 +221,7 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
         # Update the samples of r
         self.all_samples_r = self.update_variable(self.all_samples_r, all_samples[...,-1])
         # Update the samples of B_f
-        self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, all_samples[...,:-1].reshape((all_samples.shape[0],self.n_frequencies-len(self.pos_special_freqs),self.n_components-1),order='F'))
+        self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, all_samples[...,:-1])
 
 
     def get_alm_from_frequency_maps(self, input_freq_maps):
@@ -381,7 +378,8 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
                             theoretical_r0_total, 
                             theoretical_r1_tensor,
                             initial_guess_r=0, 
-                            covariance_B_f_r=None):
+                            covariance_B_f_r=None,
+                            print_bool=True):
 
         """ 
             Perform Metropolis Hastings to find the best r and B_f in harmonic domain. 
@@ -397,6 +395,7 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
             theoretical_r0_total : theoretical covariance matrix for the CMB scalar modes, dimensions [lmax+1-lmin, number_correlations, number_correlations]
             theoretical_r1_tensor : theoretical covariance matrix for the CMB tensor modes, dimensions [lmax+1-lmin, number_correlations, number_correlations]
             initial_guess_r : initial guess for r, float
+            print_bool : optional, for test prints, bool
         """
 
         # Disabling all chex checks to speed up the code
@@ -474,7 +473,8 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
         else:
             assert covariance_B_f_r.shape == (dimension_param_B_f+1,dimension_param_B_f+1)
 
-        print('Covariance B_f, r:', covariance_B_f_r, flush=True)
+        if print_bool:
+            print('Covariance B_f, r:', covariance_B_f_r, flush=True)
 
         ## Getting alms from the input maps
         input_freq_alms = self.get_alm_from_frequency_maps(input_freq_maps)
@@ -487,6 +487,8 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
 
         MHState = namedtuple("MHState", ["u", "rng_key"])
         class MetropolisHastings(numpyro.infer.mcmc.MCMCKernel):
+            sample_field = "u"
+
             def __init__(self, log_proba, covariance_matrix):
                 self.log_proba = log_proba
                 self.covariance_matrix = covariance_matrix
@@ -524,12 +526,12 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
                      red_cov_approx_matrix=red_cov_approx_matrix)
 
         time_full_chain = (time.time()-time_start_sampling)/60      
-        print(f"End of MH iterations for harmonic run in {time_full_chain} minutes, now saving results !", flush=True)
+        print(f"End of MH iterations for harmonic run in {time_full_chain} minutes !", flush=True)
 
         posterior_samples = mcmc_obj.get_samples()
-        print("Test", posterior_samples)
-        print("Test size", posterior_samples.shape, flush=True)
-        mcmc_obj.print_summary()
+        if print_bool:
+            print("Summary of the run", flush=True)
+            mcmc_obj.print_summary()
 
         # Saving the samples as attributes of the Sampler object
         self.update_samples_MH(posterior_samples)
@@ -553,7 +555,7 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
 
 
 
-def create_Harmonic_MICMAC_sampler_from_toml_file(path_toml_file):
+def create_Harmonic_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv):
     """ 
         Create a Harmonic_MICMAC_Sampler object from the path of a toml file 
     """
@@ -566,6 +568,13 @@ def create_Harmonic_MICMAC_sampler_from_toml_file(path_toml_file):
         dictionary_parameters['frequency_array'] = jnp.array(instrument['frequency'])
         dictionary_parameters['freq_noise_c_ell'] = get_true_Cl_noise(jnp.array(instrument['depth_p']), dictionary_parameters['lmax'])[...,dictionary_parameters['lmin']:]
 
+    ## Spatial variability (spv) params
+    n_fgs_comp = dictionary_parameters['n_components']-1
+    # total number of params in the mixing matrix for a specific pixel
+    n_betas = (np.shape(dictionary_parameters['frequency_array'])[0]-len(dictionary_parameters['pos_special_freqs']))*(n_fgs_comp)
+    # Read or create spv config
+    root_tree = tree_spv_config(path_file_spv, n_betas, n_fgs_comp, print_tree=True)
+    dictionary_parameters['spv_nodes_b'] = get_nodes_b(root_tree)
     return Harmonic_MICMAC_Sampler(**dictionary_parameters)
 
 def create_Harmonic_MICMAC_sampler_from_MICMAC_sampler_obj(MICMAC_sampler_obj, depth_p_array, 

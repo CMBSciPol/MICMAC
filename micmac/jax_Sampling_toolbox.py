@@ -58,11 +58,6 @@ class Sampling_functions(MixingMatrix):
         # self.restrict_to_mask = bool(restrict_to_mask)
 
         # Problem parameters
-        assert freq_inverse_noise.shape == (self.n_frequencies, self.n_frequencies, self.n_pix)
-        self.freq_inverse_noise = freq_inverse_noise
-        if freq_noise_c_ell is not None:
-            assert freq_inverse_noise.shape == (self.n_frequencies, self.n_frequencies, self.lmax+1-self.lmin)
-        self.freq_noise_c_ell = freq_noise_c_ell # If noise expected to be white, c_ell of the noise
         assert nstokes == 2 # Focus on polarisation for now
         self.nstokes = int(nstokes)
         self.n_correlations = int(np.ceil(self.nstokes**2/2) + np.floor(self.nstokes/2)) 
@@ -71,6 +66,16 @@ class Sampling_functions(MixingMatrix):
         self.lmax = int(lmax) # maximum ell to be considered
         assert lmin >= 2
         self.lmin = int(lmin) # minimum ell to be considered
+
+        # Noise parameters
+        if freq_inverse_noise is not None:
+            assert freq_inverse_noise.shape == (self.n_frequencies, self.n_frequencies, self.n_pix)
+        self.freq_inverse_noise = freq_inverse_noise
+        if freq_noise_c_ell is not None:
+            assert freq_noise_c_ell.shape == (self.n_frequencies, self.n_frequencies, self.lmax+1-self.lmin)
+        self.freq_noise_c_ell = freq_noise_c_ell # If noise expected to be white, c_ell of the noise
+
+        # Mask parameters
         if mask is None:
             # If no mask is given, then the mask is set to 1
             self.mask = np.ones(12*self.nside**2)

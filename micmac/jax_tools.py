@@ -93,8 +93,15 @@ def get_c_ells_from_red_covariance_matrix_JAX(red_cov_mat, nstokes=0):
             TT
             EE, BB, EB
             TT, EE, BB, TE, EB, TB
-
         ATTENTION : Currently not optimised for JAX (the for loops must be replaced by JAX loops)
+
+        Parameters
+        ----------
+        :param red_cov_mat: reduced spectra of shape (lmax+1-lmin, nstokes, nstokes)
+
+        Returns
+        -------
+        :return: c_ells: array of shape (n_correlations, lmax+1-lmin)
     """
 
     lmax = red_cov_mat.shape[0]
@@ -282,6 +289,7 @@ def maps_x_red_covariance_cell_JAX(
     """
 
     # Getting scalar parameters from the input covariance
+    all_params = 3
     lmax = red_matrix_sqrt.shape[0] - 1 + lmin
     nstokes = red_matrix_sqrt.shape[1]
 
