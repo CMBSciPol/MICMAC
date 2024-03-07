@@ -16,5 +16,5 @@ setup(name='micmac',
             'micmac = micmac.pipeline:__main__'
         ]      
         },
-      python_requires=">=3.7"
+      python_requires=">=3.7",
       )

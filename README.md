@@ -1,11 +1,17 @@
 # Minimally Informed CMB MAp Constructor: MICMAC
-(Temporary ?) Repository to centralize work on pixel implementation for the non-parametric approach in pixel domain of component separation
+Repository to centralize work on pixel implementation for the non-parametric approach in pixel domain of component separation
 
 Note : maybe change the name of the repo to something better
 
 # Installation
 
-In your virtual environment and from the root directory of this package, just type :
+To create a virtual environment environment from scratch, you can use `conda` and the following command:
+
+`conda env create -f micmac_env.yml`
+
+
+Otherwise, you can go in your virtual environment and from the root directory of this package, run:
+
 `python -m pip install .`
 
 Then, you may call this package using `import micmac`

@@ -135,38 +135,3 @@ def get_true_Cl_noise(depth_p, lmax):
 
     nl = (bl / jnp.radians(depth_p/60.)[:, jnp.newaxis])**2
     return jnp.einsum('fl,fk->fkl', nl, jnp.eye(jnp.size(depth_p)))
-
-# def get_Cl_noise_from_invBtinvNB(invBtinvNB, nstokes, nside, lmax):
-#     """
-#         Return cl noise from invBtinvNB if invBtinvNB is not multi-resolution
-#     """
-#     n_correlations = int(jnp.ceil(nstokes**2/2) + jnp.floor(nstokes/2))
-#     full_spectra = jnp.zeros((n_correlations,lmax+1))
-#     full_spectra = full_spectra.at[:nstokes,:].set(invBtinvNB*hp.nside2resol(nside)**2)
-#     return full_spectra
-
-# ## Choose if we want to keep these ones
-# ## (this could be done directly in the code)
-# def select_cmb_EtX(X, ncomp):
-#     """
-#     It acts on object w ncomp as external dimension
-#     and it selects only cmb.
-#     """
-#     # check that the ext dim is indeed ncomp
-#     assert X.shape[0] == ncomp
-#     EtX = X[0, ...]
-
-#     return EtX
-
-
-# def select_cmb_EtXE(X, ncomp):
-#     """
-#     It acts on object w (ncomp,ncomp) as external dimensions
-#     and it selects only cmb.
-#     """
-#     # check that the ext dims are indeed (ncomp,ncomp)
-#     assert X.shape[0] == ncomp
-#     assert X.shape[1] == ncomp
-#     EtXE = X[0, 0, ...]
-
-#     return EtXE
