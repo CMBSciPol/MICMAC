@@ -1,6 +1,6 @@
 # [Quick_test_parameters]
 disable_chex = true
-sample_eta_B_f = true
+classical_Gibbs = false
 biased_version = false
 perturbation_eta_covariance = true
 use_uncorrelated_patches = false

@@ -206,7 +206,7 @@ except:
     minimum_std_Fisher = np.sqrt(np.linalg.inv(Fisher_matrix))
 minimum_std_Fisher_diag = np.diag(minimum_std_Fisher)
 
-if MICMAC_obj.sample_eta_B_f:
+if not(MICMAC_obj.classical_Gibbs):
     col_dim_B_f = MICMAC_obj.n_frequencies-len(MICMAC_obj.pos_special_freqs)
 
     len_pos_special_freqs = len(MICMAC_obj.pos_special_freqs)
@@ -292,7 +292,7 @@ if former_file_ver != '':
 
     init_params_mixing_matrix = dict_all_params['all_params_mixing_matrix_samples'][-1,:]
 
-    if self.save_CMB_chain_maps:
+    if MICMAC_obj.save_CMB_chain_maps:
         initial_wiener_filter_term = dict_all_params['all_s_c_WF_maps'][-1,:,:]
         initial_fluctuation_maps = dict_all_params['all_s_c_fluct_maps'][-1,:,:]
     
@@ -300,13 +300,12 @@ if former_file_ver != '':
         initial_guess_r = dict_all_params['all_r_samples'][-1]
     elif MICMAC_obj.sample_C_inv_Wishart:
         CMB_c_ell = dict_all_params['all_cell_samples'][-1,:,:]
-    
 
     input_cmb_maps = dict_all_params['input_cmb_maps']
     input_freq_maps_masked = dict_all_params['initial_freq_maps']*MICMAC_obj.mask
 
     # MICMAC_obj.seed = MICMAC_obj.seed + MICMAC_obj.number_iterations_sampling
-    MICMAC_obj.seed = jnp.dict_all_params['last_PRNGkey']
+    MICMAC_obj.seed = jnp.array(dict_all_params['last_PRNGKey'])
 
 
 print(f'Exact r : {MICMAC_obj.r_true}')
