@@ -127,7 +127,10 @@ class MixingMatrix():
             params_long[ind_freq, ind_comp, :] = params_long_b
 
         return params_long
-    
+
+    def pure_call_ud_get_params_long_python(params):
+        shape_output = (self.n_frequencies-self.n_components+1,self.n_components-1,12*self.nside**2,)
+        return jax.pure_callback(self.get_params_long_python, jax.ShapeDtypeStruct(shape_output, np.float64),params,)
 
     def get_params_long(self, jax_use=False):
         """From the params to all the entries of the mixing matrix"""
@@ -151,11 +154,8 @@ class MixingMatrix():
             # # params_long = jax.vmap(get_paramslong_patch)(jnp.arange(n_unknown_freqs*n_comp_fgs))
             # _, params_long = jax.lax.scan(get_paramslong_patch, None, jnp.arange(n_unknown_freqs*n_comp_fgs))
             # return params_long.reshape((n_unknown_freqs,n_comp_fgs))
-            def pure_call_ud_get_params_long_python(params):
-                shape_output = (self.n_frequencies-self.n_components+1,self.n_components-1,12*self.nside**2,)
-                return jax.pure_callback(self.get_params_long_python, jax.ShapeDtypeStruct(shape_output, np.float64),params,)
             
-            return pure_call_ud_get_params_long_python(self.params)
+            return self.pure_call_ud_get_params_long_python(self.params)
 
         return self.get_params_long_python(self.params)
     
