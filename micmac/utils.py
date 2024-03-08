@@ -70,7 +70,7 @@ def loading_params(directory_save_file, file_ver, MICMAC_sampler_obj):
     all_params_mixing_matrix_samples = np.load(all_params_mixing_matrix_samples_path)
     dict_all_params['all_params_mixing_matrix_samples'] = all_params_mixing_matrix_samples
 
-    dict_all_params['last_PRNGKey'] = np.load(directory_save_file+file_ver+'_last_PRNGKey.npy')
+    dict_all_params['last_PRNGKey'] = np.load(directory_save_file+file_ver+'_last_PRNGkey.npy')
 
     return dict_all_params
 
