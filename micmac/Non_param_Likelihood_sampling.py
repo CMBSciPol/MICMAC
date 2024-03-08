@@ -503,7 +503,7 @@ class MICMAC_Sampler(Sampling_functions):
                 def which_interval(carry, index_Bf):
                     return carry | ((index_Bf >= indexes_patches_Bf) & (index_Bf < indexes_patches_Bf + self.size_patches)), index_Bf
 
-                condition, _ = jlax.scan(which_interval, jnp.zeros_like(self.size_patches, dtype=bool), indexes_Bf_2)
+                condition, _ = jlax.scan(which_interval, jnp.zeros_like(self.size_patches, dtype=bool), self.indexes_free_Bf)
                 
                 first_indices_patches_free_Bf = indexes_patches_Bf[condition]
                 max_len_patches_Bf = int(np.max(self.size_patches[condition]))
