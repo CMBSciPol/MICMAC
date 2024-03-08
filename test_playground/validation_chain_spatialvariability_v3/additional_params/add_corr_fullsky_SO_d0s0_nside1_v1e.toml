@@ -2,8 +2,8 @@
 ## will not be used in the final version of the code
 
 current_directory='validation_chain_spatialvariability_v3/'
-MICMAC_directory = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/'
-# MICMAC_directory = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/'
+# MICMAC_directory = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/'
+MICMAC_directory = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/'
 directory_mask = ""
 save_directory = ''
 path_trace_jax = ''
