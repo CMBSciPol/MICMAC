@@ -381,7 +381,7 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
                             covariance_B_f_r=None,
                             print_bool=True):
 
-        """ 
+        """
             Perform Metropolis Hastings to find the best r and B_f in harmonic domain. 
             The chains will be stored as object attributes:
                 - all_samples_r for r
