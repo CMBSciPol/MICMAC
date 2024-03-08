@@ -128,7 +128,19 @@ class MixingMatrix():
 
         return params_long
 
-    def pure_call_ud_get_params_long_python(params):
+    def pure_call_ud_get_params_long_python(self, params):
+        """
+            JAX Pure call to get_params_long_python
+
+            Parameters
+            ----------
+            params : compressed version of the parameters of the mixing matrix
+                
+            
+            Returns
+            -------
+            Full parameters of the mixing matrix
+        """
         shape_output = (self.n_frequencies-self.n_components+1,self.n_components-1,12*self.nside**2,)
         return jax.pure_callback(self.get_params_long_python, jax.ShapeDtypeStruct(shape_output, np.float64),params,)
 
