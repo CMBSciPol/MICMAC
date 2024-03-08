@@ -499,6 +499,15 @@ class MICMAC_Sampler(Sampling_functions):
                 print("Using uncorrelated patches version of mixing matrix sampling !!!", flush=True)
                 ## MH step function to sample the mixing matrix free parameters with the patches per parameters sample alltogether
                 sampling_func = separate_single_MH_step_index_v3
+                indexes_patches_Bf = jnp.array(self.indexes_b.ravel(order='F'), dtype=jnp.int64)
+                def which_interval(carry, index_Bf):
+                    return carry | ((index_Bf >= indexes_patches_Bf) & (index_Bf < indexes_patches_Bf + self.size_patches)), index_Bf
+
+                condition, _ = jlax.scan(which_interval, jnp.zeros_like(self.size_patches, dtype=bool), indexes_Bf_2)
+                
+                first_indices_patches_free_Bf = indexes_patches_Bf[condition]
+                max_len_patches_Bf = int(np.max(self.size_patches[condition]))
+                size_patches = self.size_patches[condition]
 
 
         ## Preparing the random JAX PRNG key
@@ -806,9 +815,9 @@ class MICMAC_Sampler(Sampling_functions):
                         dict_parameters_sampling_B_f['component_eta_maps'] = new_carry['eta_maps']
                     if self.use_uncorrelated_patches:
                         ## Provide as well the indexes of the patches in case of the uncorrelated patches version
-                        dict_parameters_sampling_B_f['size_patches'] = self.size_patches
-                        dict_parameters_sampling_B_f['max_len_patches_Bf'] = self.max_len_patches_Bf
-                        dict_parameters_sampling_B_f['indexes_patches_Bf'] = jnp.array(self.indexes_b.ravel(order='F'), dtype=jnp.int64)
+                        dict_parameters_sampling_B_f['size_patches'] = size_patches
+                        dict_parameters_sampling_B_f['max_len_patches_Bf'] = max_len_patches_Bf
+                        dict_parameters_sampling_B_f['indexes_patches_Bf'] = first_indices_patches_free_Bf
                         dict_parameters_sampling_B_f['len_indexes_Bf'] = self.len_params
                         #TODO: Accelerate by removing indexes of indexes_patches_Bf if the corresponding patches are not in indexes_free_Bf, nor in the mask
 

@@ -1482,9 +1482,11 @@ def separate_single_MH_step_index_v3(random_PRNGKey, old_sample, step_size, log_
         :param old_sample: old sample to be updated
         :param step_size: step size for all B_f
         :param log_proba: log probability function as log(p(x) (and not -log(p(x)) as in the previous version)
-        :param indexes_Bf: all indexes of the parameters to be updated
-        :param indexes_patches_Bf: indexes of the parameters to be updated, corresponding to first indexes of params per patch
-        :param indexes_patches_B_f: indexes of the patches to be updated
+        :param indexes_Bf: indexes of the parameters to be updated
+        :param indexes_patches_Bf: indexes of the first parameters of each patch to be updated
+        :param size_patches: size of all patches
+        :param max_len_patches_Bf: maximum length of the patches
+        :param len_indexes_Bf: maximum index of all possible B_f (not only the free ones)
         :param model_kwargs: additional arguments for the log_proba function
 
         Returns
@@ -1492,7 +1494,6 @@ def separate_single_MH_step_index_v3(random_PRNGKey, old_sample, step_size, log_
         :return: latest_PRNGKey, new_sample
     """
 
-    # max_index_Bf = jnp.max(indexes_Bf)+1
     def map_func(carry, index_Bf):
         indexes_to_consider = (index_Bf + jnp.arange(max_len_patches_Bf, dtype=jnp.int32))%len_indexes_Bf
         mask_in_indexes_B_f = jnp.where(jnp.isin(index_Bf + jnp.arange(max_len_patches_Bf, dtype=jnp.int32), indexes_Bf), 1, 0)
@@ -1507,7 +1508,6 @@ def separate_single_MH_step_index_v3(random_PRNGKey, old_sample, step_size, log_
 
         proposal_log_proba = log_proba(proposal_params, **model_kwargs)
 
-        # accept_prob = -(log_proba(carry[1], **model_kwargs) - log_proba(proposal_params, **model_kwargs))
         accept_prob = -(carry['log_proba'] - proposal_log_proba)
 
         log_proba_uniform = jnp.log(dist.Uniform().sample(key_accept))
@@ -1517,27 +1517,17 @@ def separate_single_MH_step_index_v3(random_PRNGKey, old_sample, step_size, log_
         proposal_params = proposal_params.at[indexes_to_consider].set(new_param)
         new_carry = {'PRNGKey':rng_key, 'sample':proposal_params, 'log_proba':new_log_proba}
         return new_carry, new_param
-        # return (rng_key, proposal_params), new_param
-
-    # initial_carry = {'PRNGKey':random_PRNGKey, 
-    #                  'sample':jnp.ravel(old_sample,order='F'), 
-    #                  'log_proba':log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs)}
 
     initial_carry = {'PRNGKey':random_PRNGKey, 
                      'sample':old_sample,
                      'log_proba':log_proba(old_sample, **model_kwargs)}
 
-    # carry, new_params = jlax.scan(map_func, (random_PRNGKey, jnp.ravel(old_sample,order='F')), indexes_Bf)
     carry, new_params = jlax.scan(map_func, initial_carry, indexes_patches_Bf)
-    # new_sample = jnp.copy(jnp.ravel(old_sample,order='F'))
-    # new_sample = jnp.copy(old_sample)
-    # new_sample = new_sample.at[indexes_Bf].set(new_params)
+
     new_sample = carry['sample']
 
-    # latest_PRNGKey = carry[0]
     latest_PRNGKey = carry['PRNGKey']
-    # return latest_PRNGKey, new_sample.reshape(old_sample.shape,order='F')
-    # return latest_PRNGKey, jnp.reshape(new_sample, old_sample.shape,order='F')
+
     return latest_PRNGKey, new_sample
 
 
