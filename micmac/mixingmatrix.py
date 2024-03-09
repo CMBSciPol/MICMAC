@@ -48,7 +48,7 @@ class MixingMatrix():
         """
         Note: units are K_CMB.
         """
-        self.frequency_array = frequency_array
+        self.frequency_array = np.array(frequency_array, dtype=int)    # all input freq bands
         self.n_frequencies = np.size(frequency_array)    # all input freq bands
         self.n_components = n_components         # all comps (also cmb)
         self.spv_nodes_b = spv_nodes_b   # nodes for b containing info patches to build spv_templates
@@ -63,6 +63,9 @@ class MixingMatrix():
                 raise Exception("params must be of dimensions", self.len_params, flush=True)
             
         self.params = params
+
+        # Indexes frequency array without the special frequencies
+        self.indexes_frequency_array_no_special = np.delete(np.arange(self.n_frequencies), pos_special_freqs)
 
         ### checks on pos_special_freqs
         # check no duplicates
@@ -182,17 +185,11 @@ class MixingMatrix():
         if jax_use:
             B_fgs = jnp.zeros((self.n_frequencies, ncomp_fgs, self.n_pix))
             # insert all the ones given by the pos_special_freqs
-            for c in range(ncomp_fgs):
-                # B_fgs[self.pos_special_freqs[c]][c] = 1
-                B_fgs = B_fgs.at[self.pos_special_freqs[c],c].set(1)
+            B_fgs = B_fgs.at[jnp.array(self.pos_special_freqs),...].set(jnp.broadcast_to(jnp.eye(ncomp_fgs), (self.n_pix,ncomp_fgs,ncomp_fgs)).T)
             # insert all the parameters values
-            f = 0 
-            for i in range(self.n_frequencies):
-                if i not in self.pos_special_freqs:
-                    # B_fgs[i, :] = self.params[f, :]
-                    B_fgs = B_fgs.at[i, :].set(params_long[f, :, :])
-                    f += 1
+            B_fgs = B_fgs.at[self.indexes_frequency_array_no_special,...].set(params_long)
             return B_fgs
+
         
         if ncomp_fgs != 0:
             assert params_long.shape == ((self.n_frequencies - len(self.pos_special_freqs)), ncomp_fgs, self.n_pix)
@@ -238,55 +235,50 @@ class MixingMatrix():
         
         return B_mat
     
-
-    # def get_params_db(self, jax_use=False):
-    #     # TODO: adjust with spv
-    #     """
-    #     Derivatives of the part of the Mixing Matrix w params
-    #     (wrt to each entry of first comp and then each entry of second comp)
-    #     Note: w/o pixel dimension
-    #     """
-    #     nrows = self.n_frequencies-self.n_components+1
-    #     ncols = self.n_components-1
-    #     if jax_use:
-    #         def set_1(i):
-    #             params_dBi = jnp.zeros((nrows,ncols))
-    #             index_i = i//2
-    #             index_j = i%2
-    #             return params_dBi.at[index_i,index_j].set(1).ravel(order='C').reshape((nrows,ncols),order='F')
-    #         return jax.vmap(set_1)(jnp.arange(nrows*ncols))
-
-    #     params_dBi = np.zeros((nrows, ncols))
-    #     params_dB = []
-    #     for j in range(ncols):
-    #         for i in range(nrows):
-    #             params_dBi_copy = copy.deepcopy(params_dBi)
-    #             params_dBi_copy[i,j] = 1
-    #             params_dB.append(params_dBi_copy)
-            
-    #     return params_dB
-
-
-    # def get_B_db(self, jax_use=False):
-    #     """
-    #     List of derivatives of the Mixing Matrix
-    #     (wrt to each entry of first comp and then each entry of second comp)
-    #     Note: w/o pixel dimension
-    #     """
-    #     params_db = self.get_params_db(jax_use=jax_use)
-    #     if jax_use:
-    #         B_db = jnp.zeros((params_db.shape[0],self.n_frequencies,self.n_components))
-    #         relevant_indexes = jnp.arange(self.pos_special_freqs[0]+1,self.pos_special_freqs[-1])
-    #         B_db = B_db.at[:,relevant_indexes,1:].set(params_db)
-    #         return B_db
-
-    #     B_db = []
-    #     for B_db_i in params_db:
-    #         # add the zeros of special positions
-    #         for i in self.pos_special_freqs:
-    #             B_db_i = np.insert(B_db_i, i, np.zeros(self.n_components-1), axis=0)
-    #         # add the zeros of CMB
-    #         B_db_i = np.column_stack((np.zeros(self.n_frequencies), B_db_i))
-    #         B_db.append(B_db_i)
+    def get_B_fgs_from_params(self, params, jax_use=False):
+        """
+        fgs part of the mixing matrix.
+        """
+        ncomp_fgs = self.n_components - 1
         
-    #     return B_db
+        if jax_use:
+            # Get the long version of the parameters
+            params_long = self.pure_call_ud_get_params_long_python(params)
+
+            B_fgs = jnp.zeros((self.n_frequencies, ncomp_fgs, self.n_pix))
+            # insert all the ones given by the pos_special_freqs
+            B_fgs = B_fgs.at[jnp.array(self.pos_special_freqs),...].set(jnp.broadcast_to(jnp.eye(ncomp_fgs), (self.n_pix,ncomp_fgs,ncomp_fgs)).T)
+            # insert all the parameters values
+            B_fgs = B_fgs.at[self.indexes_frequency_array_no_special,...].set(params_long)
+
+            return B_fgs
+        
+        if ncomp_fgs != 0:
+            assert params_long.shape == ((self.n_frequencies - len(self.pos_special_freqs)), ncomp_fgs, self.n_pix)
+            assert len(self.pos_special_freqs) <= ncomp_fgs
+
+        params_long = self.get_params_long_python(params)
+        B_fgs = np.zeros((self.n_frequencies, ncomp_fgs, self.n_pix))
+        if len(self.pos_special_freqs) != 0:
+            # insert all the ones given by the pos_special_freqs
+            for c in range(len(self.pos_special_freqs)):
+                B_fgs[self.pos_special_freqs[c]][c] = 1
+        # insert all the parameters values
+        f = 0
+        for i in range(self.n_frequencies):
+            if i not in self.pos_special_freqs:
+                B_fgs[i, :] = params_long[f, :, :]
+                f += 1
+        
+        return B_fgs
+
+    def get_B_from_params(self, params, jax_use=False):
+        """
+        Full mixing matrix, (n_frequencies*n_components).
+        cmb is given as the first component.
+        """
+        if jax_use:
+            return jnp.concatenate((self.get_B_cmb(jax_use=jax_use), self.get_B_fgs_from_params(params, jax_use=jax_use)), axis=1)
+
+        B_mat = np.concatenate((self.get_B_cmb(), self.get_B_fgs_from_params(params)), axis=1)        
+        return B_mat

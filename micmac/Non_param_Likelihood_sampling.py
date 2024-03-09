@@ -602,8 +602,9 @@ class MICMAC_Sampler(Sampling_functions):
             PRNGKey, subPRNGKey = random.split(PRNGKey)
 
             # Extracting the mixing matrix parameters and initializing the new one
-            self.update_params(carry['params_mixing_matrix_sample'])
-            mixing_matrix_sampled = self.get_B(jax_use=True)
+            # self.update_params(carry['params_mixing_matrix_sample'])
+            # mixing_matrix_sampled = self.get_B(jax_use=True)
+            mixing_matrix_sampled = self.get_B_from_params(carry['params_mixing_matrix_sample'], jax_use=True)
 
             # Few checks for the mixing matrix
             chx.assert_shape(mixing_matrix_sampled, (self.n_frequencies, self.n_components, self.n_pix))

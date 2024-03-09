@@ -1010,12 +1010,14 @@ class Sampling_functions(MixingMatrix):
         """
 
         ## Retrieving the mixing matrix B_{old} from the old set of parameters
-        self.update_params(old_params_mixing_matrix, jax_use=True)
-        old_mixing_matrix = self.get_B(jax_use=True)
+        # self.update_params(old_params_mixing_matrix, jax_use=True)
+        # old_mixing_matrix = self.get_B(jax_use=True)
+        old_mixing_matrix = self.get_B_from_params(old_params_mixing_matrix, jax_use=True)
 
         ## Retrieving the mixing matrix B_{new} from the new set of parameters
-        self.update_params(new_params_mixing_matrix, jax_use=True)
-        new_mixing_matrix = self.get_B(jax_use=True)
+        # self.update_params(new_params_mixing_matrix, jax_use=True)
+        # new_mixing_matrix = self.get_B(jax_use=True)
+        new_mixing_matrix = self.get_B_from_params(new_params_mixing_matrix, jax_use=True)
 
         ## Preparing both old and new mixing matrices
         old_invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, old_mixing_matrix, jax_use=True)*jhp.nside2resol(self.nside)**2
@@ -1090,8 +1092,9 @@ class Sampling_functions(MixingMatrix):
         """
 
         ## Updating parameters of the mixing matrix
-        self.update_params(new_params_mixing_matrix,jax_use=True)
-        new_mixing_matrix = self.get_B(jax_use=True) # Retrieving the new mixing matrix
+        # self.update_params(new_params_mixing_matrix,jax_use=True)
+        # new_mixing_matrix = self.get_B(jax_use=True) # Retrieving the new mixing matrix
+        new_mixing_matrix = self.get_B_from_params(new_params_mixing_matrix, jax_use=True)
 
         # Compute spectral likelihood : (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
         log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(new_mixing_matrix, 
@@ -1148,8 +1151,9 @@ class Sampling_functions(MixingMatrix):
         """
 
         ## Updating parameters of the mixing matrix
-        self.update_params(new_params_mixing_matrix,jax_use=True)
-        new_mixing_matrix = self.get_B(jax_use=True)
+        # self.update_params(new_params_mixing_matrix,jax_use=True)
+        # new_mixing_matrix = self.get_B(jax_use=True)
+        new_mixing_matrix = self.get_B_from_params(new_params_mixing_matrix, jax_use=True)
         
         # Compute spectral likelihood : (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
         log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(new_mixing_matrix, 
@@ -1221,8 +1225,9 @@ class Sampling_functions(MixingMatrix):
         B_f = sample_B_f_r[:-1]
 
         ## Updating the mixing matrix
-        self.update_params(B_f, jax_use=True)
-        mixing_matrix_sample = self.get_B(jax_use=True).mean(axis=2) # Getting the mean of the mixing matrix over the pixels
+        # self.update_params(B_f, jax_use=True)
+        # mixing_matrix_sample = self.get_B(jax_use=True).mean(axis=2) # Getting the mean of the mixing matrix over the pixels
+        mixing_matrix_sample = self.get_B_from_params(B_f, jax_use=True).mean(axis=2) # Getting the mean of the mixing matrix over the pixels
 
         ## Reconstructing the CMB covariance matrix parametrized by r_param
         red_CMB_cell = theoretical_red_cov_r0_total + r_param*theoretical_red_cov_r1_tensor
