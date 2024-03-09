@@ -88,7 +88,8 @@ def construct_partial_2lvl_preconditioners_JAX(alphas, betas, eigenvectors, matv
     partial_precond = jnp.einsum('jk,lk->jl',
                                  jnp.linalg.pinv(jnp.einsum('ba,bc',
                                                             deflation_matrix,
-                                                            matvec_x_deflation_matrix)),
+                                                            matvec_x_deflation_matrix),
+                                                rcond=1e-12),
                                  deflation_matrix)
 
     # first_term_sp_BCOO = jsparse.BCOO.fromdense(jnp.einsum('ij,ik->jk', matvec_stored, partial_precond))
@@ -99,10 +100,10 @@ def construct_partial_2lvl_preconditioners_JAX(alphas, betas, eigenvectors, matv
 
     # first_term_sp = jnp.einsum('ij,ik->jk', matvec_stored, partial_precond)
     # second_term_sp = jnp.einsum('ij,jk->ik', deflation_matrix, partial_precond)
-    return deflation_matrix, partial_precond
+    return deflation_matrix, partial_precond, matvec_x_deflation_matrix
 
 
-def apply_preconditioner_JAX(deflation_matrix, partial_precond, matvec_stored, block_diag_precond_func, vector, optimize='optimal'):
+def apply_preconditioner_JAX(deflation_matrix, partial_precond, matvec_x_deflation_matrix, block_diag_precond_func, vector, optimize='optimal'):
     """ Apply preconditioner to a vector
 
         Parameters
@@ -119,6 +120,6 @@ def apply_preconditioner_JAX(deflation_matrix, partial_precond, matvec_stored, b
     # first_term = partial_2lvl_precond[0]@vector
     # second_term = partial_2lvl_precond[1]@vector
 
-    first_term = jnp.einsum('ij,ik,k->j', matvec_stored, partial_precond, vector, optimize=optimize)
+    first_term = jnp.einsum('ij,jk,k->i', matvec_x_deflation_matrix, partial_precond, vector, optimize=optimize)
     second_term = jnp.einsum('ij,jk,k->i', deflation_matrix, partial_precond, vector, optimize=optimize)
     return block_diag_precond_func(vector-first_term) + second_term
