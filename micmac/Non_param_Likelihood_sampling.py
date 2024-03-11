@@ -46,6 +46,7 @@ class MICMAC_Sampler(Sampling_functions):
                  sample_C_inv_Wishart=False,
                  perturbation_eta_covariance=False,
                  use_uncorrelated_patches=False,
+                 simultaneous_accept_rate=False,
                  biased_version=False,
                  classical_Gibbs=False,
                  use_binning=False,
@@ -145,6 +146,7 @@ class MICMAC_Sampler(Sampling_functions):
         self.biased_version = bool(biased_version) # To have a run without the correction term
         self.perturbation_eta_covariance = bool(perturbation_eta_covariance) # To use the perturbation approach for the eta contribution in log-proba of B_f
         self.use_uncorrelated_patches = bool(use_uncorrelated_patches) # To use uncorrelated patches for B_f sampling
+        self.simultaneous_accept_rate = bool(simultaneous_accept_rate) # To use the simultaneous accept rate for the patches of the B_f sampling
         assert ((sample_r_Metropolis and sample_C_inv_Wishart) == False) and ((sample_r_Metropolis or not(sample_C_inv_Wishart)) or (not(sample_r_Metropolis) or sample_C_inv_Wishart))
         self.sample_r_Metropolis = bool(sample_r_Metropolis)
         self.sample_C_inv_Wishart = bool(sample_C_inv_Wishart)
@@ -495,10 +497,19 @@ class MICMAC_Sampler(Sampling_functions):
             jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_JAX, static_argnames=['biased_bool'])
             sampling_func = separate_single_MH_step_index_v2b
 
-            if self.use_uncorrelated_patches:
-                print("Using uncorrelated patches version of mixing matrix sampling !!!", flush=True)
-                ## MH step function to sample the mixing matrix free parameters with the patches per parameters sample alltogether
-                sampling_func = separate_single_MH_step_index_v3
+            if self.use_uncorrelated_patches or self.simultaneous_accept_rate:
+                ## More efficient version of the mixing matrix sampling
+                if self.use_uncorrelated_patches:
+                    ## MH step function to sample the mixing matrix free parameters with the patches per parameters sample alltogether
+                    print("Using uncorrelated patches version of mixing matrix sampling !!!", flush=True)
+                    sampling_func = separate_single_MH_step_index_v3
+                elif self.simultaneous_accept_rate:
+                    ## MH step function to sample the mixing matrix free parameters with patches simultaneous computed accept rate
+                    print("Using simultaneous accept rate version of mixing matrix sampling !!!", flush=True)
+                    print("---- ATTENTION : This assumes all patches are distributed in the same way for all parameters !", flush=True)
+                    jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_pixel_JAX, static_argnames=['biased_bool'])
+                    sampling_func = separate_single_MH_step_index_v4_pixel
+                    
                 indexes_patches_Bf = jnp.array(self.indexes_b.ravel(order='F'), dtype=jnp.int64)
                 def which_interval(carry, index_Bf):
                     return carry | ((index_Bf >= indexes_patches_Bf) & (index_Bf < indexes_patches_Bf + self.size_patches)), index_Bf
@@ -814,7 +825,7 @@ class MICMAC_Sampler(Sampling_functions):
                     if not(self.biased_version):
                         ## If not biased, provide the eta maps
                         dict_parameters_sampling_B_f['component_eta_maps'] = new_carry['eta_maps']
-                    if self.use_uncorrelated_patches:
+                    if self.use_uncorrelated_patches or self.simultaneous_accept_rate:
                         ## Provide as well the indexes of the patches in case of the uncorrelated patches version
                         dict_parameters_sampling_B_f['size_patches'] = size_patches
                         dict_parameters_sampling_B_f['max_len_patches_Bf'] = max_len_patches_Bf

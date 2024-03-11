@@ -105,7 +105,9 @@ class MixingMatrix():
 
     def get_params_long_python(self, params, print_bool=False):
         # only python version
-        """From the params to all the entries of the mixing matrix"""
+        """
+            From the params to all the entries of the mixing matrix
+        """
         n_unknown_freqs = self.n_frequencies-self.n_components+1
         n_comp_fgs = self.n_components-1
         params_long = np.zeros((n_unknown_freqs, n_comp_fgs, self.n_pix))
@@ -114,7 +116,7 @@ class MixingMatrix():
             if print_bool:
                 print("node: ", node_b.parent.name, node_b.name)
             # template of all the patches for this b
-            spv_template_b = np.array(create_one_template(node_b, nside=self.nside, all_nsides=[], spv_templates=[]))
+            spv_template_b = np.array(create_one_template(node_b, nside=self.nside, all_nsides=None, spv_templates=None))
             # hp.mollview(spv_template_b)
             # plt.show()
             # loop over the patches of this b
@@ -147,6 +149,75 @@ class MixingMatrix():
         shape_output = (self.n_frequencies-self.n_components+1,self.n_components-1,12*self.nside**2,)
         return jax.pure_callback(self.get_params_long_python, jax.ShapeDtypeStruct(shape_output, np.float64),params,)
 
+    def get_idx_template_params_long_python(self, idx_template, params, print_bool=False):
+        # only python version
+        """
+            From the params to all the entries of the mixing matrix
+            For a given template index, retrieve the corresponding template
+
+            Parameters
+            ----------
+            idx_template : index of params of the corresponding template which will be saved
+            params : flatttened compressed array of the free params of the mixing matrix
+
+            Returns
+            -------
+            Full parameters of the mixing matrix and some templates
+
+            
+        """
+        n_unknown_freqs = self.n_frequencies-self.n_components+1
+        n_comp_fgs = self.n_components-1
+        params_long = np.zeros((n_unknown_freqs, n_comp_fgs, self.n_pix))
+        all_templates = []
+        ind_params = 0
+        for ind_node_b, node_b in enumerate(self.spv_nodes_b):
+            if print_bool:
+                print("node: ", node_b.parent.name, node_b.name)
+            # template of all the patches for this b
+            spv_template_b = np.array(create_one_template(node_b, nside=self.nside, all_nsides=None, spv_templates=None))
+
+            # loop over the patches of this b
+            params_long_b = np.zeros((self.n_pix))
+
+            patch_arange = np.arange(get_n_patches_b(node_b))
+            arange_ind_params = ind_params + patch_arange
+            if np.isin(arange_ind_params, idx_template).any():
+                all_templates.append(spv_template_b)
+            for b in patch_arange:
+                params_long_b += np.where(spv_template_b == b, 1, 0)*params[ind_params]
+                ind_params += 1
+            # hp.mollview(params_long_b)
+            # plt.show()
+            ind_freq = np.where(ind_node_b<n_unknown_freqs, ind_node_b, ind_node_b-n_unknown_freqs)
+            ind_comp = np.where(ind_node_b<n_unknown_freqs, 0, 1)
+
+            params_long[ind_freq, ind_comp, :] = params_long_b
+
+        all_templates = np.array(all_templates)
+        return np.vstack([params_long.reshape((n_unknown_freqs*n_comp_fgs, self.n_pix)), all_templates.squeeze()])
+
+    def pure_call_ud_get_idx_template_params_long_python(self, idx_template, params):
+        """
+            JAX Pure call to get_params_long_python
+
+            Parameters
+            ----------
+            idx_template
+            params : compressed version of the parameters of the mixing matrix
+                
+            
+            Returns
+            -------
+            Full parameters of the mixing matrix
+        """
+        n_unknown_freqs = self.n_frequencies-self.n_components+1
+        n_comp_fgs = self.n_components-1
+        shape_output = (((n_unknown_freqs*n_comp_fgs+1),self.n_pix))
+        output_pure_call_back = jax.pure_callback(self.get_idx_template_params_long_python, jax.ShapeDtypeStruct(shape_output, np.float64),idx_template,params,)
+        return output_pure_call_back[:-1].reshape((n_unknown_freqs,n_comp_fgs,self.n_pix,)), output_pure_call_back[-1]
+
+    
     def get_params_long(self, jax_use=False):
         """From the params to all the entries of the mixing matrix"""
 
@@ -282,3 +353,53 @@ class MixingMatrix():
 
         B_mat = np.concatenate((self.get_B_cmb(), self.get_B_fgs_from_params(params)), axis=1)        
         return B_mat
+
+    def get_template_B_fgs_from_params(self, idx_template, params, jax_use=False):
+        """
+        fgs part of the mixing matrix.
+        """
+        ncomp_fgs = self.n_components - 1
+        
+        if jax_use:
+            # Get the long version of the parameters
+            params_long, template = self.pure_call_ud_get_idx_template_params_long_python(idx_template, params)
+
+            B_fgs = jnp.zeros((self.n_frequencies, ncomp_fgs, self.n_pix))
+            # insert all the ones given by the pos_special_freqs
+            B_fgs = B_fgs.at[jnp.array(self.pos_special_freqs),...].set(jnp.broadcast_to(jnp.eye(ncomp_fgs), (self.n_pix,ncomp_fgs,ncomp_fgs)).T)
+            # insert all the parameters values
+            B_fgs = B_fgs.at[self.indexes_frequency_array_no_special,...].set(params_long)
+
+            return B_fgs, template
+        
+        if ncomp_fgs != 0:
+            assert params_long.shape == ((self.n_frequencies - len(self.pos_special_freqs)), ncomp_fgs, self.n_pix)
+            assert len(self.pos_special_freqs) <= ncomp_fgs
+
+        params_long, template = self.get_idx_template_params_long_python(idx_template, params)
+        B_fgs = np.zeros((self.n_frequencies, ncomp_fgs, self.n_pix))
+        if len(self.pos_special_freqs) != 0:
+            # insert all the ones given by the pos_special_freqs
+            for c in range(len(self.pos_special_freqs)):
+                B_fgs[self.pos_special_freqs[c]][c] = 1
+        # insert all the parameters values
+        f = 0
+        for i in range(self.n_frequencies):
+            if i not in self.pos_special_freqs:
+                B_fgs[i, :] = params_long[f, :, :]
+                f += 1
+        
+        return B_fgs, template
+
+    def get_idx_template_B_from_params(self, idx_template, params, jax_use=False):
+        """
+        Full mixing matrix, (n_frequencies*n_components).
+        cmb is given as the first component.
+        """
+        if jax_use:
+            B_fgs, template = self.get_template_B_fgs_from_params(idx_template, params, jax_use=jax_use)
+            return jnp.concatenate((self.get_B_cmb(jax_use=jax_use), B_fgs), axis=1), template
+
+        B_fgs, template = self.get_template_B_fgs_from_params(idx_template, params, jax_use=jax_use)
+        B_mat = np.concatenate((self.get_B_cmb(), B_fgs), axis=1)        
+        return B_mat, template

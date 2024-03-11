@@ -218,11 +218,12 @@ def get_values_b(nodes_b, n_frequencies, n_components):
     """get default values of b"""
     return np.array([nodes_b[i].children[0].value for i in range((n_frequencies*n_components))])
 
-def create_one_template_from_bdefaultvalue(nside_b, all_nsides, spv_templates, nside, use_jax=False, print_bool=False):
-    try:
+def create_one_template_from_bdefaultvalue(nside_b, nside, all_nsides=None, spv_templates=None, use_jax=False, print_bool=False):
+    if all_nsides is not None:
         idx = all_nsides.index(nside_b)
         spv_template_b = spv_templates[idx]
-    except ValueError:
+    else:
+        all_nsides = []
         spv_template_b = create_template_map(nside_b, nside, use_jax=use_jax, print_bool=print_bool)
     all_nsides.append(nside_b)
 
@@ -231,14 +232,14 @@ def create_one_template_from_bdefaultvalue(nside_b, all_nsides, spv_templates, n
 
 def create_one_template(node, all_nsides, spv_templates, nside, print_bool=False):
     nside_b = node.children[0].value
-    spv_template_b = create_one_template_from_bdefaultvalue(nside_b, all_nsides, spv_templates, nside, print_bool=print_bool)
+    spv_template_b = create_one_template_from_bdefaultvalue(nside_b, all_nsides=all_nsides, spv_templates=spv_templates, nside=nside, print_bool=print_bool)
     
     return spv_template_b
 
 
 ### Old functions
 ### Correct but creating all the templates at once
-def create_templates_spv_old(node, nside_out, all_nsides=[], spv_templates=[], print_bool=False):
+def create_templates_spv_old(node, nside_out, all_nsides=None, spv_templates=None, print_bool=False):
     """Create templates of spatial variability for all betas
     (it creates all the templates at once and keep them in a list)"""
     # loop over betas and create template maps for spv
