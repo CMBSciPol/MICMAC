@@ -1494,7 +1494,6 @@ class Sampling_functions(MixingMatrix):
         return -(first_term_complete + second_term_complete + third_term)/2
 
 
-
 def single_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_size, log_proba, **model_kwargs):
         """ 
             Single Metropolis-Hasting step for a single parameter, with a Gaussian proposal distribution
