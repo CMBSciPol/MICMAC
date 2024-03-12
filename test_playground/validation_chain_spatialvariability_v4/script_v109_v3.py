@@ -273,7 +273,7 @@ initial_guess_r = initial_guess_r_ + np.random.uniform(low=-sigma_gap,high=sigma
 
 # Redefine initial r if negative
 if initial_guess_r < 0:
-    initial_guess_r = 1e-8*np.random.uniform(low=-sigma_gap,high=sigma_gap, size=1)
+    initial_guess_r = 1e-8*np.random.uniform(low=0,high=sigma_gap, size=1)
 
 CMB_c_ell = np.zeros_like(c_ell_approx)
 # CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + MICMAC_obj.r_true*theoretical_r1_tensor)
