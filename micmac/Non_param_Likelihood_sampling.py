@@ -646,7 +646,7 @@ class MICMAC_Sampler(Sampling_functions):
                 new_carry['eta_maps'] = self.get_sampling_eta_v2(red_cov_approx_matrix_sqrt, invBtinvNB, BtinvN_sqrt, 
                                                                subPRNGKey, map_random_x=map_random_x, map_random_y=map_random_y, 
                                                                suppress_low_modes=True)
-                
+
                 # Checking shape of the resulting maps
                 chx.assert_shape(new_carry['eta_maps'], (self.nstokes, self.n_pix))
 
