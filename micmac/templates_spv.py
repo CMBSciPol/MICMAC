@@ -97,15 +97,15 @@ def create_template_map(spv_nside, nside, use_jax=False, print_bool=False):
         def wrapper_ud_grade(nside_in_):
             nside_in = nside_in_[0]
             if nside_in == 0:
-                map_out = np.zeros(12*nside**2)
+                map_out = np.zeros(12*nside**2, dtype=np.int64)
             else:
                 map_in = np.arange(12*nside_in**2)
-                map_out = hp.ud_grade(map_in, nside_out=nside)
+                map_out = np.array(hp.ud_grade(map_in, nside_out=nside),dtype=np.int64)
             return map_out
 
         def pure_call_ud_grade(nside_in):
             shape_output = (12*nside**2,)
-            return jax.pure_callback(wrapper_ud_grade, jax.ShapeDtypeStruct(shape_output, np.float64), nside_in,)
+            return jax.pure_callback(wrapper_ud_grade, jax.ShapeDtypeStruct(shape_output, np.int64), nside_in,)
 
         spv_template = pure_call_ud_grade(spv_nside)
         

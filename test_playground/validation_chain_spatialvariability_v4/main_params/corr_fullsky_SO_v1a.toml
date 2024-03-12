@@ -1,5 +1,5 @@
 # [Quick_test_parameters]
-disable_chex = true
+disable_chex = false
 classical_Gibbs = false
 biased_version = false
 perturbation_eta_covariance = true

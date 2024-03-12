@@ -8,7 +8,7 @@ export path_Python_script=$path_directory_main/script_v109_v3.py
 
 
 export file_ver=corr_fullsky_SO_d0s0_nside1_v1091_v1a
-export add_param_toml=add_corr_fullsky_SO_d0s0_nside1_v1
+export add_param_toml=add_corr_fullsky_SO_d0s0_nside1_v1a
 
 export additional_params=$path_directory_main/additional_params/$add_param_toml.toml
 

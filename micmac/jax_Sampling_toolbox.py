@@ -1318,7 +1318,7 @@ class Sampling_functions(MixingMatrix):
                                                          old_params_mixing_matrix, 
                                                          full_data_without_CMB, 
                                                          red_cov_approx_matrix_sqrt, 
-                                                         idx_template,
+                                                         nside_patch,
                                                          component_eta_maps=None,
                                                          first_guess=None,
                                                          previous_inverse_x_Capprox_root=None, 
@@ -1336,7 +1336,7 @@ class Sampling_functions(MixingMatrix):
             :param new_params_mixing_matrix: B_{new} to generate N_{c,new}, new mixing matrix of dimension [component, frequencies]
             :param full_data_without_CMB: data without from which the CMB (sample) maps was substracted, of dimension [frequencies, n_pix]
             :param red_cov_approx_matrix_sqrt: matrix square root of the covariance of C_approx, of dimension [lmin:lmax, nstokes, nstokes]
-            :param idx_template: first index of the parameter patches to retrieve in params
+            :param nside_patch: nside of the parameter patch to retrieve in params
             :param component_eta_maps: set of eta maps of dimension [component, n_pix]
             :param first_guess: previous inverse term computed with N_{c,old}, of dimension [component, n_pix]
             :param previous_inverse_x_Capprox_root: optional, C_approx^{1/2} A^{-1} eta, of dimension [component, n_pix] (otherwise it will be recomputed here)
@@ -1351,10 +1351,10 @@ class Sampling_functions(MixingMatrix):
         # self.update_params(new_params_mixing_matrix,jax_use=True)
         # new_mixing_matrix = self.get_B(jax_use=True)
         # new_mixing_matrix = self.get_B_from_params(new_params_mixing_matrix, jax_use=True)
-        chx.assert_shape(idx_template, (1,))
-        new_mixing_matrix, template = self.get_idx_template_B_from_params(idx_template, 
-                                                                          new_params_mixing_matrix, 
-                                                                          jax_use=True)
+
+        new_mixing_matrix, template = self.get_patch_B_from_params(nside_patch, 
+                                                                   new_params_mixing_matrix, 
+                                                                   jax_use=True)
         
         # Compute spectral likelihood : (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
         log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_pixel(new_mixing_matrix, 
@@ -1786,7 +1786,8 @@ def separate_single_MH_step_index_v4_pixel(random_PRNGKey,
         proposal_params = jnp.copy(carry['sample'])
         proposal_params = proposal_params.at[indexes_to_consider].set(sample_proposal)
 
-        proposal_log_proba = log_proba(proposal_params, idx_template=index_Bf, **model_kwargs)
+        nside_b = jnp.where(size_patches[counter_i]==1, 1, jnp.sqrt(size_patches[counter_i]/12))
+        proposal_log_proba = log_proba(proposal_params, nside_patch=nside_b, **model_kwargs)
 
         accept_prob = -(carry['log_proba'] - proposal_log_proba)
 
@@ -1798,10 +1799,11 @@ def separate_single_MH_step_index_v4_pixel(random_PRNGKey,
         new_carry = {'PRNGKey':rng_key, 'sample':proposal_params, 'log_proba':new_log_proba}
         return new_carry, new_param
 
+    nside_init = jnp.where(size_patches[0]==1, 1, jnp.sqrt(size_patches[0]/12))
     initial_carry = {'PRNGKey':random_PRNGKey, 
                      'sample':old_sample,
                      'log_proba':log_proba(old_sample,
-                                           idx_template=indexes_patches_Bf[0], 
+                                           nside_patch=nside_init, 
                                            **model_kwargs)}
 
     carry, new_params = jlax.scan(map_func, initial_carry, jnp.arange(indexes_patches_Bf.size))

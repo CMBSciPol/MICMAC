@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=corr_spv_fullsky_SO_1e_1nodes
+#SBATCH --job-name=corr_spv_fullsky_SO_1f_1nodes
 #SBATCH --account=nih@cpu          # use CPU allocation
 #SBATCH --qos=qos_cpu-dev          # dev qos (10 jobs, 2h max.)
 #SBATCH --mail-user=magdy.morshed.fr@gmail.com
@@ -36,8 +36,8 @@ export OMP_PLACES=cores
 
 
 
-export VER=corr_fullsky_SO_d1s1_nside16_v1091_v1a
-export additional_config_file=add_corr_fullsky_SO_d1s1_nside16_v1a.toml
+export VER=corr_fullsky_SO_d1s1_nside16_v1091_v2a
+export additional_config_file=add_corr_fullsky_SO_d1s1_nside16_v2a.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/validation_chain_spatialvariability_v4
 
