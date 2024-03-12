@@ -117,7 +117,7 @@ def nonparam_biascorr_fisher_bruteforce(A, s, Sc, Sc_approx, A_dB, Sc_dr, invN=N
 
             with np.errstate(divide='ignore'):
                 m1_dBdB = 2.0*np.trace(_mtmm(A_dB_i, P, _mm(A_dB_j, sst_avg)), axis1=-1, axis2=-2) - Nc_dB*Nc_dB_prime/((Sc+Nc)**2) + Nc_dB*Nc_dB_prime/((Sc_approx+Nc)**2)
-                m2_dBdB = 2.0*(Sc-Sc_approx)/((Sc_approx+Nc)*(Sc+Nc))*_mmm(cov, _mmm(_mtmm(A, invN, A_dB_i), cov, _mtmm(A, invN, A_dB_j)) 
+                m2_dBdB = -2.0*(Sc-Sc_approx)/((Sc_approx+Nc)*(Sc+Nc))*_mmm(cov, _mmm(_mtmm(A, invN, A_dB_i), cov, _mtmm(A, invN, A_dB_j)) 
                                                                            + _mmm(_mtmm(A, invN, A_dB_j), cov, _mtmm(A, invN, A_dB_i)) 
                                                                            + _mmm(_mtmm(A, invN, A_dB_i), cov, _mtmm(A_dB_j, invN, A)) 
                                                                            - _mtmm(A_dB_i, P, A_dB_j), cov)[..., 0, 0]
