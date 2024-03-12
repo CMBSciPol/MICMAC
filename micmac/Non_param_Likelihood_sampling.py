@@ -42,6 +42,7 @@ class MICMAC_Sampler(Sampling_functions):
                  mask=None,
                  save_CMB_chain_maps=False, 
                  save_eta_chain_maps=False,
+                 save_all_B_f_params=True,
                  sample_r_Metropolis=True, 
                  sample_C_inv_Wishart=False,
                  perturbation_eta_covariance=False,
@@ -177,6 +178,7 @@ class MICMAC_Sampler(Sampling_functions):
         # Saving parameters
         self.save_CMB_chain_maps = bool(save_CMB_chain_maps) # Save the CMB chain maps
         self.save_eta_chain_maps = bool(save_eta_chain_maps) # Save the eta chain maps
+        self.save_all_B_f_params = bool(save_all_B_f_params) # Save all the B_f chains
 
         # Optional parameters
         self.instrument_name = instrument_name # Name of the instrument
@@ -315,7 +317,8 @@ class MICMAC_Sampler(Sampling_functions):
         if self.sample_r_Metropolis:
             self.all_samples_r = self.update_variable(self.all_samples_r, all_samples['r_sample'])
 
-        self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, all_samples['params_mixing_matrix_sample'])
+        if self.save_all_B_f_params:
+            self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, all_samples['params_mixing_matrix_sample'])
 
     def update_one_sample(self, one_sample):
         """
@@ -338,7 +341,8 @@ class MICMAC_Sampler(Sampling_functions):
         if self.sample_r_Metropolis:
             self.all_samples_r = self.update_variable(self.all_samples_r, one_sample['r_sample'])
 
-        self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, jnp.expand_dims(one_sample['params_mixing_matrix_sample'],axis=0))
+        if self.save_all_B_f_params:
+            self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, jnp.expand_dims(one_sample['params_mixing_matrix_sample'],axis=0))
 
 
     def perform_Gibbs_sampling(self, 
@@ -854,16 +858,16 @@ class MICMAC_Sampler(Sampling_functions):
                 ## Passing the inverse term to the next iteration
                 new_carry['inverse_term'] = inverse_term
 
-                ## Saving the B_f obtained
-                all_samples['params_mixing_matrix_sample'] = new_carry['params_mixing_matrix_sample']
-                
+
                 # Checking the shape of the resulting mixing matrix
                 chx.assert_shape(new_carry['params_mixing_matrix_sample'], (self.len_params,))
             else:
                 ## Classical Gibbs sampling, no need to sample B_f but still needs to provide them to the next iteration in case it is used for the CMB noise component
                 new_carry['params_mixing_matrix_sample'] = carry['params_mixing_matrix_sample']
-                all_samples['params_mixing_matrix_sample'] = new_carry['params_mixing_matrix_sample']
-
+                # all_samples['params_mixing_matrix_sample'] = new_carry['params_mixing_matrix_sample']
+            
+            ## Saving the B_f obtained
+            all_samples['params_mixing_matrix_sample'] = new_carry['params_mixing_matrix_sample']
 
             ## Passing as well the PRNGKey to the next iteration
             new_carry['PRNGKey'] = PRNGKey
