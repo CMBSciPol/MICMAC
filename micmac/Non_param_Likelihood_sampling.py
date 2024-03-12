@@ -471,7 +471,7 @@ class MICMAC_Sampler(Sampling_functions):
         red_cov_approx_matrix = jnp.array(get_reduced_matrix_from_c_ell(c_ell_approx)[self.lmin:,...])
         red_cov_matrix = get_reduced_matrix_from_c_ell(CMB_c_ell)[self.lmin:,...]
         ## parameters of the mixing matrix
-        params_mixing_matrix_init_sample = jnp.copy(init_params_mixing_matrix)
+        params_mixing_matrix_init_sample = jnp.array(init_params_mixing_matrix, copy=True)
 
         # Preparing the sampling functions
         ## Function to sample eta

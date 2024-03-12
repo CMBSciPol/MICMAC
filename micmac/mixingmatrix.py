@@ -97,7 +97,7 @@ class MixingMatrix():
         """
         if jax_use:
             chx.assert_shape(new_params,(self.len_params,))
-            self.params = new_params
+            self.params = jnp.array(new_params)
             return
         assert np.shape(new_params)[0] == self.len_params
         self.params = new_params
@@ -135,21 +135,21 @@ class MixingMatrix():
 
         return params_long
 
-    def pure_call_ud_get_params_long_python(self, params):
-        """
-            JAX Pure call to get_params_long_python
+    # def pure_call_ud_get_params_long_python(self, params):
+    #     """
+    #         JAX Pure call to get_params_long_python
 
-            Parameters
-            ----------
-            params : compressed version of the parameters of the mixing matrix
+    #         Parameters
+    #         ----------
+    #         params : compressed version of the parameters of the mixing matrix
                 
             
-            Returns
-            -------
-            Full parameters of the mixing matrix
-        """
-        shape_output = (self.n_frequencies-self.n_components+1,self.n_components-1,12*self.nside**2,)
-        return jax.pure_callback(self.get_params_long_python, jax.ShapeDtypeStruct(shape_output, np.float64),params,)
+    #         Returns
+    #         -------
+    #         Full parameters of the mixing matrix
+    #     """
+    #     shape_output = (self.n_frequencies-self.n_components+1,self.n_components-1,12*self.nside**2,)
+    #     return jax.pure_callback(self.get_params_long_python, jax.ShapeDtypeStruct(shape_output, np.float64),params,)
 
     def get_idx_template_params_long_python(self, idx_template, params, print_bool=False):
         # only python version
@@ -199,25 +199,25 @@ class MixingMatrix():
         all_templates = np.array(all_templates)
         return np.vstack([params_long.reshape((n_unknown_freqs*n_comp_fgs, self.n_pix)), all_templates.squeeze()])
 
-    def pure_call_ud_get_idx_template_params_long_python(self, idx_template, params):
-        """
-            JAX Pure call to get_params_long_python
+    # def pure_call_ud_get_idx_template_params_long_python(self, idx_template, params):
+    #     """
+    #         JAX Pure call to get_params_long_python
 
-            Parameters
-            ----------
-            idx_template
-            params : compressed version of the parameters of the mixing matrix
+    #         Parameters
+    #         ----------
+    #         idx_template
+    #         params : compressed version of the parameters of the mixing matrix
                 
             
-            Returns
-            -------
-            Full parameters of the mixing matrix
-        """
-        n_unknown_freqs = self.n_frequencies-self.n_components+1
-        n_comp_fgs = self.n_components-1
-        shape_output = (((n_unknown_freqs*n_comp_fgs+1),self.n_pix))
-        output_pure_call_back = jax.pure_callback(self.get_idx_template_params_long_python, jax.ShapeDtypeStruct(shape_output, np.float64),idx_template,params,)
-        return output_pure_call_back[:-1].reshape((n_unknown_freqs,n_comp_fgs,self.n_pix,)), output_pure_call_back[-1]
+    #         Returns
+    #         -------
+    #         Full parameters of the mixing matrix
+    #     """
+    #     n_unknown_freqs = self.n_frequencies-self.n_components+1
+    #     n_comp_fgs = self.n_components-1
+    #     shape_output = (((n_unknown_freqs*n_comp_fgs+1),self.n_pix))
+    #     output_pure_call_back = jax.pure_callback(self.get_idx_template_params_long_python, jax.ShapeDtypeStruct(shape_output, np.float64),idx_template,params,)
+    #     return output_pure_call_back[:-1].reshape((n_unknown_freqs,n_comp_fgs,self.n_pix,)), output_pure_call_back[-1]
 
     def get_all_templates(self):
         """
@@ -283,12 +283,6 @@ class MixingMatrix():
 
             ## Filling the templates with parameters values
             return self.params.at[templates_to_fill].get()
-
-            # ## Filling the templates with parameters values
-            # def fill_params_long_b(carry, ind_params):
-            #     return jnp.where(templates_to_fill == ind_params, jnp.array(self.params)[ind_params], 0) + carry, None
-            # return jax.lax.scan(fill_params_long_b, jnp.zeros((n_unknown_freqs, n_comp_fgs, self.n_pix)), jnp.arange(self.len_params))[0]
-            # return self.pure_call_ud_get_params_long_python(self.params)
 
         return self.get_params_long_python(self.params)
     
@@ -360,14 +354,14 @@ class MixingMatrix():
         ncomp_fgs = self.n_components - 1
         
         if jax_use:
-            # Get the long version of the parameters
-            params_long = self.pure_call_ud_get_params_long_python(params)
+            # Get all templates
+            templates = self.get_all_templates()
 
             B_fgs = jnp.zeros((self.n_frequencies, ncomp_fgs, self.n_pix))
             # insert all the ones given by the pos_special_freqs
             B_fgs = B_fgs.at[jnp.array(self.pos_special_freqs),...].set(jnp.broadcast_to(jnp.eye(ncomp_fgs), (self.n_pix,ncomp_fgs,ncomp_fgs)).T)
             # insert all the parameters values
-            B_fgs = B_fgs.at[self.indexes_frequency_array_no_special,...].set(params_long)
+            B_fgs = B_fgs.at[self.indexes_frequency_array_no_special,...].set(params.at[templates].get())
 
             return B_fgs
         
@@ -408,8 +402,6 @@ class MixingMatrix():
         ncomp_fgs = self.n_components - 1
         
         if jax_use:
-            # # Get the long version of the parameters
-            # params_long, template = self.pure_call_ud_get_idx_template_params_long_python(idx_template, params)
 
             # Get all templates
             templates = self.get_all_templates()
