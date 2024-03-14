@@ -454,7 +454,7 @@ class MICMAC_Sampler(Sampling_functions):
 
         ## Testing the initial guess for r
         assert np.size(initial_guess_r) == 1
-        assert initial_guess_r >= 0 # Not allowing for first guess negative r values
+        # assert initial_guess_r >= 0 # Not allowing for first guess negative r values
 
         # Preparing for the full Gibbs sampling
         len_pos_special_freqs = len(self.pos_special_freqs)

@@ -160,7 +160,7 @@ def full_fisher(init_mixing_matrix_obj, exact_params_mixing_matrix, Cl_lens, Cl_
     assert mode in ['B', 'E', 'EB']
 
     print('Computing mixing matrix')
-    B_matrix = init_mixing_matrix_obj.get_B()
+    B_matrix = init_mixing_matrix_obj.get_B().mean(axis=2)
     B_dB_matrix = init_mixing_matrix_obj.get_B_db()
 
     x0 = np.append(np.ravel(exact_params_mixing_matrix,order='F'), r_start) # true values of the parameters                                                                                                                                             
