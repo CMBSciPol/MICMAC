@@ -23,6 +23,6 @@ use_mask = false
 use_preconditioner = true
 
 name_toml = 'corr_fullsky_SO_v1b.toml' #
-name_file_spv = 'params_spv_SAT_nside0.yaml'
+name_file_spv = 'params_spv_SAT_nside9.yaml'
 former_file_ver = ''
-file_ver = 'corr_fullsky_SO_d1s1_nside0_v1091_v1a'
+file_ver = 'corr_fullsky_SO_d1s1_nside0_v1091_v2a'
