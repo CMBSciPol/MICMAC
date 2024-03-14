@@ -485,7 +485,7 @@ class MixingMatrix():
         """
         params_db = self.get_params_db(jax_use=jax_use)
         if jax_use:
-            B_db = jnp.zeros((params_db.shape[0],self.n_frequencies,self.n_components))
+            B_db = jnp.zeros((self.n_frequencies,self.n_frequencies,self.n_components))
             relevant_indexes = jnp.arange(self.pos_special_freqs[0]+1,self.pos_special_freqs[-1])
             B_db = B_db.at[:,relevant_indexes,1:].set(params_db)
             return B_db
