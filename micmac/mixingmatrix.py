@@ -448,3 +448,55 @@ class MixingMatrix():
         B_fgs, template = self.get_template_B_fgs_from_params(nside_patch, params, jax_use=jax_use)
         B_mat = np.concatenate((self.get_B_cmb(), B_fgs), axis=1)        
         return B_mat, template
+
+    def get_params_db(self, jax_use=False):
+        # TODO: adjust with spv
+        """
+        Derivatives of the part of the Mixing Matrix w params
+        (wrt to each entry of first comp and then each entry of second comp)
+        Note: w/o pixel dimension
+        """
+        nrows = self.n_frequencies-self.n_components+1
+        ncols = self.n_components-1
+        if jax_use:
+            def set_1(i):
+                params_dBi = jnp.zeros((nrows,ncols))
+                index_i = i//2
+                index_j = i%2
+                return params_dBi.at[index_i,index_j].set(1).ravel(order='C').reshape((nrows,ncols),order='F')
+            return jax.vmap(set_1)(jnp.arange(nrows*ncols))
+
+        params_dBi = np.zeros((nrows, ncols))
+        params_dB = []
+        for j in range(ncols):
+            for i in range(nrows):
+                params_dBi_copy = copy.deepcopy(params_dBi)
+                params_dBi_copy[i,j] = 1
+                params_dB.append(params_dBi_copy)
+            
+        return params_dB
+
+
+    def get_B_db(self, jax_use=False):
+        """
+        List of derivatives of the Mixing Matrix
+        (wrt to each entry of first comp and then each entry of second comp)
+        Note: w/o pixel dimension
+        """
+        params_db = self.get_params_db(jax_use=jax_use)
+        if jax_use:
+            B_db = jnp.zeros((params_db.shape[0],self.n_frequencies,self.n_components))
+            relevant_indexes = jnp.arange(self.pos_special_freqs[0]+1,self.pos_special_freqs[-1])
+            B_db = B_db.at[:,relevant_indexes,1:].set(params_db)
+            return B_db
+
+        B_db = []
+        for B_db_i in params_db:
+            # add the zeros of special positions
+            for i in self.pos_special_freqs:
+                B_db_i = np.insert(B_db_i, i, np.zeros(self.n_components-1), axis=0)
+            # add the zeros of CMB
+            B_db_i = np.column_stack((np.zeros(self.n_frequencies), B_db_i))
+            B_db.append(B_db_i)
+        
+        return B_db
