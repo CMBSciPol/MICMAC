@@ -4,7 +4,7 @@
 current_directory='Paper_runs/'
 # MICMAC_directory = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/'
 MICMAC_directory = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/'
-directory_mask = "/gpfswork/rech/nih/commun/masks/mask_SO_SAT_apodized.fits"
+directory_mask = "/gpfswork/rech/nih/commun/masks/"
 save_directory = ''
 path_trace_jax = ''
 
@@ -17,11 +17,11 @@ sigma_gap = 20
 fgs_model = 'd0s0'
 initial_guess_r=1e-4
 use_nhits = false
-name_mask = ''
+name_mask = 'mask_SO_SAT_apodized'
 use_mask = false
 use_preconditioner = true
 
 name_toml = 'corr_cutsky_SO_r3_v1c.toml' #
 name_file_spv = 'params_spv_SAT_nside0.yaml'
-former_file_ver = 'corr_cutsky_SO_d0s0_nside0_v1091_v1c2'
-file_ver = 'corr_cutsky_SO_d0s0_nside0_v1091_v1c3'
+former_file_ver = ''
+file_ver = 'corr_cutsky_SO_d0s0_nside0_v1091_v1c'
