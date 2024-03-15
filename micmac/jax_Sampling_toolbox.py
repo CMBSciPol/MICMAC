@@ -124,6 +124,14 @@ class Sampling_functions(MixingMatrix):
         covariance_unity = covariance_unity.at[:,...].set(jnp.eye(self.nstokes))
         return maps_x_red_covariance_cell_JAX(jnp.copy(input_map), covariance_unity, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter)
     
+    def get_cond_unobserved_patches(self):
+        """ 
+            Get boolean condition on the free B_f indices corresponding to patches within the mask
+        """
+
+        templates = self.get_all_templates()
+        mask_with_m1 = jnp.where(self.mask==0, -1, 1)
+        return jnp.isin(jnp.arange(self.len_params), templates*mask_with_m1)
 
     def get_sampling_eta_v2(self, 
                             red_cov_approx_matrix_sqrt, 

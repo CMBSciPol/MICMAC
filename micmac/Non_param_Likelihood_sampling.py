@@ -515,7 +515,12 @@ class MICMAC_Sampler(Sampling_functions):
                         raise NotImplemented("All patches should have the same size for the simultaneous accept rate version of mixing matrix sampling for now !!!")
                     jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_pixel_JAX, static_argnames=['biased_bool'])
                     sampling_func = separate_single_MH_step_index_v4_pixel
-                    
+                
+                
+                ## Redefining the free Bf indexes to sample to the one 
+                condition_unobserved_patches = self.get_cond_unobserved_patches() ## Get boolean array to identify which free indexes are not relevant
+                self.indexes_free_Bf = jnp.array(self.indexes_free_Bf).at[condition_unobserved_patches].get()
+
                 indexes_patches_Bf = jnp.array(self.indexes_b.ravel(order='F'), dtype=jnp.int64)
                 def which_interval(carry, index_Bf):
                     """
