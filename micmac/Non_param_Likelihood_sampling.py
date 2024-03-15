@@ -454,7 +454,7 @@ class MICMAC_Sampler(Sampling_functions):
 
         ## Testing the mask
         assert np.abs(self.mask).sum() != 0
-        
+
 
         ## Testing the initial guess for r
         assert np.size(initial_guess_r) == 1
@@ -519,8 +519,7 @@ class MICMAC_Sampler(Sampling_functions):
                         raise NotImplemented("All patches should have the same size for the simultaneous accept rate version of mixing matrix sampling for now !!!")
                     jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_pixel_JAX, static_argnames=['biased_bool'])
                     sampling_func = separate_single_MH_step_index_v4_pixel
-                
-                
+
                 ## Redefining the free Bf indexes to sample to the one 
                 condition_unobserved_patches = self.get_cond_unobserved_patches() ## Get boolean array to identify which free indexes are not relevant
                 print("Previous free indexes for B_f", self.indexes_free_Bf, flush=True)
