@@ -21,7 +21,7 @@ name_mask = 'mask_SO_SAT_apodized'
 use_mask = true
 use_preconditioner = true
 
-name_toml = 'corr_cutsky_SO_r0_v1e.toml' #
-name_file_spv = 'params_spv_SAT_nside4.yaml'
-former_file_ver = 'corr_cutsky_SO_d7s3_nside4_v1091_v1a'
-file_ver = 'corr_cutsky_SO_d7s3_nside4_v1091_v1a2'
+name_toml = 'corr_cutsky_SO_r0_vb1b.toml' #
+name_file_spv = 'params_spv_SAT_nside0.yaml'
+former_file_ver = ''
+file_ver = 'corr_cutsky_SO_d7s3_nside1_v1091_v1a'
