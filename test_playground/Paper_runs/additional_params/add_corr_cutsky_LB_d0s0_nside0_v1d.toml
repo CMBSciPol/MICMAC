@@ -19,7 +19,7 @@ initial_guess_r=1e-4
 use_nhits = false
 name_mask = 'Planck_mask_fsky_60'
 use_mask = true
-use_preconditioner = true
+use_preconditioner = false
 
 name_toml = 'corr_cutsky_LB_r0_v1b_2.toml' #
 name_file_spv = 'params_spv_LB_nside0.yaml'
