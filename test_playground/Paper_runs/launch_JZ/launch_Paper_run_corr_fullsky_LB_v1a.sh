@@ -41,6 +41,6 @@ export additional_config_file=add_corr_cutsky_LB_d0s0_nside0_v1a.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Paper_runs
 
-srun python $SRC_PATH/script_v109_v3.py $additional_config_file  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
+srun python $SRC_PATH/script_v109_v4.py $additional_config_file  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
 
 echo "Run finished !"
