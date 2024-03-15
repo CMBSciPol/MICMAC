@@ -518,6 +518,9 @@ class MICMAC_Sampler(Sampling_functions):
                     
                 indexes_patches_Bf = jnp.array(self.indexes_b.ravel(order='F'), dtype=jnp.int64)
                 def which_interval(carry, index_Bf):
+                    """
+                        Selecting the patches to be used for the B_f sampling by checking if the index_Bf is in the interval of the patches
+                    """
                     return carry | ((index_Bf >= indexes_patches_Bf) & (index_Bf < indexes_patches_Bf + self.size_patches)), index_Bf
 
                 condition, _ = jlax.scan(which_interval, jnp.zeros_like(self.size_patches, dtype=bool), self.indexes_free_Bf)

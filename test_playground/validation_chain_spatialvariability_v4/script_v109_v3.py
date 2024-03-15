@@ -141,7 +141,7 @@ instrument['depth_p'] /= reduction_noise
 # Mask initialization
 
 if use_mask:
-    apod_mask = hp.ud_grade(hp.read_map(path_mask),nside_out=MICMAC_obj.nside)
+    apod_mask = hp.ud_grade(hp.read_map(path_mask),nside_out=MICMAC_obj.nside,dtype=np.float64)
 
     template_mask = np.copy(apod_mask)
     if use_nhits:
@@ -157,7 +157,7 @@ if use_mask:
         mask[apod_mask>0] = 1
         mask[apod_mask==0] = 0
         template_mask = mask
-    MICMAC_obj.mask = mask
+    MICMAC_obj.mask = np.int32(mask)
 
 else:
     # Then the mask have been initialized to 1 in the MICMAC_sampler object
