@@ -36,7 +36,7 @@ export OMP_PLACES=cores
 
 
 
-export VER=corr_cutsky_SO_d7s3_nside1_v1091_v1a9
+export VER=corr_cutsky_SO_d7s3_nside1_v1091_v1a10
 export additional_config_file=add_corr_cutsky_SO_d7s3_nside1_v1a.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Paper_runs
