@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=corr_Paper_run_LB_v1l_2
+#SBATCH --job-name=corr_Paper_run_LB_v1m
 #SBATCH --account=nih@cpu          # use CPU allocation
 #SBATCH --qos=qos_cpu-dev          # dev qos (10 jobs, 2h max.)
 #SBATCH --mail-user=magdy.morshed.fr@gmail.com
