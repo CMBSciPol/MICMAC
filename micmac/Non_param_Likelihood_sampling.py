@@ -521,7 +521,7 @@ class MICMAC_Sampler(Sampling_functions):
                     print("---- ATTENTION : This assumes all patches are distributed in the same way for all parameters !", flush=True)
                     if (self.size_patches != self.size_patches[0]).any():
                         raise NotImplemented("All patches should have the same size for the simultaneous accept rate version of mixing matrix sampling for now !!!")
-                    jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_pixel_JAX, static_argnames=['biased_bool'])
+                    jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_pixel_JAX, static_argnames=['biased_bool', 'full_sky_correction'])
                     sampling_func = separate_single_MH_step_index_v4_pixel
 
                 ## Redefining the free Bf indexes to sample to the one 
