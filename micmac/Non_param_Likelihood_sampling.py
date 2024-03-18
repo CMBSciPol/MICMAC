@@ -498,13 +498,13 @@ class MICMAC_Sampler(Sampling_functions):
         r_sampling_MH = single_Metropolis_Hasting_step
         
         ## Function to sample the mixing matrix free parameters in the most general way
-        jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v2b_JAX, static_argnames=['biased_bool'])
+        jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v2b_JAX, static_argnames=['biased_bool', 'full_sky_correction'])
         sampling_func = separate_single_MH_step_index_accelerated
 
         if self.biased_version or self.perturbation_eta_covariance:
             print("Using biased version or perturbation version of mixing matrix sampling !!!", flush=True)
             ## Function to sample the mixing matrix free parameters through the difference of the log-proba, to have only one CG done
-            jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_JAX, static_argnames=['biased_bool'])
+            jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_JAX, static_argnames=['biased_bool', 'full_sky_correction'])
             sampling_func = separate_single_MH_step_index_v2b
 
             if self.use_uncorrelated_patches or self.simultaneous_accept_rate:
