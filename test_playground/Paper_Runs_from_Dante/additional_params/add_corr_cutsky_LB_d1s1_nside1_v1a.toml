@@ -10,6 +10,7 @@ MICMAC_directory = '/Users/arizzieri/APC/PhD/cmb_work/comp_sep/Non_param/MICMAC'
 directory_mask = '/work/rizzieri/common/masks/'
 save_directory = ''
 path_trace_jax = ''
+path_cov_B_f_r = '/Users/arizzieri/APC/PhD/cmb_work/comp_sep/Non_param/MICMAC/test_playground/Fake_Fisher_matrix_LiteBIRD.txt'
 
 seed_realization_input=42
 delta_ell=1

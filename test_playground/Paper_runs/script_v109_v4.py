@@ -56,6 +56,9 @@ if 'factor_Fisher_r' in dictionary_additional_parameters:
     factor_Fisher_r = dictionary_additional_parameters['factor_Fisher_r']
 else:
     factor_Fisher_r = 1
+path_cov_B_f_r = ''
+if 'path_cov_B_f_r' in dictionary_additional_parameters:
+    path_cov_B_f_r = dictionary_additional_parameters['path_cov_B_f_r']
 relative_treshold = dictionary_additional_parameters['relative_treshold']
 sigma_gap = dictionary_additional_parameters['sigma_gap']
 fgs_model = dictionary_additional_parameters['fgs_model']
@@ -127,12 +130,15 @@ MICMAC_obj.seed = MICMAC_obj.seed + MPI_rank
 fgs_model_ = fgs_model
 instr_name = MICMAC_obj.instrument_name
 
-path_Fisher = path_home_test_playground + f'Fisher_matrix_{MICMAC_obj.instrument_name}_EB_model_{fgs_model_}_noise_True_seed_42_lmin2_lmax128.txt'
-try :
-    Fisher_matrix = np.loadtxt(path_Fisher)
-except:
-    print("Fisher matrix not found !", flush=True)
-    Fisher_matrix = np.loadtxt(path_home_test_playground + f'Fisher_matrix_{MICMAC_obj.instrument_name}_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt')
+if path_cov_B_f_r == '':
+    path_Fisher = path_home_test_playground + f'Fisher_matrix_{MICMAC_obj.instrument_name}_EB_model_{fgs_model_}_noise_True_seed_42_lmin2_lmax128.txt'
+    try :
+        Fisher_matrix = np.loadtxt(path_Fisher)
+    except:
+        print("Fisher matrix not found !", flush=True)
+        Fisher_matrix = np.loadtxt(path_home_test_playground + f'Fisher_matrix_{MICMAC_obj.instrument_name}_EB_model_d0s0_noise_True_seed_42_lmin2_lmax128.txt')
+else:
+    Fisher_matrix = np.loadtxt(path_cov_B_f_r)
 
 # get instrument from public database
 instrument = get_instrument(instr_name)
