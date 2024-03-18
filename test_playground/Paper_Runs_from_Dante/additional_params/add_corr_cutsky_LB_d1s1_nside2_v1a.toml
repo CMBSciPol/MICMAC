@@ -1,0 +1,30 @@
+## These are parameters useful to have the tests general and easy to change
+## will not be used in the final version of the code
+
+current_directory='Paper_runs/'
+# MICMAC_directory = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/'
+# MICMAC_directory = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/'
+# MICMAC_directory = '/work/rizzieri/MICMAC'
+MICMAC_directory = '/Users/arizzieri/APC/PhD/cmb_work/comp_sep/Non_param/MICMAC'
+# directory_mask = "/gpfswork/rech/nih/commun/masks/"
+directory_mask = '/work/rizzieri/common/masks/'
+save_directory = ''
+path_trace_jax = ''
+
+seed_realization_input=42
+delta_ell=1
+reduction_noise = 1
+factor_Fisher = 1
+relative_treshold = 1e-1
+sigma_gap = 20
+fgs_model = 'd1s1'
+initial_guess_r=1e-4
+use_nhits = false
+name_mask = 'Planck_mask_fsky_60'
+use_mask = true
+use_preconditioner = true
+
+name_toml = 'corr_cutsky_LB_r0_v1c.toml' #
+name_file_spv = 'params_spv_LB_nside2.yaml'
+former_file_ver = ''
+file_ver = 'corr_cutsky_LB_d1s1_nside2_v1a2'
