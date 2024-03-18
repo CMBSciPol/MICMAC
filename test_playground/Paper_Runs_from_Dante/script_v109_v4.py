@@ -52,6 +52,10 @@ repo_save = dictionary_additional_parameters['save_directory']
 delta_ell = dictionary_additional_parameters['delta_ell']
 reduction_noise = dictionary_additional_parameters['reduction_noise']
 factor_Fisher = dictionary_additional_parameters['factor_Fisher']
+if 'factor_Fisher_r' in dictionary_additional_parameters:
+    factor_Fisher_r = dictionary_additional_parameters['factor_Fisher_r']
+else:
+    factor_Fisher_r = 1
 relative_treshold = dictionary_additional_parameters['relative_treshold']
 sigma_gap = dictionary_additional_parameters['sigma_gap']
 fgs_model = dictionary_additional_parameters['fgs_model']
@@ -215,7 +219,7 @@ if not(MICMAC_obj.classical_Gibbs):
 
     print("Covariance B_f :", MICMAC_obj.covariance_B_f)
 
-MICMAC_obj.step_size_r = minimum_std_Fisher_diag[-1]
+MICMAC_obj.step_size_r = minimum_std_Fisher_diag[-1]/np.sqrt(factor_Fisher_r)
 
 # Generation input maps
 np.random.seed(seed_realization_input+1)
