@@ -1129,7 +1129,8 @@ class Sampling_functions(MixingMatrix):
                                                               inverse_term, 
                                                               component_eta_maps, 
                                                               red_cov_approx_matrix_sqrt, 
-                                                              inverse_term_x_Capprox_root=None):
+                                                              inverse_term_x_Capprox_root=None,
+                                                              full_sky_correction=False):
         """ Get conditional probability of correction term in the likelihood from the full mixing matrix,
             assuming the difference between the old and new mixing matrix is small
 
@@ -1205,11 +1206,14 @@ class Sampling_functions(MixingMatrix):
         ## Applying the operator (N_{c,new}^{-1} - N_{c,old}^{-1}) to C_approx^{1/2} A^{-1} eta
         perturbation_term = func_to_apply(inverse_term_x_Capprox_root).reshape(self.nstokes,self.n_pix)
 
+        central_term = self.mask
+        if full_sky_correction:
+            central_term = jnp.ones_like(self.mask)
         ## Computing contribution of \eta A^{-1} \eta
-        first_order_term = jnp.einsum('sp,p,sp->p', component_eta_maps, self.mask, inverse_term.reshape(self.nstokes,self.n_pix))
+        first_order_term = jnp.einsum('sp,p,sp->p', component_eta_maps, central_term, inverse_term.reshape(self.nstokes,self.n_pix))
 
         ## Computing contribution of \eta A^{-1} C_approx^{1/2} (N_{c,new}^{-1} - N_{c,old}^{-1}) C_approx^{1/2} A^{-1} \eta
-        perturbation_term = jnp.einsum('sp,p,sp->p', perturbation_term, self.mask, inverse_term_x_Capprox_root.reshape(self.nstokes,self.n_pix))
+        perturbation_term = jnp.einsum('sp,p,sp->p', perturbation_term, central_term, inverse_term_x_Capprox_root.reshape(self.nstokes,self.n_pix))
 
         ## Assembling everything
         new_log_proba = first_order_term - perturbation_term
@@ -1344,7 +1348,8 @@ class Sampling_functions(MixingMatrix):
                                                          component_eta_maps=None,
                                                          first_guess=None,
                                                          previous_inverse_x_Capprox_root=None, 
-                                                         biased_bool=False):
+                                                         biased_bool=False,
+                                                         full_sky_correction=False):
         """ Get conditional probability of the conditional probability associated with the B_f parameters
 
             Note that the difference between the old and new mixing matrix is assumed to be small
@@ -1393,7 +1398,8 @@ class Sampling_functions(MixingMatrix):
                                                                                                           first_guess, 
                                                                                                           component_eta_maps, 
                                                                                                           red_cov_approx_matrix_sqrt, 
-                                                                                                          inverse_term_x_Capprox_root=previous_inverse_x_Capprox_root)
+                                                                                                          inverse_term_x_Capprox_root=previous_inverse_x_Capprox_root,
+                                                                                                          full_sky_correction=full_sky_correction)
 
         full_log_proba_pixel = log_proba_spectral_likelihood + log_proba_perturbation_likelihood
         def project_pixel_to_patches(idx_patch):
