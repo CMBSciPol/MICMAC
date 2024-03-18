@@ -48,6 +48,7 @@ class MICMAC_Sampler(Sampling_functions):
                  perturbation_eta_covariance=False,
                  use_uncorrelated_patches=False,
                  simultaneous_accept_rate=False,
+                 full_sky_correction=False,
                  biased_version=False,
                  classical_Gibbs=False,
                  use_binning=False,
@@ -148,6 +149,7 @@ class MICMAC_Sampler(Sampling_functions):
         self.perturbation_eta_covariance = bool(perturbation_eta_covariance) # To use the perturbation approach for the eta contribution in log-proba of B_f
         self.use_uncorrelated_patches = bool(use_uncorrelated_patches) # To use uncorrelated patches for B_f sampling
         self.simultaneous_accept_rate = bool(simultaneous_accept_rate) # To use the simultaneous accept rate for the patches of the B_f sampling
+        self.full_sky_correction = bool(full_sky_correction) # To use the full sky correction for the log-proba of Bf sampling
         assert ((sample_r_Metropolis and sample_C_inv_Wishart) == False) and ((sample_r_Metropolis or not(sample_C_inv_Wishart)) or (not(sample_r_Metropolis) or sample_C_inv_Wishart))
         self.sample_r_Metropolis = bool(sample_r_Metropolis)
         self.sample_C_inv_Wishart = bool(sample_C_inv_Wishart)
@@ -851,7 +853,9 @@ class MICMAC_Sampler(Sampling_functions):
                         dict_parameters_sampling_B_f['indexes_patches_Bf'] = first_indices_patches_free_Bf
                         dict_parameters_sampling_B_f['len_indexes_Bf'] = self.len_params
                         #TODO: Accelerate by removing indexes of indexes_patches_Bf if the corresponding patches are not in indexes_free_Bf, nor in the mask
-
+                    if not(self.full_sky_correction):
+                        ## Test parameter
+                        dict_parameters_sampling_B_f['full_sky_correction'] = self.full_sky_correction
                     ## Sampling B_f !
                     new_subPRNGKey_3, new_carry['params_mixing_matrix_sample'] = sampling_func(random_PRNGKey=new_subPRNGKey_3, 
                                                                                                 old_sample=carry['params_mixing_matrix_sample'], 
