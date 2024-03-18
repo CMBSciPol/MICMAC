@@ -14,7 +14,7 @@
 
 conda activate /work/rizzieri/.conda/envs/micmac_env
 
-export path_directory_main=/work/rizzieri/MICMAC/test_playground/Paper_runs
+export path_directory_main=/work/rizzieri/MICMAC/test_playground/Paper_Runs_from_Dante
 
 export path_Python_script=$path_directory_main/script_v109_v4.py
 
