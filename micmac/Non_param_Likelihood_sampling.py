@@ -504,6 +504,8 @@ class MICMAC_Sampler(Sampling_functions):
         if self.biased_version or self.perturbation_eta_covariance:
             print("Using biased version or perturbation version of mixing matrix sampling !!!", flush=True)
             ## Function to sample the mixing matrix free parameters through the difference of the log-proba, to have only one CG done
+            if self.full_sky_correction:
+                print("Using full_sky correction !!!", flush=True)
             jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_JAX, static_argnames=['biased_bool', 'full_sky_correction'])
             sampling_func = separate_single_MH_step_index_v2b
 
@@ -853,9 +855,8 @@ class MICMAC_Sampler(Sampling_functions):
                         dict_parameters_sampling_B_f['indexes_patches_Bf'] = first_indices_patches_free_Bf
                         dict_parameters_sampling_B_f['len_indexes_Bf'] = self.len_params
                         #TODO: Accelerate by removing indexes of indexes_patches_Bf if the corresponding patches are not in indexes_free_Bf, nor in the mask
-                    if not(self.full_sky_correction):
-                        ## Test parameter
-                        dict_parameters_sampling_B_f['full_sky_correction'] = self.full_sky_correction
+                    ## Test parameter
+                    dict_parameters_sampling_B_f['full_sky_correction'] = self.full_sky_correction
                     ## Sampling B_f !
                     new_subPRNGKey_3, new_carry['params_mixing_matrix_sample'] = sampling_func(random_PRNGKey=new_subPRNGKey_3, 
                                                                                                 old_sample=carry['params_mixing_matrix_sample'], 
