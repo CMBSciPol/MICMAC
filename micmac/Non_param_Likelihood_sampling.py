@@ -829,22 +829,25 @@ class MICMAC_Sampler(Sampling_functions):
 
                 # Sampling B_f
                 if self.perturbation_eta_covariance or self.biased_version:
-                    ## Precomputing the term C_approx^{1/2} A^{-1} eta = C_approx^{1/2} ( Id + C_approx^{1/2} N_{c,old}^{-1} C_approx^{1/2} )^{-1} eta
-                    inverse_term_x_Capprox_root = maps_x_red_covariance_cell_JAX(inverse_term.reshape(self.nstokes,self.n_pix), 
-                                                                                 red_cov_approx_matrix_sqrt, 
-                                                                                 nside=self.nside, 
-                                                                                 lmin=self.lmin, 
-                                                                                 n_iter=self.n_iter
-                                                                                 ).ravel()
+                    
 
                     ## Preparing the parameters to provide for the sampling of B_f
                     dict_parameters_sampling_B_f = {'indexes_Bf':self.indexes_free_Bf,
                                                     'full_data_without_CMB':full_data_without_CMB, 
                                                     'red_cov_approx_matrix_sqrt':red_cov_approx_matrix_sqrt, 
-                                                    'first_guess':inverse_term,
-                                                    'previous_inverse_x_Capprox_root':inverse_term_x_Capprox_root,
                                                     'old_params_mixing_matrix':carry['params_mixing_matrix_sample'],
                                                     'biased_bool':self.biased_version}
+                    if self.perturbation_eta_covariance:
+                        ## Precomputing the term C_approx^{1/2} A^{-1} eta = C_approx^{1/2} ( Id + C_approx^{1/2} N_{c,old}^{-1} C_approx^{1/2} )^{-1} eta
+                        inverse_term_x_Capprox_root = maps_x_red_covariance_cell_JAX(inverse_term.reshape(self.nstokes,self.n_pix), 
+                                                                                    red_cov_approx_matrix_sqrt, 
+                                                                                    nside=self.nside, 
+                                                                                    lmin=self.lmin, 
+                                                                                    n_iter=self.n_iter
+                                                                                    ).ravel()
+                        dict_parameters_sampling_B_f['previous_inverse_x_Capprox_root'] = inverse_term_x_Capprox_root
+                        dict_parameters_sampling_B_f['first_guess'] = inverse_term
+
                     if not(self.biased_version):
                         ## If not biased, provide the eta maps
                         dict_parameters_sampling_B_f['component_eta_maps'] = new_carry['eta_maps']
@@ -873,8 +876,9 @@ class MICMAC_Sampler(Sampling_functions):
                                                             first_guess=carry['inverse_term'],
                                                             biased_bool=self.biased_version,
                                                             precond_func=precond_func_eta)
-                ## Passing the inverse term to the next iteration
-                new_carry['inverse_term'] = inverse_term
+                if self.perturbation_eta_covariance:
+                    ## Passing the inverse term to the next iteration
+                    new_carry['inverse_term'] = inverse_term
 
 
                 # Checking the shape of the resulting mixing matrix
@@ -900,7 +904,7 @@ class MICMAC_Sampler(Sampling_functions):
 
         if not(self.classical_Gibbs) and not(self.biased_version):
             initial_carry['eta_maps'] = initial_eta
-        if not(self.classical_Gibbs):
+        if not(self.classical_Gibbs) and not(self.biased_version):
             initial_carry['inverse_term'] = jnp.zeros_like(initial_eta)
         if self.sample_r_Metropolis:
             initial_carry['r_sample'] = initial_guess_r

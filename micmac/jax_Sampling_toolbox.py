@@ -293,7 +293,7 @@ class Sampling_functions(MixingMatrix):
         # Then apply C^{1/2} to N_c^{-1/2} \chi
 
         # right_member = (right_member_1 + right_member_2).ravel()
-        right_member = self.get_band_limited_maps(right_member_1 + right_member_2).ravel()
+        right_member = self.get_band_limited_maps(right_member_1).ravel() + right_member_2.ravel()
 
         # Computation of the left side member of the equation
 
@@ -1285,7 +1285,7 @@ class Sampling_functions(MixingMatrix):
                                                    new_params_mixing_matrix, 
                                                    old_params_mixing_matrix, 
                                                    full_data_without_CMB, 
-                                                   red_cov_approx_matrix_sqrt, 
+                                                   red_cov_approx_matrix_sqrt=None, 
                                                    component_eta_maps=None,
                                                    first_guess=None,
                                                    previous_inverse_x_Capprox_root=None, 
