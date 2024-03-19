@@ -59,6 +59,10 @@ else:
 path_cov_B_f_r = ''
 if 'path_cov_B_f_r' in dictionary_additional_parameters:
     path_cov_B_f_r = dictionary_additional_parameters['path_cov_B_f_r']
+if 'initial_guess_B_f' in dictionary_additional_parameters:
+    initial_guess_B_f = dictionary_additional_parameters['initial_guess_B_f']
+else:
+    initial_guess_B_f = None
 relative_treshold = dictionary_additional_parameters['relative_treshold']
 sigma_gap = dictionary_additional_parameters['sigma_gap']
 fgs_model = dictionary_additional_parameters['fgs_model']
@@ -176,10 +180,11 @@ else:
 
 
 # Generating foregrounds and noise maps
-# np.random.seed(seed_realization_input)
-# freq_maps_fgs_noised = get_observation(instrument, fgs_model_, nside=MICMAC_obj.nside, noise=True)[:, 1:, :]   # keep only Q and U
-np.random.seed(seed_realization_input)
-freq_maps_fgs_denoised = get_observation(instrument, fgs_model_, nside=MICMAC_obj.nside, noise=False)[:, 1:, :]   # keep only Q and U
+if fgs_model_ != '':
+    np.random.seed(seed_realization_input)
+    freq_maps_fgs_denoised = get_observation(instrument, fgs_model_, nside=MICMAC_obj.nside, noise=False)[:, 1:, :]   # keep only Q and U
+else:
+    freq_maps_fgs_denoised = np.zeros((MICMAC_obj.n_frequencies, MICMAC_obj.nstokes, MICMAC_obj.n_pix))
 np.random.seed(seed_realization_input)
 noise_map = get_noise_realization(MICMAC_obj.nside, instrument)[:, 1:, :]
 
@@ -259,7 +264,6 @@ len_pos_special_freqs = len(MICMAC_obj.pos_special_freqs)
 dimension_free_param_B_f = jnp.size(MICMAC_obj.indexes_free_Bf)
 # dimension_free_param_B_f = MICMAC_obj.len_params #- len_pos_special_freqs
 
-first_guess = jnp.copy(exact_params_mixing_matrix)
 
 print('MICMAC_obj.indexes_free_Bf', MICMAC_obj.indexes_free_Bf)
 print('dimension_free_param_B_f', dimension_free_param_B_f)
@@ -274,11 +278,17 @@ if MICMAC_obj.len_params != step_size_B_f.shape[0]:
     # step_size_B_f = np.repeat(step_size_B_f, expend_factor)
     step_size_B_f = np.broadcast_to(step_size_B_f, (expend_factor, step_size_B_f.shape[0])).ravel()
 
-np.random.seed(MICMAC_obj.seed)
-first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
-                first_guess[MICMAC_obj.indexes_free_Bf] + 
-                step_size_B_f[MICMAC_obj.indexes_free_Bf]*np.random.uniform(low=-sigma_gap,high=sigma_gap, size=(dimension_free_param_B_f,)))
-init_params_mixing_matrix = first_guess
+if initial_guess_B_f is None:
+    first_guess = jnp.copy(exact_params_mixing_matrix)
+
+    np.random.seed(MICMAC_obj.seed)
+    first_guess = first_guess.at[MICMAC_obj.indexes_free_Bf].set(
+                    first_guess[MICMAC_obj.indexes_free_Bf] + 
+                    step_size_B_f[MICMAC_obj.indexes_free_Bf]*np.random.uniform(low=-sigma_gap,high=sigma_gap, size=(dimension_free_param_B_f,)))
+    init_params_mixing_matrix = first_guess
+else:
+    init_params_mixing_matrix = jnp.array(initial_guess_B_f)
+
 initial_guess_r = initial_guess_r_ + np.random.uniform(low=-sigma_gap,high=sigma_gap, size=1)*MICMAC_obj.step_size_r
 
 # Redefine initial r if negative

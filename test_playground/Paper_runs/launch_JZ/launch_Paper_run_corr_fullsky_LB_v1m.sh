@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=corr_Paper_run_LB_v1mb
+#SBATCH --job-name=corr_Paper_run_LB_v1m
 #SBATCH --account=nih@cpu          # use CPU allocation
 #SBATCH --qos=qos_cpu-dev          # dev qos (10 jobs, 2h max.)
 #SBATCH --mail-user=magdy.morshed.fr@gmail.com
@@ -37,8 +37,8 @@ export OMP_PLACES=cores
 
 
 
-export VER='corr_cutsky_LB_d0s0_nside0_v1091_r2_v1mb2'
-export additional_config_file=add_corr_cutsky_LB_d0s0_nside0_v1mb.toml
+export VER='corr_cutsky_LB_d0s0_nside0_v1091_r2_v1m2'
+export additional_config_file=add_corr_cutsky_LB_d0s0_nside0_v1m.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Paper_runs
 
