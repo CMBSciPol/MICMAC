@@ -22,6 +22,6 @@ use_mask = true
 use_preconditioner = true
 
 name_toml = 'corr_cutsky_SO_r0_v1g.toml' #
-name_file_spv = 'params_spv_SAT_nside16.yaml'
+name_file_spv = 'params_spv_SAT_nside32.yaml'
 former_file_ver = ''
-file_ver = 'corr_cutsky_SO_d7s3_nside16_v1091_v1a'
+file_ver = 'corr_cutsky_SO_d7s3_nside32_v1091_v1a'

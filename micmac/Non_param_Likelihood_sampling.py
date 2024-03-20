@@ -525,10 +525,15 @@ class MICMAC_Sampler(Sampling_functions):
                     sampling_func = separate_single_MH_step_index_v4_pixel
 
                 ## Redefining the free Bf indexes to sample to the one 
-                condition_unobserved_patches = self.get_cond_unobserved_patches() ## Get boolean array to identify which free indexes are not relevant
-                print("Previous free indexes for B_f", self.indexes_free_Bf, flush=True)
-                self.indexes_free_Bf = jnp.array(self.indexes_free_Bf).at[condition_unobserved_patches].get()
-                print("New free indexes for B_f", self.indexes_free_Bf, flush=True)
+                # condition_unobserved_patches = self.get_cond_unobserved_patches() ## Get boolean array to identify which free indexes are not relevant
+                # print("Previous free indexes for B_f", self.indexes_free_Bf, flush=True)
+                # self.indexes_free_Bf = jnp.array(self.indexes_free_Bf).at[condition_unobserved_patches].get()
+                # print("New free indexes for B_f", self.indexes_free_Bf, flush=True)
+
+                print("Previous free indexes for B_f", self.indexes_free_Bf, self.indexes_free_Bf.size, flush=True)
+                self.indexes_free_Bf = self.indexes_free_Bf.at[self.get_cond_unobserved_patches_from_indices(self.indexes_free_Bf)].get() 
+                ## Get boolean array to identify which free indexes are not relevant
+                print("New free indexes for B_f", self.indexes_free_Bf, self.indexes_free_Bf.size, flush=True)
 
                 indexes_patches_Bf = jnp.array(self.indexes_b.ravel(order='F'), dtype=jnp.int64)
                 def which_interval(carry, index_Bf):

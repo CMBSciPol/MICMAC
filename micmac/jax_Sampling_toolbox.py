@@ -130,8 +130,18 @@ class Sampling_functions(MixingMatrix):
         """
 
         templates = self.get_all_templates()
-        mask_with_m1 = jnp.where(self.mask==0, -1, 1)
-        return jnp.isin(jnp.arange(self.len_params), templates*mask_with_m1)
+        # mask_with_m1 = jnp.where(self.mask==0, -1, 1)
+        templates = templates.at[:,:,self.mask==0].set(-1)
+        return jnp.isin(jnp.arange(self.len_params), templates)
+    
+    def get_cond_unobserved_patches_from_indices(self, indices):
+        """ 
+            Get boolean condition on the free B_f indices corresponding to patches within the mask
+        """
+
+        templates = self.get_all_templates()
+        templates = templates.at[:,:,self.mask==0].set(-1)
+        return jnp.isin(indices, templates*mask_with_m1)
 
     def get_sampling_eta_v2(self, 
                             red_cov_approx_matrix_sqrt, 
