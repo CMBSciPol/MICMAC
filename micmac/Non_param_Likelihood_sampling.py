@@ -722,6 +722,7 @@ class MICMAC_Sampler(Sampling_functions):
                                                                             nside=self.nside, 
                                                                             lmin=self.lmin, 
                                                                             n_iter=self.n_iter).ravel()
+            
             ## Computing an initial guess closer to the actual start of the CG for the Wiener filter
             initial_guess_WF = maps_x_red_covariance_cell_JAX(carry['wiener_filter_term'], 
                                                               jnp.linalg.pinv(red_cov_matrix_sqrt), 
