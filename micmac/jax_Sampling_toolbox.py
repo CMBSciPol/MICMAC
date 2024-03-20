@@ -141,7 +141,7 @@ class Sampling_functions(MixingMatrix):
 
         templates = self.get_all_templates()
         templates = templates.at[:,:,self.mask==0].set(-1)
-        return jnp.isin(indices, templates*mask_with_m1)
+        return jnp.isin(indices, templates)
 
     def get_sampling_eta_v2(self, 
                             red_cov_approx_matrix_sqrt, 
