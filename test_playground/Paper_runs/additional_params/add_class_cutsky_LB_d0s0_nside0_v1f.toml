@@ -33,5 +33,5 @@ initial_guess_B_f = [0.52381305, 0.31207575, 0.22026795, 0.15112554, 0.10669399,
 
 name_toml = 'class_cutsky_LB_v1c.toml' #
 name_file_spv = 'params_spv_LB_nside0.yaml'
-former_file_ver = ''
-file_ver = 'class_cutsky_LB_d0s0_nside0_v1091_v1f'
+former_file_ver = 'class_cutsky_LB_d0s0_nside0_v1091_v1f'
+file_ver = 'class_cutsky_LB_d0s0_nside0_v1091_v1f2'
