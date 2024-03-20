@@ -133,7 +133,7 @@ class Sampling_functions(MixingMatrix):
         # mask_with_m1 = jnp.where(self.mask==0, -1, 1)
         templates = templates.at[:,:,self.mask==0].set(-1)
         return jnp.isin(jnp.arange(self.len_params), templates)
-    
+
     def get_cond_unobserved_patches_from_indices(self, indices):
         """ 
             Get boolean condition on the free B_f indices corresponding to patches within the mask
