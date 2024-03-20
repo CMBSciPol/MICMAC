@@ -43,7 +43,8 @@ class MICMAC_Sampler(Sampling_functions):
                  save_CMB_chain_maps=False, 
                  save_eta_chain_maps=False,
                  save_all_B_f_params=True,
-                 sample_r_Metropolis=True, 
+                 sample_r_Metropolis=True,
+                 sample_r_from_BB=False,
                  sample_C_inv_Wishart=False,
                  perturbation_eta_covariance=False,
                  use_uncorrelated_patches=False,
@@ -152,6 +153,8 @@ class MICMAC_Sampler(Sampling_functions):
         self.full_sky_correction = bool(full_sky_correction) # To use the full sky correction for the log-proba of Bf sampling
         assert ((sample_r_Metropolis and sample_C_inv_Wishart) == False) and ((sample_r_Metropolis or not(sample_C_inv_Wishart)) or (not(sample_r_Metropolis) or sample_C_inv_Wishart))
         self.sample_r_Metropolis = bool(sample_r_Metropolis)
+        assert ((sample_r_from_BB and sample_r_Metropolis)) or not(sample_r_from_BB)
+        self.sample_r_from_BB = bool(sample_r_from_BB)
         self.sample_C_inv_Wishart = bool(sample_C_inv_Wishart)
         self.use_binning = bool(use_binning) # To use binning for the sampling of inverse Wishart CMB covariance
         self.acceptance_posdef = bool(acceptance_posdef) # To accept only positive definite matrices for the inverse Wishart CMB covariance
@@ -496,7 +499,12 @@ class MICMAC_Sampler(Sampling_functions):
             func_get_inverse_wishart_sampling_from_c_ells = self.get_binned_inverse_wishart_sampling_from_c_ells_v3
         ## Function to sample the CMB covariance parametrize from r
         r_sampling_MH = single_Metropolis_Hasting_step
-        
+        if self.sample_r_Metropolis:
+            log_proba_r = self.get_conditional_proba_C_from_r
+            if self.sample_r_from_BB:
+                print("Sampling r from BB !!!", flush=True)
+                log_proba_r = self.get_conditional_proba_C_from_r_wBB
+
         ## Function to sample the mixing matrix free parameters in the most general way
         jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v2b_JAX, static_argnames=['biased_bool', 'full_sky_correction'])
         sampling_func = separate_single_MH_step_index_accelerated
@@ -586,6 +594,8 @@ class MICMAC_Sampler(Sampling_functions):
             print("Not sampling for eta and B_f, only for s_c and the CMB covariance !", flush=True)
         if self.sample_r_Metropolis:
             print("Sample for r instead of C !", flush=True)
+            if self.sample_r_from_BB:
+                print("Sample for r with the BB likelihood !", flush=True)
         else:
             print("Sample for C with inverse Wishart !", flush=True)
 
@@ -799,7 +809,7 @@ class MICMAC_Sampler(Sampling_functions):
             elif self.sample_r_Metropolis:
                 # Sampling r which will parametrize C(r) = C_scalar + r*C_tensor
                 new_carry['r_sample'] = r_sampling_MH(random_PRNGKey=new_subPRNGKey_2, old_sample=carry['r_sample'],
-                                                      step_size=self.step_size_r, log_proba=self.get_conditional_proba_C_from_r, 
+                                                      step_size=self.step_size_r, log_proba=log_proba_r, 
                                                       red_sigma_ell=red_c_ells_Wishart_modified, 
                                                       theoretical_red_cov_r1_tensor=theoretical_red_cov_r1_tensor, 
                                                       theoretical_red_cov_r0_total=theoretical_red_cov_r0_total)
