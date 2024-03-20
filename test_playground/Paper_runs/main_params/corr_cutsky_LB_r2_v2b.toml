@@ -1,8 +1,8 @@
 # [Quick_test_parameters]
 disable_chex = true
-classical_Gibbs = true
+classical_Gibbs = false
 biased_version = false
-perturbation_eta_covariance = false
+perturbation_eta_covariance = true
 use_uncorrelated_patches = false
 simultaneous_accept_rate = false
 full_sky_correction = false
