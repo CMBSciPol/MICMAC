@@ -4,7 +4,8 @@
 #SBATCH --qos=qos_cpu-dev          # dev qos (10 jobs, 2h max.)
 #SBATCH --mail-user=magdy.morshed.fr@gmail.com
 #SBATCH --mail-type=ALL
-#SBATCH --ntasks=1                 # nbr of MPI processes
+#SBATCH --nodes=4
+#SBATCH --ntasks=4                 # nbr of MPI processes
 #SBATCH --ntasks-per-node=1       # Nombre de processus MPI par noeud
 #SBATCH --cpus-per-task=40          # nbr of OpenMP threads
 #SBATCH --hint=nomultithread       # 1 thread / physical core (no hyperthreading)
@@ -36,7 +37,7 @@ export OMP_PLACES=cores
 
 
 
-export VER=class_cutsky_1freq_nofg_v1b2
+export VER=class_cutsky_1freq_nofg_v1b
 export additional_config_file=add_class_cutsky_f1freq_nofg_v1b.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Validation_Classical_Gibbs
