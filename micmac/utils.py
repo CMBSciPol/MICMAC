@@ -5,6 +5,19 @@ import scipy as sp
 import healpy as hp
 import astropy.io.fits as fits
 import camb
+import fgbuster
+
+def get_instr(freqs, depth_p):
+    """
+        Return the instrument dictionnary
+    """
+    instrument_dict = {}
+    instrument_dict['frequency'] = np.array(freqs)
+    instrument_dict['depth_p'] = np.array(depth_p, dtype=float)
+    instrument_dict['depth_i'] = instrument_dict['depth_p']/np.sqrt(2)
+
+    # instrument = fgbuster.standardize_instrument(instrument_dict)
+    return instrument_dict
 
 def generate_power_spectra_CAMB(Nside,  r=0, Alens=1, H0=67.5, ombh2=0.022, omch2=0.122, mnu=0.06, omk=0, tau=0.06, ns=0.965, As=2e-9, lens_potential_accuracy=1, nt=0, ntrun=0, type_power='total', typeless_bool=False):
     """

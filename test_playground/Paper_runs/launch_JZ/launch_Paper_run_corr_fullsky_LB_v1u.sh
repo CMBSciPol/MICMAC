@@ -1,10 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=corr_Paper_run_LB_v1a
+#SBATCH --job-name=corr_Paper_run_LB_v1u
 #SBATCH --account=nih@cpu          # use CPU allocation
 #SBATCH --qos=qos_cpu-dev          # dev qos (10 jobs, 2h max.)
 #SBATCH --mail-user=magdy.morshed.fr@gmail.com
 #SBATCH --mail-type=ALL
-#SBATCH --ntasks=1                 # nbr of MPI processes
+#SBATCH --nodes=4
+#SBATCH --ntasks=4                 # nbr of MPI processes
 #SBATCH --ntasks-per-node=1       # Nombre de processus MPI par noeud
 #SBATCH --cpus-per-task=40          # nbr of OpenMP threads
 #SBATCH --hint=nomultithread       # 1 thread / physical core (no hyperthreading)
@@ -36,14 +37,8 @@ export OMP_PLACES=cores
 
 
 
-# export VER=corr_cutsky_LB_d0s0_nside0_v1091_v1a18
-# export additional_config_file=add_corr_cutsky_LB_d0s0_nside0_v1a.toml
-
-# export VER=corr_cutsky_LB_d0s0_nside0_v1901_v2b
-# export additional_config_file=add_corr_cutsky_LB_d0s0_nside0_v0b.toml
-
-export VER=corr_cutsky_LB_d0s0_nside0_v1091_v2d
-export additional_config_file=add_corr_cutsky_LB_d0s0_nside0_v0d.toml
+export VER=corr_cutsky_LB_d7s0_nside8_v1901_v1a
+export additional_config_file=add_corr_cutsky_LB_d7s0_nside8_v1a.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Paper_runs
 

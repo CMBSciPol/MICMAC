@@ -114,7 +114,6 @@ if name_file_spv != '':
     path_file_spv = directory_main_params_file + name_file_spv
 else:
     path_file_spv = ''
-
 # Defining the path for the trace
 # if path_trace_jax != '':
 #     if not os.path.exists(current_path+path_trace_jax):
@@ -141,7 +140,6 @@ MICMAC_obj.seed = MICMAC_obj.seed + MPI_rank
 
 # General parameters for the foregrounds
 fgs_model_ = fgs_model
-instr_name = MICMAC_obj.instrument_name
 
 if path_cov_B_f_r == '':
     path_Fisher = path_home_test_playground + f'Fisher_matrix_{MICMAC_obj.instrument_name}_EB_model_{fgs_model_}_noise_True_seed_42_lmin2_lmax128.txt'
@@ -154,7 +152,14 @@ else:
     Fisher_matrix = np.loadtxt(path_cov_B_f_r)
 
 # get instrument from public database
-instrument = get_instrument(instr_name)
+if MICMAC_obj.instrument_name != 'customized_instrument': ## TODO: Improve a bit this part
+        instrument = get_instrument(MICMAC_obj.instrument_name)
+else:
+    with open(path_toml_file) as f:
+        dictionary_toml = toml.load(f)
+    f.close()
+    instrument = micmac.get_instr(MICMAC_obj.frequency_array, dictionary_toml['depth_p'])
+
 
 # Apply potential noise reduction
 instrument['depth_p'] /= reduction_noise
@@ -257,8 +262,11 @@ theoretical_r0_total = micmac.get_c_ells_from_red_covariance_matrix(theoretical_
 theoretical_r1_tensor = micmac.get_c_ells_from_red_covariance_matrix(theoretical_red_cov_r1_tensor)#[partial_indices_polar,:]
 
 # Preparing params mixing matrix
-init_mixing_matrix_obj = micmac.InitMixingMatrix(freqs=MICMAC_obj.frequency_array, ncomp=MICMAC_obj.n_components, pos_special_freqs=MICMAC_obj.pos_special_freqs, spv_nodes_b=MICMAC_obj.spv_nodes_b)
-exact_params_mixing_matrix = init_mixing_matrix_obj.init_params()
+if MICMAC_obj.n_components == 3:
+    init_mixing_matrix_obj = micmac.InitMixingMatrix(freqs=MICMAC_obj.frequency_array, ncomp=MICMAC_obj.n_components, pos_special_freqs=MICMAC_obj.pos_special_freqs, spv_nodes_b=MICMAC_obj.spv_nodes_b)
+    exact_params_mixing_matrix = init_mixing_matrix_obj.init_params()
+else:
+    exact_params_mixing_matrix = np.zeros(MICMAC_obj.n_frequencies - len(MICMAC_obj.pos_special_freqs))
 
 # Preparing c_approx
 c_ell_approx = np.zeros((3,MICMAC_obj.lmax+1))

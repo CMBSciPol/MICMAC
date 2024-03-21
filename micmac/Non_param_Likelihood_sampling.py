@@ -449,9 +449,10 @@ class MICMAC_Sampler(Sampling_functions):
         assert CMB_c_ell.shape[1] == self.lmax + 1
         assert len(c_ell_approx.shape) == 2
         assert c_ell_approx.shape[1] == self.lmax + 1
+        
         ## Testing the initial mixing matrix
-        assert init_params_mixing_matrix.shape == (self.len_params,)
-
+        if self.n_components != 1:
+            assert init_params_mixing_matrix.shape == (self.len_params,)
 
         ## Testing the input frequency maps
         assert len(input_freq_maps.shape) == 3
@@ -504,6 +505,9 @@ class MICMAC_Sampler(Sampling_functions):
             if self.sample_r_from_BB:
                 print("Sampling r from BB !!!", flush=True)
                 log_proba_r = self.get_conditional_proba_C_from_r_wBB
+            if self.use_binning:
+                print("Using BB binning for the sampling of r !!!", flush=True)
+                log_proba_r = self.get_binned_conditional_proba_C_from_r_wBB
 
         ## Function to sample the mixing matrix free parameters in the most general way
         jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v2b_JAX, static_argnames=['biased_bool', 'full_sky_correction'])
@@ -960,11 +964,14 @@ def create_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv=''):
     f.close()
 
     ## Getting the instrument and the noise covariance
-    if dictionary_parameters['instrument_name'] != 'customized_instrument':
+    if dictionary_parameters['instrument_name'] != 'customized_instrument': ## TODO: Improve a bit this part
         instrument = fgbuster.get_instrument(dictionary_parameters['instrument_name'])
-        dictionary_parameters['frequency_array'] = jnp.array(instrument['frequency'])
-        # dictionary_parameters['freq_inverse_noise'] = get_noise_covar(instrument['depth_p'], dictionary_parameters['nside'])
-        dictionary_parameters['freq_inverse_noise'] = get_noise_covar_extended(instrument['depth_p'], dictionary_parameters['nside'])
+        
+    else:
+        instrument = get_instr(dictionary_parameters['frequency_array'], dictionary_parameters['depth_p'])
+        del dictionary_parameters['depth_p']
+    dictionary_parameters['frequency_array'] = jnp.array(instrument['frequency'])
+    dictionary_parameters['freq_inverse_noise'] = get_noise_covar_extended(instrument['depth_p'], dictionary_parameters['nside'])
 
     ## Spatial variability (spv) params
     n_fgs_comp = dictionary_parameters['n_components']-1

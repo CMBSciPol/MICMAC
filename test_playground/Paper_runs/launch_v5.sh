@@ -28,6 +28,9 @@ export add_param_toml=add_class_cutsky_LB_d0s0_nside0_v1b
 export file_ver=corr_fullsky_LB_d0s0_nside0_v1091_v1c
 export add_param_toml=add_corr_fullsky_LB_d0s0_nside0_v1c
 
+export file_ver=corr_cutsky_LB_d0s0_nside0_v1901_v2c
+export add_param_toml=add_corr_cutsky_LB_d0s0_nside0_v0c
+
 export additional_params=$path_directory_main/additional_params/$add_param_toml.toml
 
 mpirun -n 1 python $path_Python_script $additional_params > $path_directory_main/logs/log_$file_ver.log

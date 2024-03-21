@@ -83,7 +83,7 @@ class Sampling_functions(MixingMatrix):
             self.mask = mask
         if bin_ell_distribution is None:
             # If no binning, then the bin_ell_distribution is set to the full range of ell
-            self.bin_ell_distribution = np.arange(self.lmin, self.lmax+1)
+            self.bin_ell_distribution = np.arange(self.lmin, self.lmax+2)
         else:
             self.bin_ell_distribution = bin_ell_distribution # Expects array of the bounds of the bins, of size nbins+1
         self.maximum_number_dof = int(self.bin_ell_distribution[-1]**2 - self.bin_ell_distribution[-2]**2)
@@ -728,6 +728,36 @@ class Sampling_functions(MixingMatrix):
 
         chx.assert_axis_dimension(binned_red_c_ells, 0, self.number_bins)
         return binned_red_c_ells
+    
+    def get_binned_c_ells(self, c_ells_to_bin):
+        """ Bin the power spectrum to get the binned power spectrum
+            
+                Parameters
+                ----------
+                :param c_ells_to_bin: power spectrum to bin ; must be of dimension [lmax+1, nstokes, nstokes]
+
+                Returns
+                -------
+                :return: Binned power spectrum, of dimension [number_bins, nstokes, nstokes]
+        """
+        chx.assert_axis_dimension(c_ells_to_bin, 0, self.lmax+1 - self.lmin)
+
+        ell_distribution = jnp.arange(c_ells_to_bin.shape[0]) + self.lmin
+
+        # number_bins = self.bin_ell_distribution.shape[0]-1
+
+        def map_binned_red_c_ells(bin_sup, bin_inf):
+            """ Compute the binned power spectrum for a given ell
+            """
+            cond_bool = jnp.logical_and(bin_inf<=ell_distribution, 
+                                        bin_sup>ell_distribution)
+            cond_indices = jnp.where(cond_bool, 1, 0)
+            return (c_ells_to_bin*cond_indices).sum(axis=0)/(bin_sup-bin_inf)
+            
+        binned_red_c_ells = jax.vmap(map_binned_red_c_ells)(self.bin_ell_distribution[1:],self.bin_ell_distribution[:-1])
+
+        chx.assert_axis_dimension(binned_red_c_ells, 0, self.number_bins)
+        return binned_red_c_ells
 
     def get_binned_inverse_wishart_sampling_from_c_ells_v3(self, sigma_ell, PRNGKey, old_sample=None, acceptance_posdef=False):
         """ Solve sampling step 3 : inverse Wishart distribution with C
@@ -893,6 +923,46 @@ class Sampling_functions(MixingMatrix):
 
         return -((red_sigma_ell[:,1,1]/BB_cov_matrix_sampled).sum() + sum_dets)/2 # -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
 
+
+    def get_binned_conditional_proba_C_from_r_wBB(self, 
+                                           r_param, 
+                                           red_sigma_ell, 
+                                           theoretical_red_cov_r1_tensor, 
+                                           theoretical_red_cov_r0_total):
+        """ Compute log-proba of C parametrized by r_param. 
+            The parametrisation is given by : C(r) = r * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
+        
+            The associated log proba is :
+                -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
+
+            Parameters
+            ----------
+            :param r_param: parameter of the covariance C to be sampled, float
+            :param red_sigma_ell: covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+            :param theoretical_red_cov_r1_tensor: tensor mode covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+            :param theoretical_red_cov_r0_total: scalar mode covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+
+            Returns
+            -------
+            :return: log-proba of C parametrized by r_param
+        """
+
+        chx.assert_shape(theoretical_red_cov_r1_tensor, (self.lmax+1-self.lmin,))
+        chx.assert_equal_shape((red_sigma_ell, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total))
+        
+        # Getting the CMB covariance matrix parametrized by r_param
+        BB_cov_matrix_sampled = r_param * theoretical_red_cov_r1_tensor[:,1,1] + theoretical_red_cov_r0_total[:,1,1]
+
+        binned_BB_cov_matrix_sampled = self.get_binned_c_ells(BB_cov_matrix_sampled)
+
+        number_dof = self.bin_ell_distribution[1:]**2 - self.bin_ell_distribution[:-1]**2
+        
+        # Getting determinant of the covariance matrix log det C(r) ; taking into account the factor 2ell+1 for the multiples m
+        # sum_dets = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(BB_cov_matrix_sampled) ).sum()
+        sum_dets = ( number_dof * jnp.log(BB_cov_matrix_sampled) ).sum()
+
+        reweighted_sigma_ell = number_dof*self.get_binned_c_ells(red_sigma_ell[:,1,1]/(2*jnp.arange(self.lmin, self.lmax+1)+1))
+        return -((reweighted_sigma_ell/BB_cov_matrix_sampled).sum() + sum_dets)/2 # -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
 
     def get_conditional_proba_spectral_likelihood_JAX(self, 
                                                       complete_mixing_matrix, 
