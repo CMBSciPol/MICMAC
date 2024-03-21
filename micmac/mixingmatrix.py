@@ -249,12 +249,9 @@ class MixingMatrix():
             template_idx_freq_comp = jax.vmap(create_all_templates_indexed_comp)(jnp.arange(n_comp_fgs))
             return template_idx_freq_comp
 
-        if n_comp_fgs != 0:
-            ## Maping over the functions to create the templates
-            return jax.vmap(create_all_templates_indexed_freq)(jnp.arange(n_unknown_freqs))
-        else:
-            return jnp.zeros((n_unknown_freqs, 1, self.n_pix))
-    
+        ## Maping over the functions to create the templates
+        return jax.vmap(create_all_templates_indexed_freq)(jnp.arange(n_unknown_freqs))
+
     def get_one_template(self, nside_patch):
         """
             Retrieve all templates maps whose values correspond to the indices of params,

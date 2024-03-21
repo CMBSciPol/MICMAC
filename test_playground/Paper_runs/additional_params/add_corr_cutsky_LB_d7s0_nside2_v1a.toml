@@ -25,7 +25,7 @@ name_mask = 'Planck_mask_fsky_60'
 use_mask = true
 use_preconditioner = true
 
-name_toml = 'corr_cutsky_LB_r2_v2d.toml'
+name_toml = 'corr_cutsky_LB_r0_v2b.toml'
 name_file_spv = 'params_spv_LB_nside2.yaml'
 former_file_ver = ''
-file_ver = 'corr_cutsky_LB_d7s0_nside2_v1901_v1a'
+file_ver = 'corr_cutsky_LB_d7s0_nside2_v1091_v1a'
