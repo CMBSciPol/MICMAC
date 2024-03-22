@@ -83,7 +83,7 @@ class Sampling_functions(MixingMatrix):
             self.mask = mask
         if bin_ell_distribution is None:
             # If no binning, then the bin_ell_distribution is set to the full range of ell
-            self.bin_ell_distribution = np.arange(self.lmin, self.lmax+2)
+            self.bin_ell_distribution = jnp.arange(self.lmin, self.lmax+2)
         else:
             self.bin_ell_distribution = bin_ell_distribution # Expects array of the bounds of the bins, of size nbins+1
         self.maximum_number_dof = int(self.bin_ell_distribution[-1]**2 - self.bin_ell_distribution[-2]**2)
@@ -113,7 +113,89 @@ class Sampling_functions(MixingMatrix):
         """ Return number of degrees of freedom for a given bin, for inverse Wishart distribution
         """
         return (self.bin_ell_distribution[bin_index+1])**2 - self.bin_ell_distribution[bin_index]**2
+    
+    def project_bin_to_ell(self, binned_spectra):
+        """ 
+            Project binned spectra by repeating the bin value for each ell
+
+            Parameters
+            ----------
+            :param binned_spectra: binned power spectra ; must be of dimension [number_bins, nstokes, nstokes]
+
+            Returns
+            -------
+            :return: Projected power spectra, of dimension [lmax+1, nstokes, nstokes]
+        """
+        # chx.assert_axis_dimension(binned_spectra, 0, self.number_bins)
+
+        ell_distribution = jnp.arange(self.lmin, self.lmax+1)
+
+        def scan_binned_c_ells(ell_projection, bin_idx):
+            """ Compute the binned power spectrum for a given ell
+            """
+            cond_bool = jnp.logical_and(self.bin_ell_distribution[bin_idx]<=ell_distribution, 
+                                        self.bin_ell_distribution[bin_idx+1]>ell_distribution)
+            ell_projection += jnp.where(cond_bool, binned_spectra[bin_idx], 0)
+            return ell_projection, None
+
+        ell_projection = jlax.scan(scan_binned_c_ells, jnp.zeros_like(ell_distribution, dtype=jnp.float64), jnp.arange(self.number_bins))[0]
+        # ell_projection = ell_projection.at[self.bin_ell_distribution[-1]:].set(binned_spectra[-1])
+        return ell_projection
+        
  
+    def get_binned_c_ells(self, c_ells_to_bin):
+        """ 
+            Bin the power spectrum to get the binned power spectrum
+            
+                Parameters
+                ----------
+                :param c_ells_to_bin: power spectrum to bin ; must be of dimension [lmax+1, nstokes, nstokes]
+
+                Returns
+                -------
+                :return: Binned power spectrum, of dimension [number_bins, nstokes, nstokes]
+        """
+        # chx.assert_axis_dimension(c_ells_to_bin, 0, self.lmax+1 - self.lmin)
+
+        ell_distribution = jnp.arange(self.lmin, self.lmax+1)
+
+        def map_binned_c_ells(bin_sup, bin_inf):
+            """ Compute the binned power spectrum for a given ell
+            """
+            cond_bool = jnp.logical_and(bin_inf<=ell_distribution, 
+                                        bin_sup>ell_distribution)
+            cond_indices = jnp.where(cond_bool, 1, 0)
+            return (c_ells_to_bin*cond_indices).sum()/(bin_sup-bin_inf)
+            
+        binned_c_ells = jax.vmap(map_binned_c_ells)(self.bin_ell_distribution[1:],self.bin_ell_distribution[:-1])
+
+        chx.assert_axis_dimension(binned_c_ells, 0, self.number_bins)
+        return binned_c_ells
+    
+    def bin_and_reproject_red_c_ell(self, red_cov_matrix):
+        """ 
+            Bin and reproject the power spectrum
+
+            Parameters
+            ----------
+            :param c_ells_to_reproject: power spectrum to bin and reproject ; must be of dimension [lmax+1, nstokes, nstokes]
+
+            Returns
+            -------
+            :return: Binned and reprojected power spectrum, of dimension [lmax+1, nstokes, nstokes]
+        """
+        def map_bin_and_reproject_red_c_ell(c_ell):
+            """ Compute the binned and reprojected power spectrum for a given c_ell
+            """
+            return self.project_bin_to_ell(self.get_binned_c_ells(c_ell))
+        
+        def map_bin_and_reproject(c_ell_nstokes):
+            """ Compute the binned and reprojected power spectrum for a given c_ell
+            """
+            return jax.vmap(map_bin_and_reproject_red_c_ell)(c_ell_nstokes)
+        
+        return (jax.vmap(map_bin_and_reproject)(red_cov_matrix.swapaxes(0,-1))).swapaxes(0,-1)
+
     def get_band_limited_maps(self, input_map):
         """ Get band limited maps from input maps between lmin and lmax
             :param input_map: input maps to be band limited ; dimension [nstokes, n_pix]
@@ -728,36 +810,6 @@ class Sampling_functions(MixingMatrix):
 
         chx.assert_axis_dimension(binned_red_c_ells, 0, self.number_bins)
         return binned_red_c_ells
-    
-    def get_binned_c_ells(self, c_ells_to_bin):
-        """ Bin the power spectrum to get the binned power spectrum
-            
-                Parameters
-                ----------
-                :param c_ells_to_bin: power spectrum to bin ; must be of dimension [lmax+1, nstokes, nstokes]
-
-                Returns
-                -------
-                :return: Binned power spectrum, of dimension [number_bins, nstokes, nstokes]
-        """
-        chx.assert_axis_dimension(c_ells_to_bin, 0, self.lmax+1 - self.lmin)
-
-        ell_distribution = jnp.arange(c_ells_to_bin.shape[0]) + self.lmin
-
-        # number_bins = self.bin_ell_distribution.shape[0]-1
-
-        def map_binned_red_c_ells(bin_sup, bin_inf):
-            """ Compute the binned power spectrum for a given ell
-            """
-            cond_bool = jnp.logical_and(bin_inf<=ell_distribution, 
-                                        bin_sup>ell_distribution)
-            cond_indices = jnp.where(cond_bool, 1, 0)
-            return (c_ells_to_bin*cond_indices).sum(axis=0)/(bin_sup-bin_inf)
-            
-        binned_red_c_ells = jax.vmap(map_binned_red_c_ells)(self.bin_ell_distribution[1:],self.bin_ell_distribution[:-1])
-
-        chx.assert_axis_dimension(binned_red_c_ells, 0, self.number_bins)
-        return binned_red_c_ells
 
     def get_binned_inverse_wishart_sampling_from_c_ells_v3(self, sigma_ell, PRNGKey, old_sample=None, acceptance_posdef=False):
         """ Solve sampling step 3 : inverse Wishart distribution with C
@@ -881,6 +933,9 @@ class Sampling_functions(MixingMatrix):
         chx.assert_shape(theoretical_red_cov_r1_tensor, (self.lmax+1-self.lmin, self.nstokes, self.nstokes))
         chx.assert_equal_shape((red_sigma_ell, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total))
         
+        # Getting the sigma_ell in the format [lmax,nstokes,nstokes] multiplied by 2 ell+1, to take into account the m
+        red_sigma_ell = jnp.einsum('lij,l->lij', red_sigma_ell, 2*jnp.arange(self.lmin, self.lmax+1)+1)
+        
         # Getting the CMB covariance matrix parametrized by r_param
         red_cov_matrix_sampled = r_param * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
 
@@ -914,6 +969,9 @@ class Sampling_functions(MixingMatrix):
 
         chx.assert_shape(theoretical_red_cov_r1_tensor, (self.lmax+1-self.lmin,))
         chx.assert_equal_shape((red_sigma_ell, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total))
+
+        # Getting the sigma_ell in the format [lmax,nstokes,nstokes] multiplied by 2 ell+1, to take into account the m
+        red_sigma_ell = jnp.einsum('lij,l->lij', red_sigma_ell, 2*jnp.arange(self.lmin, self.lmax+1)+1)
         
         # Getting the CMB covariance matrix parametrized by r_param
         BB_cov_matrix_sampled = r_param * theoretical_red_cov_r1_tensor[:,1,1] + theoretical_red_cov_r0_total[:,1,1]
@@ -961,7 +1019,8 @@ class Sampling_functions(MixingMatrix):
         # sum_dets = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(BB_cov_matrix_sampled) ).sum()
         sum_dets = ( number_dof * jnp.log(BB_cov_matrix_sampled) ).sum()
 
-        reweighted_sigma_ell = number_dof*self.get_binned_c_ells(red_sigma_ell[:,1,1]/(2*jnp.arange(self.lmin, self.lmax+1)+1))
+        # reweighted_sigma_ell = number_dof*self.get_binned_c_ells(red_sigma_ell[:,1,1]/(2*jnp.arange(self.lmin, self.lmax+1)+1))
+        reweighted_sigma_ell = number_dof*self.get_binned_c_ells(red_sigma_ell[:,1,1])
         return -((reweighted_sigma_ell/BB_cov_matrix_sampled).sum() + sum_dets)/2 # -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
 
     def get_conditional_proba_spectral_likelihood_JAX(self, 

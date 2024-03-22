@@ -793,10 +793,13 @@ class MICMAC_Sampler(Sampling_functions):
             # Sampling step 3 : sampling of CMB covariance C
             
             ## Preparing the c_ell which will be used for the sampling
-            c_ells_Wishart_ = get_cell_from_map_jax(s_c_sample, lmax=self.lmax, n_iter=self.n_iter)
+            c_ells_Wishart_ = get_cell_from_map_jax(s_c_sample, lmax=self.lmax, n_iter=self.n_iter)[:,self.lmin:]
             
-            ### Getting them in the format [lmax,nstokes,nstokes] multiplied by 2 ell+1, to take into account the m
-            red_c_ells_Wishart_modified = get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_*(2*jnp.arange(self.lmax+1) + 1))[self.lmin:]
+            # ### Getting them in the format [lmax,nstokes,nstokes] multiplied by 2 ell+1, to take into account the m
+            # red_c_ells_Wishart_modified = get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_*(2*jnp.arange(self.lmax+1) + 1))
+            
+            ### Getting them in the format [lmax,nstokes,nstokes] without the facor 2 ell+1 to take into account the m
+            red_c_ells_Wishart_modified = get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_)
 
             ## Preparing the new PRNGkey
             PRNGKey, new_subPRNGKey_2 = random.split(PRNGKey)
@@ -804,7 +807,7 @@ class MICMAC_Sampler(Sampling_functions):
             ## Performing the sampling
             if self.sample_C_inv_Wishart:
                 # Sampling C with inverse Wishart
-                new_carry['red_cov_matrix_sample'] = func_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_[:,self.lmin:], 
+                new_carry['red_cov_matrix_sample'] = func_get_inverse_wishart_sampling_from_c_ells(c_ells_Wishart_, 
                                                                     PRNGKey=new_subPRNGKey_2, 
                                                                     old_sample=carry['red_cov_matrix_sample'], 
                                                                     acceptance_posdef=self.acceptance_posdef)
@@ -820,6 +823,12 @@ class MICMAC_Sampler(Sampling_functions):
 
                 ## Reconstructing the new spectra from r
                 new_carry['red_cov_matrix_sample'] = theoretical_red_cov_r0_total + new_carry['r_sample']*theoretical_red_cov_r1_tensor
+
+                ## Binning if needed
+                if self.use_binning:
+                    new_carry['red_cov_matrix_sample'] = self.bin_and_reproject_red_c_ell(new_carry['red_cov_matrix_sample'])
+
+                ## Saving the r sample
                 all_samples['r_sample'] = new_carry['r_sample']
             else:
                 raise Exception('C not sampled in any way !!! It must be either inv Wishart or through r sampling !')

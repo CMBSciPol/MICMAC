@@ -312,7 +312,7 @@ CMB_c_ell[:,MICMAC_obj.lmin:] = (theoretical_r0_total + initial_guess_r*theoreti
 
 if MICMAC_obj.sample_C_inv_Wishart and MICMAC_obj.use_binning:
     nb_bin = (MICMAC_obj.lmax-MICMAC_obj.lmin+1)//delta_ell
-    MICMAC_obj.bin_ell_distribution = MICMAC_obj.lmin + jnp.arange(nb_bin+1)*delta_ell
+    MICMAC_obj.bin_ell_distribution = MICMAC_obj.lmin + jnp.arange(nb_bin+2)*delta_ell
     MICMAC_obj.maximum_number_dof = int(MICMAC_obj.bin_ell_distribution[-1]**2 - MICMAC_obj.bin_ell_distribution[-2]**2)
 
 
