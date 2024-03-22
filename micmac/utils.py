@@ -69,6 +69,11 @@ def loading_params(directory_save_file, file_ver, MICMAC_sampler_obj):
         all_s_c_fluct_maps_path = directory_save_file+file_ver+'_all_s_c_fluct_maps.npy'
         all_s_c_fluct_maps = np.load(all_s_c_fluct_maps_path)
         dict_all_params['all_s_c_fluct_maps'] = all_s_c_fluct_maps
+    
+    if MICMAC_sampler_obj.save_s_c_spectra:
+        all_s_c_spectra_path = directory_save_file+file_ver+'_all_s_c_spectra.npy'
+        all_s_c_spectra = np.load(all_s_c_spectra_path)
+        dict_all_params['all_s_c_spectra'] = all_s_c_spectra
 
     if MICMAC_sampler_obj.sample_r_Metropolis:
         all_r_samples_path = directory_save_file+file_ver+'_all_r_samples.npy'

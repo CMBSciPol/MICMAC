@@ -43,6 +43,7 @@ class MICMAC_Sampler(Sampling_functions):
                  save_CMB_chain_maps=False, 
                  save_eta_chain_maps=False,
                  save_all_B_f_params=True,
+                 save_s_c_spectra=False,
                  sample_r_Metropolis=True,
                  sample_r_from_BB=False,
                  sample_C_inv_Wishart=False,
@@ -184,6 +185,7 @@ class MICMAC_Sampler(Sampling_functions):
         self.save_CMB_chain_maps = bool(save_CMB_chain_maps) # Save the CMB chain maps
         self.save_eta_chain_maps = bool(save_eta_chain_maps) # Save the eta chain maps
         self.save_all_B_f_params = bool(save_all_B_f_params) # Save all the B_f chains
+        self.save_s_c_spectra = bool(save_s_c_spectra) # Save the s_c spectra
 
         # Optional parameters
         self.instrument_name = instrument_name # Name of the instrument
@@ -196,6 +198,7 @@ class MICMAC_Sampler(Sampling_functions):
         self.all_samples_fluctuation_maps = jnp.empty(0)
         self.all_samples_r = jnp.empty(0)
         self.all_samples_CMB_c_ell = jnp.empty(0)
+        self.all_samples_s_c_spectra = jnp.empty(0)
 
 
     @property
@@ -312,6 +315,9 @@ class MICMAC_Sampler(Sampling_functions):
         if self.save_CMB_chain_maps:
             self.all_samples_wiener_filter_maps = self.update_variable(self.all_samples_wiener_filter_maps, all_samples['wiener_filter_term'])
             self.all_samples_fluctuation_maps = self.update_variable(self.all_samples_fluctuation_maps, all_samples['fluctuation_maps'])
+        
+        if self.save_s_c_spectra:
+            self.all_samples_s_c_spectra = self.update_variable(self.all_samples_s_c_spectra, all_samples['s_c_spectra'])
 
         if self.sample_C_inv_Wishart:
             if all_samples['red_cov_matrix_sample'].shape[1] == self.lmax+1-self.lmin:
@@ -794,6 +800,10 @@ class MICMAC_Sampler(Sampling_functions):
             
             ## Preparing the c_ell which will be used for the sampling
             c_ells_Wishart_ = get_cell_from_map_jax(s_c_sample, lmax=self.lmax, n_iter=self.n_iter)[:,self.lmin:]
+
+            ## Saving the corresponding spectrum
+            if self.save_s_c_spectra:
+                all_samples['s_c_spectra'] = c_ells_Wishart_
             
             # ### Getting them in the format [lmax,nstokes,nstokes] multiplied by 2 ell+1, to take into account the m
             # red_c_ells_Wishart_modified = get_reduced_matrix_from_c_ell_jax(c_ells_Wishart_*(2*jnp.arange(self.lmax+1) + 1))
@@ -938,6 +948,8 @@ class MICMAC_Sampler(Sampling_functions):
             initial_carry['inverse_term'] = jnp.zeros_like(initial_eta)
         if self.sample_r_Metropolis:
             initial_carry['r_sample'] = initial_guess_r
+        if self.save_s_c_spectra:
+            self.all_samples_s_c_spectra = self.update_variable(self.all_samples_s_c_spectra, jnp.expand_dims(jnp.zeros((self.n_correlations, self.lmax+1-self.lmin)),axis=0))
         
         ## Initialising the first carry to the chains saved
         self.update_one_sample(initial_carry)

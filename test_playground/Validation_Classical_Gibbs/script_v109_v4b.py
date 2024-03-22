@@ -381,6 +381,9 @@ if MICMAC_obj.sample_C_inv_Wishart:
 if MICMAC_obj.sample_r_Metropolis:
     all_r_samples = MICMAC_obj.all_samples_r
 
+if MICMAC_obj.save_s_c_spectra:
+    all_samples_s_c_spectra = MICMAC_obj.all_samples_s_c_spectra
+
 all_params_mixing_matrix_samples = MICMAC_obj.all_params_mixing_matrix_samples
 
 if former_file_ver != '':
@@ -391,6 +394,9 @@ if former_file_ver != '':
         all_s_c_WF_maps = np.hstack([dict_all_params['all_s_c_WF_maps'], all_s_c_WF_maps[1:]])
 
         all_s_c_fluct_maps = np.hstack([dict_all_params['all_s_c_fluct_maps'], all_s_c_fluct_maps[1:]])
+    
+    if MICMAC_obj.save_s_c_spectra:
+        all_samples_s_c_spectra = np.hstack([dict_all_params['all_samples_s_c_spectra'], all_samples_s_c_spectra[1:]])
 
 
     if MICMAC_obj.sample_r_Metropolis:
@@ -405,25 +411,25 @@ if former_file_ver != '':
 time_saving = time.time()
 
 initial_freq_maps_path = directory_save_file+file_ver+'_initial_data.npy'
-print("FINAL SAVE - #### params_mixing_matrix :", initial_freq_maps_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
+print("FINAL SAVE - #### initial_data :", initial_freq_maps_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
 np.save(initial_freq_maps_path, input_freq_maps)
 
 initial_cmb_maps_path = directory_save_file+file_ver+'_initial_cmb_data.npy'
-print("FINAL SAVE - #### params_mixing_matrix :", initial_cmb_maps_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
+print("FINAL SAVE - #### initial_cmb_data :", initial_cmb_maps_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
 np.save(initial_cmb_maps_path, input_cmb_maps)
 
 if MICMAC_obj.save_eta_chain_maps:
     all_eta_maps_path = directory_save_file+file_ver+'_all_eta_maps.npy'
-    print("FINAL SAVE - #### params_mixing_matrix :", all_eta_maps_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
+    print("FINAL SAVE - #### eta_maps :", all_eta_maps_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
     np.save(all_eta_maps_path, all_eta)
 
 if MICMAC_obj.save_CMB_chain_maps:
     all_s_c_WF_maps_path = directory_save_file+file_ver+'_all_s_c_WF_maps.npy'
-    print("FINAL SAVE - #### params_mixing_matrix :", all_s_c_WF_maps_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
+    print("FINAL SAVE - #### s_c_WF :", all_s_c_WF_maps_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
     np.save(all_s_c_WF_maps_path, all_s_c_WF_maps)
 
     all_s_c_fluct_maps_path = directory_save_file+file_ver+'_all_s_c_fluct_maps.npy'
-    print("FINAL SAVE - #### params_mixing_matrix :", all_s_c_fluct_maps_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
+    print("FINAL SAVE - #### s_c_Fluct :", all_s_c_fluct_maps_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
     np.save(all_s_c_fluct_maps_path, all_s_c_fluct_maps)
 
 if MICMAC_obj.sample_C_inv_Wishart:
@@ -432,8 +438,13 @@ if MICMAC_obj.sample_C_inv_Wishart:
     np.save(all_cell_samples_path, all_cell_samples)
 if MICMAC_obj.sample_r_Metropolis:
     all_r_samples_path = directory_save_file+file_ver+'_all_r_samples.npy'
-    print("FINAL SAVE - #### params_mixing_matrix :", all_r_samples_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
+    print("FINAL SAVE - #### all_r_samples :", all_r_samples_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
     np.save(all_r_samples_path, all_r_samples)
+
+if MICMAC_obj.save_s_c_spectra:
+    all_s_c_spectra_path = directory_save_file+file_ver+'_all_s_c_spectra.npy'
+    print("FINAL SAVE - #### all_samples_s_c_spectra :", all_s_c_spectra_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
+    np.save(all_s_c_spectra_path, MICMAC_obj.all_samples_s_c_spectra)
 
 all_params_mixing_matrix_samples_path = directory_save_file+file_ver+'_all_params_mixing_matrix_samples.npy'
 print("FINAL SAVE - #### params_mixing_matrix :", all_params_mixing_matrix_samples_path, f"rank {MPI_rank} over {MPI_size}", flush=True)
