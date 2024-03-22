@@ -13,7 +13,8 @@ path_cov_B_f_r = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/tes
 
 seed_realization_input=42
 
-delta_ell=1
+delta_ell=5
+
 reduction_noise = 1
 factor_Fisher = 1
 factor_Fisher_r = 1
@@ -26,7 +27,7 @@ name_mask = 'Planck_mask_fsky_60'
 use_mask = true
 use_preconditioner = true
 
-name_toml = 'class_cutsky_1freq_BB_binned.toml'
+name_toml = 'class_cutsky_1freq_BB_binned_2.toml'
 name_file_spv = ''
 former_file_ver = ''
 # file_ver = 'class_cutsky_1freq_nofg_v1c'

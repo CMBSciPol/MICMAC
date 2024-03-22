@@ -13,7 +13,7 @@ path_cov_B_f_r = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Fake_
 
 seed_realization_input=42
 
-delta_ell=5
+delta_ell = 5
 
 reduction_noise = 1
 factor_Fisher = 1

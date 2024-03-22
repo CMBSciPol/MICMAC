@@ -1017,11 +1017,11 @@ class Sampling_functions(MixingMatrix):
         
         # Getting determinant of the covariance matrix log det C(r) ; taking into account the factor 2ell+1 for the multiples m
         # sum_dets = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(BB_cov_matrix_sampled) ).sum()
-        sum_dets = ( number_dof * jnp.log(BB_cov_matrix_sampled) ).sum()
+        sum_dets = ( number_dof * jnp.log(binned_BB_cov_matrix_sampled) ).sum()
 
         # reweighted_sigma_ell = number_dof*self.get_binned_c_ells(red_sigma_ell[:,1,1]/(2*jnp.arange(self.lmin, self.lmax+1)+1))
         reweighted_sigma_ell = number_dof*self.get_binned_c_ells(red_sigma_ell[:,1,1])
-        return -((reweighted_sigma_ell/BB_cov_matrix_sampled).sum() + sum_dets)/2 # -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
+        return -((reweighted_sigma_ell/binned_BB_cov_matrix_sampled).sum() + sum_dets)/2 # -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
 
     def get_conditional_proba_spectral_likelihood_JAX(self, 
                                                       complete_mixing_matrix, 

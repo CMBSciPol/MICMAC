@@ -483,6 +483,10 @@ class MICMAC_Sampler(Sampling_functions):
             input_freq_maps = jax.vmap(fmap)(jnp.arange(self.n_frequencies))
         del input_freq_maps_
 
+        if self.use_binning:
+            print("Using binning for the sampling of CMB covariance !!!", flush=True)
+            print("Binning distribution :", self.bin_ell_distribution, flush=True)
+
         ## Initial guesses preparation
         
         ## eta

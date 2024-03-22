@@ -25,5 +25,5 @@ use_preconditioner = true
 
 name_toml = 'corr_cutsky_LB_r0_v1c.toml' #
 name_file_spv = 'params_spv_LB_nside1.yaml'
-former_file_ver = 'corr_cutsky_LB_d1s1_nside1_v1a'
-file_ver = 'corr_cutsky_LB_d1s1_nside1_v1a2'
+former_file_ver = 'corr_cutsky_LB_d1s1_nside1_v1a2'
+file_ver = 'corr_cutsky_LB_d1s1_nside1_v1a3'
