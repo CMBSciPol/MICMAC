@@ -38,7 +38,7 @@ indexes_free_Bf = false # Indexes that will be sampled
 # [CG_parameters]
 limit_iter_cg = 200 #2000 # Maximum number of iterations for the different CGs
 limit_iter_cg_eta = 200 # Maximum number of iterations for the CG of eta
-tolerance_CG = 1e-8 # Tolerance for the different CGs
+tolerance_CG = 1e-7 # Tolerance for the different CGs
 atol_CG = 1e-8
 
 # [Metropolis-Hastings-within-Gibbs_parameters]
@@ -46,6 +46,6 @@ step_size_r = 1e-3 #1e-4 #1e-5 ???
 
 # [Sampling_parameters]
 # overrelax = 0 #-0.995 # Overrelaxation parameter for the sampling
-number_iterations_sampling = 500 # Maximum number of iterations for the sampling
+number_iterations_sampling = 450 # Maximum number of iterations for the sampling
 number_iterations_done = 0 # Number of iterations already accomplished, in case the chain is resuming from a previous run
 seed = 42

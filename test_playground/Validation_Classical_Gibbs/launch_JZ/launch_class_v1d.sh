@@ -36,7 +36,6 @@ export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export OMP_PLACES=cores
 
 
-
 export VER=class_cutsky_1freq_nofg_v1h
 export additional_config_file=add_class_cutsky_f1freq_nofg_v1h.toml
 
