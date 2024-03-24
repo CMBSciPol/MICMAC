@@ -22,7 +22,6 @@ instrument_name = 'LiteBIRD' # Either provide instrument name, then freq_inverse
 r_true = 1e-2
 sample_r_Metropolis = true
 sample_C_inv_Wishart = false
-sample_r_from_BB = false
 
 # [Problem_parameters]
 nside = 64
