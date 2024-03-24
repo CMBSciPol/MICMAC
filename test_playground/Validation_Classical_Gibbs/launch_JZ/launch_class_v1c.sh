@@ -37,7 +37,7 @@ export OMP_PLACES=cores
 
 
 
-export VER=class_cutsky_binned_1freq_nofg_v1e2
+export VER=class_cutsky_binned_1freq_nofg_v1e3
 export additional_config_file=add_class_cutsky_f1freq_nofg_v1e.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Validation_Classical_Gibbs
