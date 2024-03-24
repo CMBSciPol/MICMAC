@@ -29,5 +29,5 @@ use_preconditioner = true
 
 name_toml = 'class_cutsky_1freq_BB_binned_3.toml'
 name_file_spv = ''
-former_file_ver = ''
-file_ver = 'class_cutsky_binned_1freq_nofg_v1e'
+former_file_ver = 'class_cutsky_binned_1freq_nofg_v1e'
+file_ver = 'class_cutsky_binned_1freq_nofg_v1e2'
