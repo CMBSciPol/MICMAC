@@ -421,7 +421,6 @@ class Sampling_functions(MixingMatrix):
 
         print("CG Fluct finished with", number_iterations, "iterations in ", time.time()-time_start, "seconds !!")
 
-        
         fluctuating_map = maps_x_red_covariance_cell_JAX(fluctuating_map_z.reshape((self.nstokes,self.n_pix)), 
                                                             red_cov_matrix_sqrt, 
                                                             nside=self.nside, 

@@ -18,6 +18,9 @@ export add_param_toml=add_class_cutsky_f1freq_nofg_v1c
 # export file_ver=class_cutsky_1freq_nofg_v1d
 # export add_param_toml=add_class_cutsky_f1freq_nofg_v1d
 
+export file_ver=class_cutsky_1freq_nofg_v1db
+export add_param_toml=add_class_cutsky_f1freq_nofg_v1db
+
 export additional_params=$path_directory_main/additional_params/$add_param_toml.toml
 
 mpirun -n 1 python $path_Python_script $additional_params > $path_directory_main/logs/log_$file_ver.log

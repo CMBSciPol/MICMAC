@@ -475,13 +475,13 @@ class MICMAC_Sampler(Sampling_functions):
         # Preparing for the full Gibbs sampling
         len_pos_special_freqs = len(self.pos_special_freqs)
 
-        input_freq_maps_ = jnp.array(input_freq_maps)
-        if suppress_low_modes_input_freq_maps:
-            print("Suppressing out of band [lmin,lmax] modes in the input frequency maps !", flush=True)
-            def fmap(index):
-                return self.get_band_limited_maps(input_freq_maps_[index])
-            input_freq_maps = jax.vmap(fmap)(jnp.arange(self.n_frequencies))
-        del input_freq_maps_
+        # input_freq_maps_ = jnp.array(input_freq_maps)
+        # if suppress_low_modes_input_freq_maps:
+        #     print("Suppressing out of band [lmin,lmax] modes in the input frequency maps !", flush=True)
+        #     def fmap(index):
+        #         return self.get_band_limited_maps(input_freq_maps_[index])
+        #     input_freq_maps = jax.vmap(fmap)(jnp.arange(self.n_frequencies))
+        # del input_freq_maps_
 
         if self.use_binning:
             print("Using binning for the sampling of CMB covariance !!!", flush=True)
