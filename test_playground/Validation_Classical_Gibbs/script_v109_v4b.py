@@ -402,7 +402,7 @@ if former_file_ver != '':
 
 
     if MICMAC_obj.sample_r_Metropolis:
-        all_r_samples = np.hstack([dict_all_params['all_r_samples'].squeeze(), all_r_samples[1:].squeeze()])
+        all_r_samples = np.hstack([dict_all_params['all_r_samples'].squeeze().ravel(), all_r_samples[1:].squeeze().ravel()])
     elif MICMAC_obj.sample_C_inv_Wishart:
         all_cell_samples = np.hstack([dict_all_params['all_cell_samples'], all_cell_samples[1:]])
 
