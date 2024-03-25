@@ -1058,7 +1058,8 @@ class Sampling_functions(MixingMatrix):
         new_red_cov_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(new_red_cov_matrix_sampled)
         old_red_cov_matrix_msqrt = jnp.linalg.pinv(get_sqrt_reduced_matrix_from_matrix_jax(old_red_cov_matrix_sampled))
 
-        inv_N_c = 1/invBtinvNB[0,0]/jhp.nside2resol(self.nside)**2
+        N_c_inv = jnp.zeros_like(invBtinvNB[0,0])
+        N_c_inv = N_c_inv.at[...,self.mask!=0].set(1/invBtinvNB[0,0,self.mask!=0]/jhp.nside2resol(self.nside)**2)
 
         operator_harmonic = jnp.einsum('lij,ljk->lik', new_red_cov_matrix_sqrt, old_red_cov_matrix_msqrt)
 
@@ -1070,7 +1071,7 @@ class Sampling_functions(MixingMatrix):
 
         maps_to_compute = s_cML - modified_s_c_sample
 
-        return -jnp.einsum('sp, p, sp', maps_to_compute, inv_N_c, maps_to_compute)/2*jhp.nside2resol(self.nside)**2
+        return -jnp.einsum('sp, p, sp', maps_to_compute, N_c_inv, maps_to_compute)/2*jhp.nside2resol(self.nside)**2
 
 
 
