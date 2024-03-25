@@ -1021,6 +1021,36 @@ class Sampling_functions(MixingMatrix):
         reweighted_sigma_ell = number_dof*self.get_binned_c_ells(red_sigma_ell[:,1,1])
         return -((reweighted_sigma_ell/binned_BB_cov_matrix_sampled).sum() + sum_dets)/2 # -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
 
+    def get_log_proba_non_centered_move_C(self,
+                                          new_red_cov_matrix_sampled,
+                                          old_red_cov_matrix_sampled,
+                                          invBtinvNB,
+                                          s_cML,
+                                          s_c_sample, 
+                                          theoretical_red_cov_r1_tensor, 
+                                          theoretical_red_cov_r0_total):
+        """
+
+        """
+
+        
+        new_red_cov_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(new_red_cov_matrix_sampled)
+        old_red_cov_matrix_msqrt = jnp.linalg.pinv(get_sqrt_reduced_matrix_from_matrix_jax(old_red_cov_matrix_sampled))
+
+        N_c_inv = jnp.zeros_like(invBtinvNB[0,0])
+        N_c_inv = N_c_inv.at[...,self.mask!=0].set(1/invBtinvNB[0,0,self.mask!=0]/jhp.nside2resol(self.nside)**2)
+
+        operator_harmonic = jnp.einsum('lij,ljk->lik', new_red_cov_matrix_sqrt, old_red_cov_matrix_msqrt)
+
+        modified_s_c_sample = maps_x_red_covariance_cell_JAX(s_c_sample, 
+                                                             operator_harmonic, 
+                                                             nside=self.nside, 
+                                                             lmin=self.lmin, 
+                                                             n_iter=self.n_iter)
+
+        maps_to_compute = s_cML - modified_s_c_sample
+
+        return -jnp.einsum('sp, p, sp', maps_to_compute, N_c_inv, maps_to_compute)/2*jhp.nside2resol(self.nside)**2
 
     def get_log_proba_non_centered_move_C_from_r(self, 
                                                  new_r_sample,
@@ -1055,23 +1085,13 @@ class Sampling_functions(MixingMatrix):
         new_red_cov_matrix_sampled = new_r_sample * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
         old_red_cov_matrix_sampled = old_r_sample * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
         
-        new_red_cov_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(new_red_cov_matrix_sampled)
-        old_red_cov_matrix_msqrt = jnp.linalg.pinv(get_sqrt_reduced_matrix_from_matrix_jax(old_red_cov_matrix_sampled))
-
-        N_c_inv = jnp.zeros_like(invBtinvNB[0,0])
-        N_c_inv = N_c_inv.at[...,self.mask!=0].set(1/invBtinvNB[0,0,self.mask!=0]/jhp.nside2resol(self.nside)**2)
-
-        operator_harmonic = jnp.einsum('lij,ljk->lik', new_red_cov_matrix_sqrt, old_red_cov_matrix_msqrt)
-
-        modified_s_c_sample = maps_x_red_covariance_cell_JAX(s_c_sample, 
-                                                             operator_harmonic, 
-                                                             nside=self.nside, 
-                                                             lmin=self.lmin, 
-                                                             n_iter=self.n_iter)
-
-        maps_to_compute = s_cML - modified_s_c_sample
-
-        return -jnp.einsum('sp, p, sp', maps_to_compute, N_c_inv, maps_to_compute)/2*jhp.nside2resol(self.nside)**2
+        return self.get_log_proba_non_centered_move_C(new_red_cov_matrix_sampled,
+                                                      old_red_cov_matrix_sampled,
+                                                      invBtinvNB,
+                                                      s_cML,
+                                                      s_c_sample, 
+                                                      theoretical_red_cov_r1_tensor, 
+                                                      theoretical_red_cov_r0_total)
 
 
 
