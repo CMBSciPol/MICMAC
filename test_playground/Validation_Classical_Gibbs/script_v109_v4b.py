@@ -337,6 +337,8 @@ if former_file_ver != '':
     
     if MICMAC_obj.sample_r_Metropolis:
         initial_guess_r = dict_all_params['all_r_samples'][-1]
+        if MICMAC_obj.non_centered_moves:
+            initial_guess_r = initial_guess_r[-1]
     elif MICMAC_obj.sample_C_inv_Wishart:
         CMB_c_ell = dict_all_params['all_cell_samples'][-1,:,:]
 
