@@ -396,7 +396,7 @@ if former_file_ver != '':
         all_s_c_fluct_maps = np.hstack([dict_all_params['all_s_c_fluct_maps'], all_s_c_fluct_maps[1:]])
     
     if MICMAC_obj.save_s_c_spectra:
-        all_samples_s_c_spectra = np.hstack([dict_all_params['all_samples_s_c_spectra'], all_samples_s_c_spectra[1:]])
+        all_samples_s_c_spectra = np.vstack([dict_all_params['all_samples_s_c_spectra'], all_samples_s_c_spectra[1:]])
 
 
     if MICMAC_obj.sample_r_Metropolis:
