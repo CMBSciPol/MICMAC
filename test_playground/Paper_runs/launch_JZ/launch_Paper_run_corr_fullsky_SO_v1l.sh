@@ -34,7 +34,6 @@ export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 # OpenMP binding
 export OMP_PLACES=cores
 
-
 # export VER=corr_cutsky_SO_d1s1_nside0_v1091_v1a4
 # export additional_config_file=add_corr_cutsky_SO_d1s1_nside0_v1a.toml
 
