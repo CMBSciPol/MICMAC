@@ -50,6 +50,7 @@ class MICMAC_Sampler(Sampling_functions):
                  perturbation_eta_covariance=False,
                  use_uncorrelated_patches=False,
                  simultaneous_accept_rate=False,
+                 non_centered_moves=False,
                  full_sky_correction=False,
                  biased_version=False,
                  classical_Gibbs=False,
@@ -159,6 +160,7 @@ class MICMAC_Sampler(Sampling_functions):
         self.sample_C_inv_Wishart = bool(sample_C_inv_Wishart)
         self.use_binning = bool(use_binning) # To use binning for the sampling of inverse Wishart CMB covariance
         self.acceptance_posdef = bool(acceptance_posdef) # To accept only positive definite matrices for the inverse Wishart CMB covariance
+        self.non_centered_moves = bool(non_centered_moves) # To use non-centered moves for C sampling
 
         # CMB parameters for input maps generation
         self.r_true = float(r_true)
@@ -326,6 +328,8 @@ class MICMAC_Sampler(Sampling_functions):
                 all_samples_CMB_c_ell = all_samples['red_cov_matrix_sample']
             self.all_samples_CMB_c_ell = self.update_variable(self.all_samples_CMB_c_ell, all_samples_CMB_c_ell)
         if self.sample_r_Metropolis:
+            if len(all_samples['r_sample'].shape) != len(self.all_samples_r.shape):
+                all_samples['r_sample'] = all_samples['r_sample'].squeeze()
             self.all_samples_r = self.update_variable(self.all_samples_r, all_samples['r_sample'])
 
         if self.save_all_B_f_params:
@@ -350,7 +354,10 @@ class MICMAC_Sampler(Sampling_functions):
                 one_sample_CMB_c_ell = one_sample['red_cov_matrix_sample']
             self.all_samples_CMB_c_ell = self.update_variable(self.all_samples_CMB_c_ell, jnp.expand_dims(one_sample_CMB_c_ell,axis=0))
         if self.sample_r_Metropolis:
-            self.all_samples_r = self.update_variable(self.all_samples_r, one_sample['r_sample'])
+            if self.non_centered_moves:
+                self.all_samples_r = self.update_variable(self.all_samples_r, jnp.expand_dims(jnp.stack((one_sample['r_sample'],one_sample['r_sample'])),axis=0))
+            else:
+                self.all_samples_r = self.update_variable(self.all_samples_r, one_sample['r_sample'])
 
         if self.save_all_B_f_params:
             self.all_params_mixing_matrix_samples = self.update_variable(self.all_params_mixing_matrix_samples, jnp.expand_dims(one_sample['params_mixing_matrix_sample'],axis=0))
@@ -610,6 +617,9 @@ class MICMAC_Sampler(Sampling_functions):
             print("Sample for r instead of C !", flush=True)
             if self.sample_r_from_BB:
                 print("Sample for r with the BB likelihood !", flush=True)
+        if self.non_centered_moves:
+            print("Using non-centered moves for C sampling !", flush=True)
+
         else:
             print("Sample for C with inverse Wishart !", flush=True)
 
@@ -846,6 +856,24 @@ class MICMAC_Sampler(Sampling_functions):
                 all_samples['r_sample'] = new_carry['r_sample']
             else:
                 raise Exception('C not sampled in any way !!! It must be either inv Wishart or through r sampling !')
+            
+            
+            if self.non_centered_moves:
+                PRNGKey, new_subPRNGKey_2b = random.split(PRNGKey)
+                if self.sample_r_Metropolis:
+                    new_r_sample = r_sampling_MH(random_PRNGKey=new_subPRNGKey_2b, old_sample=new_carry['r_sample'],
+                                                        step_size=self.step_size_r, log_proba=self.get_log_proba_non_centered_move_C_from_r,
+                                                        old_r_sample=new_carry['r_sample'],
+                                                        invBtinvNB=invBtinvNB,
+                                                        s_cML=s_cML,
+                                                        s_c_sample=s_c_sample, 
+                                                        theoretical_red_cov_r1_tensor=theoretical_red_cov_r1_tensor, 
+                                                        theoretical_red_cov_r0_total=theoretical_red_cov_r0_total)
+
+                    new_carry['red_cov_matrix_sample'] = theoretical_red_cov_r0_total + new_carry['r_sample']*theoretical_red_cov_r1_tensor
+
+                    all_samples['r_sample'] = jnp.stack((new_carry['r_sample'], new_r_sample))
+                    new_carry['r_sample'] = new_r_sample
 
             ## Checking the shape of the resulting covariance matrix, and correcting it if needed
             if new_carry['red_cov_matrix_sample'].shape[0] == self.lmax + 1:

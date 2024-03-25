@@ -1021,6 +1021,59 @@ class Sampling_functions(MixingMatrix):
         reweighted_sigma_ell = number_dof*self.get_binned_c_ells(red_sigma_ell[:,1,1])
         return -((reweighted_sigma_ell/binned_BB_cov_matrix_sampled).sum() + sum_dets)/2 # -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
 
+
+    def get_log_proba_non_centered_move_C_from_r(self, 
+                                                 new_r_sample,
+                                                 old_r_sample,
+                                                 invBtinvNB,
+                                                 s_cML,
+                                                 s_c_sample, 
+                                                 theoretical_red_cov_r1_tensor, 
+                                                 theoretical_red_cov_r0_total):
+        """ Compute log-proba of C parametrized by r_param. 
+            The parametrisation is given by : C(r) = r * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
+        
+            The associated log proba is :
+                -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
+
+            Parameters
+            ----------
+            :param r_param: parameter of the covariance C to be sampled, float
+            :param red_sigma_ell: covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+            :param theoretical_red_cov_r1_tensor: tensor mode covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+            :param theoretical_red_cov_r0_total: scalar mode covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+
+            Returns
+            -------
+            :return: log-proba of C parametrized by r_param
+        """
+
+        chx.assert_shape(theoretical_red_cov_r1_tensor, (self.lmax+1-self.lmin, self.nstokes, self.nstokes))
+        chx.assert_equal_shape((theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total))
+
+        # Getting the CMB covariance matrix parametrized by r_param
+        new_red_cov_matrix_sampled = new_r_sample * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
+        old_red_cov_matrix_sampled = old_r_sample * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
+        
+        new_red_cov_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(new_red_cov_matrix_sampled)
+        old_red_cov_matrix_msqrt = jnp.linalg.pinv(get_sqrt_reduced_matrix_from_matrix_jax(old_red_cov_matrix_sampled))
+
+        inv_N_c = 1/invBtinvNB[0,0]
+
+        operator_harmonic = jnp.einsum('lij,ljk->lik', new_red_cov_matrix_sqrt, old_red_cov_matrix_msqrt)
+
+        modified_s_c_sample = maps_x_red_covariance_cell_JAX(s_c_sample, 
+                                                             operator_harmonic, 
+                                                             nside=self.nside, 
+                                                             lmin=self.lmin, 
+                                                             n_iter=self.n_iter)
+
+        maps_to_compute = s_cML - modified_s_c_sample
+
+        return -jnp.einsum('sp, p, sp', maps_to_compute, inv_N_c, maps_to_compute)/2 
+
+
+
     def get_conditional_proba_spectral_likelihood_JAX(self, 
                                                       complete_mixing_matrix, 
                                                       full_data_without_CMB):
