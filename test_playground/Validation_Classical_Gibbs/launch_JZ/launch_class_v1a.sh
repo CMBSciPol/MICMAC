@@ -37,8 +37,11 @@ export OMP_PLACES=cores
 
 
 
-export VER=class_cutsky_1freq_nofg_v1b4
-export additional_config_file=add_class_cutsky_f1freq_nofg_v1b.toml
+# export VER=class_cutsky_1freq_nofg_v1b4
+# export additional_config_file=add_class_cutsky_f1freq_nofg_v1b.toml
+
+export VER=class_fullsky_1freq_nofg_v1b
+export additional_config_file=add_class_fullsky_f1freq_nofg_v1b.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Validation_Classical_Gibbs
 
