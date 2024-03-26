@@ -357,7 +357,7 @@ if former_file_ver != '':
 
 
 if use_last_sample:
-    dict_last_sample = jnp.load(directory_save_file+file_ver_last_sample+'_last_sample.npz')
+    dict_last_sample = jnp.load(directory_save_file+file_ver_last_sample+f"_{MPI_rank}_{MPI_size}"+'_last_sample.npz')
     initial_wiener_filter_term = dict_last_sample['wiener_filter_term']
     initial_fluctuation_maps = dict_last_sample['fluctuation_maps']
     if MICMAC_obj.sample_r_Metropolis:
