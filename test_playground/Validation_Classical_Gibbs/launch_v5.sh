@@ -18,7 +18,7 @@ export add_param_toml=add_class_cutsky_f1freq_nofg_v1c
 # export file_ver=class_cutsky_1freq_nofg_v1d
 # export add_param_toml=add_class_cutsky_f1freq_nofg_v1d
 
-export file_ver=class_cutsky_1freq_nofg_v1db6
+export file_ver=class_cutsky_1freq_nofg_v1db7
 export add_param_toml=add_class_cutsky_f1freq_nofg_v1db
 
 export additional_params=$path_directory_main/additional_params/$add_param_toml.toml

@@ -30,5 +30,5 @@ save_last_sample = true
 
 name_toml = 'class_cutsky_1freq_v2b.toml'
 name_file_spv = ''
-former_file_ver = 'class_cutsky_1freq_nofg_v1db5'
-file_ver = 'class_cutsky_1freq_nofg_v1db6'
+former_file_ver = 'class_cutsky_1freq_nofg_v1db6'
+file_ver = 'class_cutsky_1freq_nofg_v1db7'
