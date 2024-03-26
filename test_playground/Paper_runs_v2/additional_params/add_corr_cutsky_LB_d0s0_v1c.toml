@@ -33,6 +33,6 @@ stack_former_file_ver = true
 
 name_toml = 'corr_cutsky_LB_r2_v1a.toml'
 name_file_spv = ''
-file_ver_last_sample = 'corr_cutsky_LB_d0s0_r2_v1c'
-former_file_ver = 'corr_cutsky_LB_d0s0_r2_v1c'
-file_ver = 'corr_cutsky_LB_d0s0_r2_v1c2' ## Planck 70
+file_ver_last_sample = 'corr_cutsky_LB_d0s0_r2_v1c2'
+former_file_ver = 'corr_cutsky_LB_d0s0_r2_v1c2'
+file_ver = 'corr_cutsky_LB_d0s0_r2_v1c3' ## Planck 70
