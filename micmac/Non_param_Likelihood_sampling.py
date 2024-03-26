@@ -1025,7 +1025,8 @@ def create_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv=''):
         
     else:
         instrument = get_instr(dictionary_parameters['frequency_array'], dictionary_parameters['depth_p'])
-        del dictionary_parameters['depth_p']
+        
+
     dictionary_parameters['frequency_array'] = jnp.array(instrument['frequency'])
     dictionary_parameters['freq_inverse_noise'] = get_noise_covar_extended(instrument['depth_p'], dictionary_parameters['nside'])
 
