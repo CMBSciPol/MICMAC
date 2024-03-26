@@ -1004,6 +1004,9 @@ class MICMAC_Sampler(Sampling_functions):
         print("Last key PRNG", last_sample['PRNGKey'], flush=True)
         self.last_PRNGKey = last_sample['PRNGKey']
 
+        ## Saving the last sample
+        self.last_sample = last_sample
+
 
 def create_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv=''):
     """

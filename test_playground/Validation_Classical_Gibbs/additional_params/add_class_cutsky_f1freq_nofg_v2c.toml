@@ -27,7 +27,9 @@ name_mask = 'Planck_mask_fsky_60'
 use_mask = true
 use_preconditioner = true
 
+save_last_sample = true
+
 name_toml = 'class_cutsky_1freq_v4.toml'
 name_file_spv = ''
-former_file_ver = 'class_cutsky_noncentered_1freq_nofg_v2b4'
-file_ver = 'class_cutsky_noncentered_1freq_nofg_v2b5'
+former_file_ver = 'class_cutsky_noncentered_1freq_nofg_v2b5'
+file_ver = 'class_cutsky_noncentered_1freq_nofg_v2b6'

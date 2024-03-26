@@ -81,6 +81,7 @@ else:
 print("Seed realization input :", seed_realization_input, flush=True)
 use_preconditioner = dictionary_additional_parameters['use_preconditioner']
 # path_trace_jax = dictionary_additional_parameters['path_trace_jax']
+save_last_sample = dictionary_additional_parameters['save_last_sample']
 
 # Starting MPI
 from mpi4py import MPI
@@ -454,5 +455,9 @@ np.save(all_params_mixing_matrix_samples_path, all_params_mixing_matrix_samples)
 
 print("FINAL SAVE - Last PRNG key :", directory_save_file+file_ver+'_last_PRNGkey.npy', f"rank {MPI_rank} over {MPI_size}", flush=True)
 jnp.save(directory_save_file+file_ver+'_last_PRNGkey.npy', MICMAC_obj.last_PRNGKey)
+
+if save_last_sample:
+    print("FINAL SAVE - Last sample :", directory_save_file+file_ver+'_last_sample.npy', f"rank {MPI_rank} over {MPI_size}", flush=True)
+    jnp.savez(directory_save_file+file_ver+'_last_sample.npz', **MICMAC_obj.last_sample)
 
 print("End of saving in {} minutes !".format((time.time()-time_saving)/60), f"rank {MPI_rank} over {MPI_size}", flush=True)
