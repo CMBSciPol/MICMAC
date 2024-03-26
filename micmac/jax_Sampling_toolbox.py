@@ -500,8 +500,9 @@ class Sampling_functions(MixingMatrix):
                                                                        right_member.ravel(), 
                                                                        x0=initial_guess.ravel(), 
                                                                        tol=self.tolerance_CG,
+                                                                       atol=self.atol_CG,
                                                                        maxiter=self.limit_iter_cg, 
-                                                                       M=precond_func) # atol=self.atol_CG,
+                                                                       M=precond_func)
         ## Computing the term C^{-1/2} s_{c,WF}
 
         print("CG WF finished with", number_iterations, "iterations in ", time.time()-time_start, "seconds !!")
@@ -2078,6 +2079,87 @@ def separate_single_MH_step_index_v4_pixel(random_PRNGKey,
                      'log_proba':log_proba(old_sample,
                                            nside_patch=nside_init, 
                                            **model_kwargs)}
+
+    carry, new_params = jlax.scan(map_func, initial_carry, jnp.arange(indexes_patches_Bf.size))
+
+    new_sample = carry['sample']
+
+    latest_PRNGKey = carry['PRNGKey']
+
+    return latest_PRNGKey, new_sample
+
+
+def separate_single_MH_step_index_v4b_pixel(random_PRNGKey, 
+                                           old_sample, 
+                                           step_size, 
+                                           log_proba, 
+                                           indexes_Bf, 
+                                           indexes_patches_Bf, 
+                                           size_patches, 
+                                           max_len_patches_Bf, 
+                                           len_indexes_Bf, 
+                                           **model_kwargs):
+    """  
+        Perform Metroplis-Hasting step for a given set of indexes given by indexes_patches_Bf
+
+        Assumes all patches have the same disposition on the sky
+        
+        Parameters
+        ----------
+        :param random_PRNGKey: random key for the random number generator ; note it will be split for each sample indexed by indexes B_f
+        :param old_sample: old sample to be updated
+        :param step_size: step size for all B_f
+        :param log_proba: log probability function as log(p(x) (and not -log(p(x)) as in the previous version)
+        :param indexes_Bf: indexes of the parameters to be updated
+        :param indexes_patches_Bf: indexes of the first patch of each parameter to be updated
+        :param size_patches: size of all patches
+        :param max_len_patches_Bf: maximum length of the patches
+        :param len_indexes_Bf: maximum index of all possible B_f (not only the free ones)
+        :param model_kwargs: additional arguments for the log_proba function
+
+        Returns
+        -------
+        :return: latest_PRNGKey, new_sample
+    """
+
+    def map_func(carry, counter_i):
+        index_Bf = indexes_patches_Bf[counter_i]
+        indexes_to_consider = (index_Bf + jnp.arange(max_len_patches_Bf, dtype=jnp.int32))%len_indexes_Bf
+        mask_in_indexes_B_f = jnp.where(jnp.isin(index_Bf + jnp.arange(max_len_patches_Bf, dtype=jnp.int32), indexes_Bf), 1, 0)
+        mask_indexes_to_consider = jnp.where(jnp.arange(max_len_patches_Bf) < size_patches[counter_i], mask_in_indexes_B_f, 0)
+
+        rng_key, key_proposal, key_accept = random.split(carry['PRNGKey'], 3)
+
+        sample_proposal = dist.Normal(carry['sample'][indexes_to_consider], step_size[indexes_to_consider]*mask_indexes_to_consider).sample(key_proposal)
+
+        proposal_params = jnp.copy(carry['sample'])
+        proposal_params = proposal_params.at[indexes_to_consider].set(sample_proposal)
+
+        nside_b = jnp.where(size_patches[counter_i]==1, 1, jnp.sqrt(size_patches[counter_i]/12))
+        proposal_log_proba = log_proba(proposal_params, nside_patch=nside_b, **model_kwargs)
+
+        old_log_proba = jlax.cond(carry['size_patch']==size_patches[counter_i],
+                                  lambda x: carry['log_proba'],
+                                  lambda x: log_proba(x, nside_patch=nside_b, **model_kwargs),
+                                  operand=carry['sample'])
+
+        accept_prob = -(carry['log_proba'] - proposal_log_proba)
+
+        log_proba_uniform = jnp.log(dist.Uniform().sample(key_accept,sample_shape=(max_len_patches_Bf,)))
+        new_param = jnp.where(log_proba_uniform < accept_prob, sample_proposal, carry['sample'][indexes_to_consider])
+        new_log_proba = jnp.where(log_proba_uniform < accept_prob, proposal_log_proba, carry['log_proba'])
+
+        proposal_params = proposal_params.at[indexes_to_consider].set(new_param)
+        new_carry = {'PRNGKey':rng_key, 'sample':proposal_params, 'log_proba':new_log_proba, 'size_patch':size_patches[counter_i]}
+        return new_carry, new_param
+
+    nside_init = jnp.where(size_patches[0]==1, 1, jnp.sqrt(size_patches[0]/12))
+    initial_carry = {'PRNGKey':random_PRNGKey, 
+                     'sample':old_sample,
+                     'log_proba':log_proba(old_sample,
+                                           nside_patch=nside_init, 
+                                           **model_kwargs),
+                     'size_patch':size_patches[0]}
 
     carry, new_params = jlax.scan(map_func, initial_carry, jnp.arange(indexes_patches_Bf.size))
 

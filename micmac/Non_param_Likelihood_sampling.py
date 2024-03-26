@@ -548,10 +548,11 @@ class MICMAC_Sampler(Sampling_functions):
                     ## MH step function to sample the mixing matrix free parameters with patches simultaneous computed accept rate
                     print("Using simultaneous accept rate version of mixing matrix sampling !!!", flush=True)
                     print("---- ATTENTION : This assumes all patches are distributed in the same way for all parameters !", flush=True)
-                    if (self.size_patches != self.size_patches[0]).any():
-                        raise NotImplemented("All patches should have the same size for the simultaneous accept rate version of mixing matrix sampling for now !!!")
                     jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_pixel_JAX, static_argnames=['biased_bool', 'full_sky_correction'])
                     sampling_func = separate_single_MH_step_index_v4_pixel
+                    if (self.size_patches != self.size_patches[0]).any():
+                        sampling_func = separate_single_MH_step_index_v4b_pixel
+                        # raise NotImplemented("All patches should have the same size for the simultaneous accept rate version of mixing matrix sampling for now !!!")
 
                 ## Redefining the free Bf indexes to sample to the one 
                 # condition_unobserved_patches = self.get_cond_unobserved_patches() ## Get boolean array to identify which free indexes are not relevant

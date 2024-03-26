@@ -36,7 +36,7 @@ export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export OMP_PLACES=cores
 
 
-export VER=corr_cutsky_LB_d0s0_r2_v1e
+export VER=corr_cutsky_LB_d0s0_r2_v1e2
 export additional_config_file=add_corr_cutsky_LB_d0s0_v1e.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Paper_runs_v2
