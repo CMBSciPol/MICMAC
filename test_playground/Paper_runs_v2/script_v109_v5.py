@@ -363,7 +363,9 @@ if use_last_sample:
     if MICMAC_obj.sample_r_Metropolis:
         initial_guess_r = jnp.ravel(dict_last_sample['r_sample'])
     
-    CMB_c_ell = dict_last_sample['red_cov_matrix_sample']
+    CMB_c_ell = jnp.zeros_like(c_ell_approx)
+    CMB_c_ell[:,MICMAC_obj.lmin:] = get_c_ells_from_red_covariance_matrix(dict_last_sample['red_cov_matrix_sample'])
+    
     init_params_mixing_matrix = dict_last_sample['params_mixing_matrix_sample']
 
 
