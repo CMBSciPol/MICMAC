@@ -500,9 +500,8 @@ class Sampling_functions(MixingMatrix):
                                                                        right_member.ravel(), 
                                                                        x0=initial_guess.ravel(), 
                                                                        tol=self.tolerance_CG,
-                                                                       atol=self.atol_CG,
                                                                        maxiter=self.limit_iter_cg, 
-                                                                       M=precond_func)
+                                                                       M=precond_func) # atol=self.atol_CG,
         ## Computing the term C^{-1/2} s_{c,WF}
 
         print("CG WF finished with", number_iterations, "iterations in ", time.time()-time_start, "seconds !!")
