@@ -22,10 +22,12 @@ relative_treshold = 1e-1
 sigma_gap = 0
 fgs_model = 'd0s0'
 initial_guess_r=1e-2
-use_nhits = false
 name_mask = 'Planck_mask_fsky_60'
 use_mask = true
 use_preconditioner = true
+
+use_treshold = false
+use_nhits = false
 
 use_last_sample = true
 save_last_sample = true
