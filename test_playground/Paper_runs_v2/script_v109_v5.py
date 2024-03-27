@@ -67,7 +67,10 @@ relative_treshold = dictionary_additional_parameters['relative_treshold']
 sigma_gap = dictionary_additional_parameters['sigma_gap']
 fgs_model = dictionary_additional_parameters['fgs_model']
 initial_guess_r_ = dictionary_additional_parameters['initial_guess_r']
+
 use_nhits = dictionary_additional_parameters['use_nhits']
+use_treshold = dictionary_additional_parameters['use_treshold']
+
 name_mask = dictionary_additional_parameters['name_mask']
 use_mask = dictionary_additional_parameters['use_mask']
 name_toml = dictionary_additional_parameters['name_toml']
@@ -180,7 +183,7 @@ if use_mask:
     apod_mask = hp.ud_grade(hp.read_map(path_mask),nside_out=MICMAC_obj.nside,dtype=np.float64)
 
     template_mask = np.copy(apod_mask)
-    if use_nhits:
+    if use_nhits or use_treshold:
         template_mask[template_mask<relative_treshold] = 0
         inverse_nhits_mask = np.copy(template_mask)
         inverse_nhits_mask[template_mask>0] = 1/template_mask[template_mask>0]

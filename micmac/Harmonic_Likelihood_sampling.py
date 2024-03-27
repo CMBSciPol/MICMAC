@@ -596,6 +596,7 @@ def create_Harmonic_MICMAC_sampler_from_MICMAC_sampler_obj(MICMAC_sampler_obj, d
     spv_nodes_b = get_nodes_b(tree_spv_config("", n_free_B_f, dictionary_parameters['n_components']-1, print_tree=False))
     dictionary_parameters['spv_nodes_b'] = spv_nodes_b
 
+    print("Test", dictionary_parameters['freq_noise_c_ell'].shape)
     Harmonic_MICMAC_Sampler_obj = Harmonic_MICMAC_Sampler(**dictionary_parameters)
 
     list_attributes = ['pos_special_freqs', 
