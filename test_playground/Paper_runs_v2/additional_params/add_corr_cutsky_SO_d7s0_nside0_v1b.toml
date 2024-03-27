@@ -23,7 +23,7 @@ sigma_gap = 10
 fgs_model = 'd7s0'
 initial_guess_r=1e-4
 name_mask = 'mask_SAT_apodized'
-use_mask = false
+use_mask = true
 use_preconditioner = true
 
 use_nhits = false
