@@ -29,12 +29,12 @@ use_preconditioner = true
 use_treshold = false
 use_nhits = false
 
-use_last_sample = true
+use_last_sample = false
 save_last_sample = true
 stack_former_file_ver = true
 
 name_toml = 'corr_cutsky_noncentered_LB_r2_v1b.toml'
 name_file_spv = ''
-file_ver_last_sample = 'corr_cutsky_LB_d0s0_r0_v1i'
-former_file_ver = 'corr_cutsky_LB_d0s0_r0_v1i'
-file_ver = 'corr_cutsky_LB_d0s0_r0_v1i2' # r=2
+file_ver_last_sample = ''
+former_file_ver = ''
+file_ver = 'corr_cutsky_LB_d0s0_r0_v1i' # r=2
