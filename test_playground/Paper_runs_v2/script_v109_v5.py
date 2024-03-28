@@ -371,6 +371,12 @@ if use_last_sample:
     
     init_params_mixing_matrix = dict_last_sample['params_mixing_matrix_sample']
 
+if MICMAC_obj.len_params != init_params_mixing_matrix.shape[0]:
+    print("Expanding init_params_mixing_matrix from shape {}!!".format(init_params_mixing_matrix.shape[0]), flush=True)
+    # expend_factor = dimension_free_param_B_f//step_size_B_f.shape[0]
+    expend_factor = MICMAC_obj.len_params//init_params_mixing_matrix.shape[0]
+    # step_size_B_f = np.repeat(step_size_B_f, expend_factor)
+    init_params_mixing_matrix = np.broadcast_to(init_params_mixing_matrix, (expend_factor, init_params_mixing_matrix.shape[0])).ravel()
 
 print(f'Exact r : {MICMAC_obj.r_true}')
 print(f'Initial r : {initial_guess_r}')
