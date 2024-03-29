@@ -161,6 +161,7 @@ class MICMAC_Sampler(Sampling_functions):
         self.sample_C_inv_Wishart = bool(sample_C_inv_Wishart)
         self.use_binning = bool(use_binning) # To use binning for the sampling of inverse Wishart CMB covariance
         self.acceptance_posdef = bool(acceptance_posdef) # To accept only positive definite matrices for C sampling
+        self.min_r_to_sample = float(min_r_to_sample) # Minimum accepted value for r to sample
         self.non_centered_moves = bool(non_centered_moves) # To use non-centered moves for C sampling
         self.save_intermediary_centered_moves = bool(save_intermediary_centered_moves) # To save intermediary r values in case of non-centered moves in the sampling
 
