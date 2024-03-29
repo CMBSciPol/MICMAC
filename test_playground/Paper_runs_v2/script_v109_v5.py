@@ -346,7 +346,7 @@ if former_file_ver != '':
         initial_fluctuation_maps = dict_all_params['all_s_c_fluct_maps'][-1,:,:]
     
     if MICMAC_obj.sample_r_Metropolis:
-        initial_guess_r = dict_all_params['all_r_samples'][-1]
+        initial_guess_r = jnp.ravel(jnp.squeeze(dict_all_params['all_r_samples']))[-1]
 
     elif MICMAC_obj.sample_C_inv_Wishart:
         CMB_c_ell = dict_all_params['all_cell_samples'][-1,:,:]
@@ -363,7 +363,7 @@ if use_last_sample:
     initial_wiener_filter_term = dict_last_sample['wiener_filter_term']
     initial_fluctuation_maps = dict_last_sample['fluctuation_maps']
     if MICMAC_obj.sample_r_Metropolis:
-        initial_guess_r = jnp.ravel(dict_last_sample['r_sample']).squeeze()[-1]
+        initial_guess_r = jnp.ravel(jnp.squeeze(dict_last_sample['r_sample']))[-1]
 
     CMB_c_ell = np.zeros_like(c_ell_approx)
     CMB_c_ell[:,MICMAC_obj.lmin:] = micmac.get_c_ells_from_red_covariance_matrix(dict_last_sample['red_cov_matrix_sample'])
