@@ -363,7 +363,7 @@ if use_last_sample:
     initial_wiener_filter_term = dict_last_sample['wiener_filter_term']
     initial_fluctuation_maps = dict_last_sample['fluctuation_maps']
     if MICMAC_obj.sample_r_Metropolis:
-        initial_guess_r = jnp.ravel(dict_last_sample['r_sample'])[-1]
+        initial_guess_r = jnp.ravel(dict_last_sample['r_sample']).squeeze()[-1]
 
     CMB_c_ell = np.zeros_like(c_ell_approx)
     CMB_c_ell[:,MICMAC_obj.lmin:] = micmac.get_c_ells_from_red_covariance_matrix(dict_last_sample['red_cov_matrix_sample'])
