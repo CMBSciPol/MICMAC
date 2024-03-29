@@ -48,9 +48,9 @@ class MICMAC_Sampler(Sampling_functions):
                  sample_r_from_BB=False,
                  sample_C_inv_Wishart=False,
                  perturbation_eta_covariance=False,
-                 use_uncorrelated_patches=False,
                  simultaneous_accept_rate=False,
                  non_centered_moves=False,
+                 save_intermediary_centered_moves=False,
                  full_sky_correction=False,
                  biased_version=False,
                  classical_Gibbs=False,
@@ -97,7 +97,7 @@ class MICMAC_Sampler(Sampling_functions):
             sample_C_inv_Wishart : sample C_inv with Wishart distribution instead of simply r being sampled, bool
 
             perturbation_eta_covariance : approach to compute difference between CMB noise component for eta log proba instead of repeating the CG for each B_f sampling, bool
-            use_uncorrelated_patches : use uncorrelated patches for each B_f being sampled, bool
+            simultaneous_accept_rate : use the simultaneous accept rate for the patches of the B_f sampling, bool
             
             biased_version : use the biased version of the likelihood, so no computation of the correction term, bool
             classical_Gibbs : sampling only for s_c and the CMB covariance, and neither B_f or eta, bool
@@ -150,7 +150,6 @@ class MICMAC_Sampler(Sampling_functions):
                 raise Exception("The number of special frequencies should be equal to the number of components - 1")
         self.biased_version = bool(biased_version) # To have a run without the correction term
         self.perturbation_eta_covariance = bool(perturbation_eta_covariance) # To use the perturbation approach for the eta contribution in log-proba of B_f
-        self.use_uncorrelated_patches = bool(use_uncorrelated_patches) # To use uncorrelated patches for B_f sampling
         self.simultaneous_accept_rate = bool(simultaneous_accept_rate) # To use the simultaneous accept rate for the patches of the B_f sampling
         self.full_sky_correction = bool(full_sky_correction) # To use the full sky correction for the log-proba of Bf sampling
         assert ((sample_r_Metropolis and sample_C_inv_Wishart) == False) and ((sample_r_Metropolis or not(sample_C_inv_Wishart)) or (not(sample_r_Metropolis) or sample_C_inv_Wishart))
@@ -161,6 +160,7 @@ class MICMAC_Sampler(Sampling_functions):
         self.use_binning = bool(use_binning) # To use binning for the sampling of inverse Wishart CMB covariance
         self.acceptance_posdef = bool(acceptance_posdef) # To accept only positive definite matrices for the inverse Wishart CMB covariance
         self.non_centered_moves = bool(non_centered_moves) # To use non-centered moves for C sampling
+        self.save_intermediary_centered_moves = bool(save_intermediary_centered_moves) # To save intermediary r values in case of non-centered moves in the sampling
 
         # CMB parameters for input maps generation
         self.r_true = float(r_true)
@@ -355,7 +355,10 @@ class MICMAC_Sampler(Sampling_functions):
             self.all_samples_CMB_c_ell = self.update_variable(self.all_samples_CMB_c_ell, jnp.expand_dims(one_sample_CMB_c_ell,axis=0))
         if self.sample_r_Metropolis:
             if self.non_centered_moves:
-                self.all_samples_r = self.update_variable(self.all_samples_r, jnp.expand_dims(jnp.stack((one_sample['r_sample'],one_sample['r_sample'])),axis=0))
+                if self.save_intermediary_centered_moves:
+                    self.all_samples_r = self.update_variable(self.all_samples_r, jnp.expand_dims(jnp.stack((one_sample['r_sample'],one_sample['r_sample'])),axis=0))
+                else:
+                    self.all_samples_r = self.update_variable(self.all_samples_r, one_sample['r_sample'],axis=0)
             else:
                 self.all_samples_r = self.update_variable(self.all_samples_r, one_sample['r_sample'])
 
@@ -538,21 +541,17 @@ class MICMAC_Sampler(Sampling_functions):
             jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_JAX, static_argnames=['biased_bool', 'full_sky_correction'])
             sampling_func = separate_single_MH_step_index_v2b
 
-            if self.use_uncorrelated_patches or self.simultaneous_accept_rate:
+            if self.simultaneous_accept_rate:
                 ## More efficient version of the mixing matrix sampling
-                if self.use_uncorrelated_patches:
-                    ## MH step function to sample the mixing matrix free parameters with the patches per parameters sample alltogether
-                    print("Using uncorrelated patches version of mixing matrix sampling !!!", flush=True)
-                    sampling_func = separate_single_MH_step_index_v3
-                elif self.simultaneous_accept_rate:
-                    ## MH step function to sample the mixing matrix free parameters with patches simultaneous computed accept rate
-                    print("Using simultaneous accept rate version of mixing matrix sampling !!!", flush=True)
-                    print("---- ATTENTION : This assumes all patches are distributed in the same way for all parameters !", flush=True)
-                    jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_pixel_JAX, static_argnames=['biased_bool', 'full_sky_correction'])
-                    sampling_func = separate_single_MH_step_index_v4_pixel
-                    if (self.size_patches != self.size_patches[0]).any():
-                        sampling_func = separate_single_MH_step_index_v4b_pixel
-                        # raise NotImplemented("All patches should have the same size for the simultaneous accept rate version of mixing matrix sampling for now !!!")
+                
+                ## MH step function to sample the mixing matrix free parameters with patches simultaneous computed accept rate
+                print("Using simultaneous accept rate version of mixing matrix sampling !!!", flush=True)
+                print("---- ATTENTION : This assumes all patches are distributed in the same way for all parameters !", flush=True)
+                jitted_Bf_func_sampling = jax.jit(self.get_conditional_proba_mixing_matrix_v3_pixel_JAX, static_argnames=['biased_bool', 'full_sky_correction'])
+                sampling_func = separate_single_MH_step_index_v4_pixel
+                if (self.size_patches != self.size_patches[0]).any():
+                    sampling_func = separate_single_MH_step_index_v4b_pixel
+                    # raise NotImplemented("All patches should have the same size for the simultaneous accept rate version of mixing matrix sampling for now !!!")
 
                 ## Redefining the free Bf indexes to sample to the one 
                 # condition_unobserved_patches = self.get_cond_unobserved_patches() ## Get boolean array to identify which free indexes are not relevant
@@ -620,6 +619,8 @@ class MICMAC_Sampler(Sampling_functions):
                 print("Sample for r with the BB likelihood !", flush=True)
         if self.non_centered_moves:
             print("Using non-centered moves for C sampling !", flush=True)
+            if self.save_intermediary_centered_moves:
+                print("Saving intermediary centered moves for C sampling !", flush=True)
 
         else:
             print("Sample for C with inverse Wishart !", flush=True)
@@ -873,7 +874,11 @@ class MICMAC_Sampler(Sampling_functions):
 
                     new_carry['red_cov_matrix_sample'] = theoretical_red_cov_r0_total + new_carry['r_sample']*theoretical_red_cov_r1_tensor
 
-                    all_samples['r_sample'] = jnp.stack((new_carry['r_sample'], new_r_sample))
+
+                    if self.save_intermediary_centered_moves:
+                        all_samples['r_sample'] = jnp.stack((new_carry['r_sample'], new_r_sample))
+                    else:
+                        all_samples['r_sample'] = new_r_sample
                     new_carry['r_sample'] = new_r_sample
 
             ## Checking the shape of the resulting covariance matrix, and correcting it if needed
@@ -924,7 +929,7 @@ class MICMAC_Sampler(Sampling_functions):
                     if not(self.biased_version):
                         ## If not biased, provide the eta maps
                         dict_parameters_sampling_B_f['component_eta_maps'] = new_carry['eta_maps']
-                    if self.use_uncorrelated_patches or self.simultaneous_accept_rate:
+                    if self.simultaneous_accept_rate:
                         ## Provide as well the indexes of the patches in case of the uncorrelated patches version
                         dict_parameters_sampling_B_f['size_patches'] = size_patches
                         dict_parameters_sampling_B_f['max_len_patches_Bf'] = max_len_patches_Bf
@@ -952,7 +957,6 @@ class MICMAC_Sampler(Sampling_functions):
                 if self.perturbation_eta_covariance:
                     ## Passing the inverse term to the next iteration
                     new_carry['inverse_term'] = inverse_term
-
 
                 # Checking the shape of the resulting mixing matrix
                 chx.assert_shape(new_carry['params_mixing_matrix_sample'], (self.len_params,))
@@ -983,7 +987,7 @@ class MICMAC_Sampler(Sampling_functions):
             initial_carry['r_sample'] = initial_guess_r
         if self.save_s_c_spectra:
             self.all_samples_s_c_spectra = self.update_variable(self.all_samples_s_c_spectra, jnp.expand_dims(jnp.zeros((self.n_correlations, self.lmax+1-self.lmin)),axis=0))
-        
+
         ## Initialising the first carry to the chains saved
         self.update_one_sample(initial_carry)
 
