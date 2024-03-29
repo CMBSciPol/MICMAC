@@ -1799,6 +1799,45 @@ def single_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_size, log_pr
 
         return new_sample.reshape(old_sample.shape,order='F')
 
+def bounded_single_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_size, log_proba, min_value, **model_kwargs):
+        """ 
+            Single bounded Metropolis-Hasting step for a single parameter, with a Gaussian proposal distribution
+            If the proposal is lower than the minimum value, the proposal is rejected
+
+            Parameters
+            ----------
+            :param random_PRNGKey: JAX random key to be splitted to generate the proposal and uniform distribution sample
+            :param old_sample: old sample of the parameter
+            :param step_size: standard deviation for the proposal distribution
+            :param log_proba: log-probability function of the model
+            :param model_kwargs: additional arguments for the log-probability function
+
+
+            Returns
+            -------
+            :return: new sample of the parameter
+        """
+        # Splitting the random key
+        rng_key, key_proposal, key_accept = random.split(random_PRNGKey, 3)
+
+        # Generating the proposal sample
+        sample_proposal = dist.Normal(jnp.ravel(old_sample,order='F'), step_size).sample(key_proposal)
+
+        # Computing the acceptance probability
+        accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(sample_proposal, **model_kwargs))
+
+        # Accepting or rejecting the proposal
+        new_sample = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, 
+                               sample_proposal, 
+                               jnp.ravel(old_sample,order='F'))
+        
+        # Checking if the proposal is lower than the minimum value
+        new_sample = jnp.where(new_sample < min_value,
+                               jnp.ravel(old_sample,order='F'),
+                               new_sample)
+
+        return new_sample.reshape(old_sample.shape,order='F')
+
 def multivariate_Metropolis_Hasting_step(random_PRNGKey, old_sample, covariance_matrix, log_proba, **model_kwargs):
         """
             Metropolis-Hasting step for a multivariate parameter, with a multivariate Gaussian proposal distribution

@@ -305,7 +305,7 @@ if MICMAC_obj.len_params != step_size_B_f.shape[0]:
     # expend_factor = dimension_free_param_B_f//step_size_B_f.shape[0]
     expend_factor = MICMAC_obj.len_params//step_size_B_f.shape[0]
     # step_size_B_f = np.repeat(step_size_B_f, expend_factor)
-    step_size_B_f = np.broadcast_to(step_size_B_f, (expend_factor, step_size_B_f.shape[0])).ravel()
+    step_size_B_f = np.broadcast_to(step_size_B_f, (expend_factor, step_size_B_f.shape[0])).ravel(order='F')
 
 if initial_guess_B_f is None:
     first_guess = jnp.copy(exact_params_mixing_matrix)
@@ -375,7 +375,7 @@ if MICMAC_obj.len_params != init_params_mixing_matrix.shape[0]:
     # expend_factor = dimension_free_param_B_f//step_size_B_f.shape[0]
     expend_factor = MICMAC_obj.len_params//init_params_mixing_matrix.shape[0]
     # step_size_B_f = np.repeat(step_size_B_f, expend_factor)
-    init_params_mixing_matrix = np.broadcast_to(init_params_mixing_matrix, (expend_factor, init_params_mixing_matrix.shape[0])).ravel()
+    init_params_mixing_matrix = np.broadcast_to(init_params_mixing_matrix, (expend_factor, init_params_mixing_matrix.shape[0])).ravel(order='F')
 
 print(f'Exact r : {MICMAC_obj.r_true}')
 print(f'Initial r : {initial_guess_r}')

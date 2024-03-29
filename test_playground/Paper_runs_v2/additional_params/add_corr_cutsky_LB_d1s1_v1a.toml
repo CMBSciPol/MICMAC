@@ -35,6 +35,6 @@ stack_former_file_ver = true
 
 name_toml = 'corr_cutsky_noncentered_LB_r0_v1b.toml'
 name_file_spv = 'params_spv_LB_nside0.yaml'
-file_ver_last_sample = 'corr_cutsky_LB_d1s1_r0_v1a2'
-former_file_ver = 'corr_cutsky_LB_d1s1_r0_v1a2'
-file_ver = 'corr_cutsky_LB_d1s1_r0_v1a3' # r=0
+file_ver_last_sample = ''
+former_file_ver = ''
+file_ver = 'corr_cutsky_LB_d1s1_r0_v1a' # r=0
