@@ -874,11 +874,11 @@ class MICMAC_Sampler(Sampling_functions):
 
                     new_carry['red_cov_matrix_sample'] = theoretical_red_cov_r0_total + new_carry['r_sample']*theoretical_red_cov_r1_tensor
 
-
                     if self.save_intermediary_centered_moves:
                         all_samples['r_sample'] = jnp.stack((new_carry['r_sample'], new_r_sample))
                     else:
                         all_samples['r_sample'] = new_r_sample
+
                     new_carry['r_sample'] = new_r_sample
 
             ## Checking the shape of the resulting covariance matrix, and correcting it if needed
