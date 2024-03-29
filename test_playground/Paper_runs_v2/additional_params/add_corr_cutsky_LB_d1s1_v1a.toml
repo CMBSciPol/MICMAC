@@ -2,14 +2,14 @@
 ## will not be used in the final version of the code
 
 current_directory='Paper_runs_v2/'
-# MICMAC_directory = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/'
-MICMAC_directory = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/'
-# directory_mask = "/gpfswork/rech/nih/commun/masks/"
-directory_mask = "/Users/mag/Documents/PHD1Y/Masks/"
+MICMAC_directory = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/'
+# MICMAC_directory = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/'
+directory_mask = "/gpfswork/rech/nih/commun/masks/"
+# directory_mask = "/Users/mag/Documents/PHD1Y/Masks/"
 save_directory = ''
 path_trace_jax = ''
-path_cov_B_f_r = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/Fake_Fisher_matrix_LiteBIRD.txt'
-# path_cov_B_f_r = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Fake_Fisher_matrix_LiteBIRD.txt'
+# path_cov_B_f_r = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/Fake_Fisher_matrix_LiteBIRD.txt'
+path_cov_B_f_r = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Fake_Fisher_matrix_LiteBIRD.txt'
 
 seed_realization_input=42
 
