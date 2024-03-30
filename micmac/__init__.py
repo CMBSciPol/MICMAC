@@ -12,3 +12,5 @@ from micmac.statistics_toolbox import *
 
 from micmac.utils import *
 from micmac.harmonic_Fisher_tools import *
+
+from micmac.customized_models import *
