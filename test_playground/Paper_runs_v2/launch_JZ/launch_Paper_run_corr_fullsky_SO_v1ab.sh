@@ -25,7 +25,6 @@ module load python
 
 source /gpfswork/rech/nih/ube74zo/MICMAC/.bash_env
 
-
 export PYSM_LOCAL_DATA=/gpfswork/rech/nih/commun/micmac_soft/pysm-data
 
 echo $PYSM_LOCAL_DATA
