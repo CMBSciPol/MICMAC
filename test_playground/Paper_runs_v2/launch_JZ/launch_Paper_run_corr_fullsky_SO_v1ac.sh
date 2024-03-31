@@ -36,7 +36,6 @@ export OMP_PLACES=cores
 
 # export VER=corr_cutsky_SO_d1s1_nside1_v1091b_v1a3
 # export additional_config_file=add_corr_cutsky_SO_d1s1_nside1_v1a.toml
-
 # export VER=corr_cutsky_SO_d1s1_nside0_v1091b_v1c8
 # export additional_config_file=add_corr_cutsky_SO_d1s1_nside0_v1c.toml
 
