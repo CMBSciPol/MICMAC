@@ -584,9 +584,9 @@ class MICMAC_Sampler(Sampling_functions):
         if self.sample_r_Metropolis:
             if self.min_r_to_sample is None:
                 print("Setting minimum value of r for sampling, allow negative r")
-                self.min_r_to_sample = -theoretical_red_cov_r0_total[:,1,1]/theoretical_red_cov_r1_tensor[:,1,1]
+                self.min_r_to_sample = -(theoretical_red_cov_r0_total[:,1,1]/theoretical_red_cov_r1_tensor[:,1,1]).min()
             else:
-                assert self.min_r_to_sample > -theoretical_red_cov_r0_total[:,1,1]/theoretical_red_cov_r1_tensor[:,1,1], "Minimum r value for sampling is too low for theoretical spectra given"
+                assert self.min_r_to_sample > -(theoretical_red_cov_r0_total[:,1,1]/theoretical_red_cov_r1_tensor[:,1,1]).min(), "Minimum r value for sampling is too low for theoretical spectra given"
 
         ## Preparing minmum value of r sampling
 
