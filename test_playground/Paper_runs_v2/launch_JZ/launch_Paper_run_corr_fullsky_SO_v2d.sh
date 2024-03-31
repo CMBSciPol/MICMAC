@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=corr_Paper_run_SO_v1ac
+#SBATCH --job-name=corr_Paper_run_SO_v2d
 #SBATCH --account=nih@cpu          # use CPU allocation
 #SBATCH --qos=qos_cpu-dev          # dev qos (10 jobs, 2h max.)
 #SBATCH --mail-user=magdy.morshed.fr@gmail.com
@@ -25,6 +25,7 @@ module load python
 
 source /gpfswork/rech/nih/ube74zo/MICMAC/.bash_env
 
+
 export PYSM_LOCAL_DATA=/gpfswork/rech/nih/commun/micmac_soft/pysm-data
 
 echo $PYSM_LOCAL_DATA
@@ -34,14 +35,12 @@ export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 # OpenMP binding
 export OMP_PLACES=cores
 
+
 # export VER=corr_cutsky_SO_d1s1_nside1_v1091b_v1a3
 # export additional_config_file=add_corr_cutsky_SO_d1s1_nside1_v1a.toml
 
-# export VER=corr_cutsky_SO_d1s1_nside0_v1091b_v1c8
-# export additional_config_file=add_corr_cutsky_SO_d1s1_nside0_v1c.toml
-
-export VER=corr_cutsky_SO_d1s1_nside0_v1091b_v2b
-export additional_config_file=add_corr_cutsky_SO_d1s1_nside0_v2b.toml
+export VER=corr_cutsky_SO_d7s0_nside0_v1091b_v2a
+export additional_config_file=add_corr_cutsky_SO_d7s0_nside0_v2a.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Paper_runs_v2
 

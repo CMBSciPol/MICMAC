@@ -8,9 +8,9 @@ simultaneous_accept_rate = false
 full_sky_correction = false
 
 # [C sampling]
-non_centered_moves = false
+non_centered_moves = true
 use_binning=false
-save_intermediary_centered_moves = false
+save_intermediary_centered_moves = true
 
 # [Data]
 save_CMB_chain_maps = false # If true, all the sampled CMB maps which are marginalized over will be saved

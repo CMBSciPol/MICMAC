@@ -50,6 +50,14 @@ repo_save = dictionary_additional_parameters['save_directory']
 
 # Getting the rest of the additional arguments
 delta_ell = dictionary_additional_parameters['delta_ell']
+if 'r_min_MH' in dictionary_additional_parameters:
+    r_min_MH = dictionary_additional_parameters['r_min_MH']
+    if r_min_MH is False:
+        r_min_MH = None
+else:
+    r_min_MH  = 0
+
+
 reduction_noise = dictionary_additional_parameters['reduction_noise']
 factor_Fisher = dictionary_additional_parameters['factor_Fisher']
 if 'factor_Fisher_r' in dictionary_additional_parameters:
@@ -195,6 +203,7 @@ if use_mask:
         mask = np.copy(apod_mask)
         mask[apod_mask>0] = 1
         mask[apod_mask==0] = 0
+    if use_treshold and not(use_nhits):
         template_mask = mask
     MICMAC_obj.mask = np.int32(mask)
 
@@ -256,6 +265,8 @@ if not(MICMAC_obj.classical_Gibbs):
     print("Covariance B_f :", MICMAC_obj.covariance_B_f)
 
 MICMAC_obj.step_size_r = minimum_std_Fisher_diag[-1]/np.sqrt(factor_Fisher_r)
+
+MICMAC_obj.min_r_to_sample = r_min_MH
 
 # Generation input maps
 # np.random.seed(seed_realization_input+1)
