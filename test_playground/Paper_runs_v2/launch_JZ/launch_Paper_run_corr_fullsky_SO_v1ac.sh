@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=corr_Paper_run_SO_v1f
+#SBATCH --job-name=corr_Paper_run_SO_v1ab
 #SBATCH --account=nih@cpu          # use CPU allocation
 #SBATCH --qos=qos_cpu-dev          # dev qos (10 jobs, 2h max.)
 #SBATCH --mail-user=magdy.morshed.fr@gmail.com
 #SBATCH --mail-type=ALL
-#SBATCH --nodes=1
-#SBATCH --ntasks=1                 # nbr of MPI processes
+#SBATCH --nodes=4
+#SBATCH --ntasks=4                 # nbr of MPI processes
 #SBATCH --ntasks-per-node=1       # Nombre de processus MPI par noeud
 #SBATCH --cpus-per-task=40          # nbr of OpenMP threads
 #SBATCH --hint=nomultithread       # 1 thread / physical core (no hyperthreading)
@@ -25,7 +25,6 @@ module load python
 
 source /gpfswork/rech/nih/ube74zo/MICMAC/.bash_env
 
-
 export PYSM_LOCAL_DATA=/gpfswork/rech/nih/commun/micmac_soft/pysm-data
 
 echo $PYSM_LOCAL_DATA
@@ -35,8 +34,15 @@ export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 # OpenMP binding
 export OMP_PLACES=cores
 
-export VER=corr_cutsky_SO_d7s0_nside2_v1091b_v1a7
-export additional_config_file=add_corr_cutsky_SO_d7s0_nside2_v1a.toml
+# export VER=corr_cutsky_SO_d1s1_nside1_v1091b_v1a3
+# export additional_config_file=add_corr_cutsky_SO_d1s1_nside1_v1a.toml
+
+# export VER=corr_cutsky_SO_d1s1_nside0_v1091b_v1c8
+# export additional_config_file=add_corr_cutsky_SO_d1s1_nside0_v1c.toml
+
+export VER=corr_cutsky_SO_d1s1_nside0_v1091b_v2b
+export additional_config_file=add_corr_cutsky_SO_d1s1_nside0_v2b.toml
+
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Paper_runs_v2
 

@@ -161,7 +161,7 @@ class MICMAC_Sampler(Sampling_functions):
         self.sample_C_inv_Wishart = bool(sample_C_inv_Wishart)
         self.use_binning = bool(use_binning) # To use binning for the sampling of inverse Wishart CMB covariance
         self.acceptance_posdef = bool(acceptance_posdef) # To accept only positive definite matrices for C sampling
-        self.min_r_to_sample = float(min_r_to_sample) # Minimum accepted value for r to sample
+        self.min_r_to_sample = min_r_to_sample # Minimum accepted value for r to sample
         self.non_centered_moves = bool(non_centered_moves) # To use non-centered moves for C sampling
         self.save_intermediary_centered_moves = bool(save_intermediary_centered_moves) # To save intermediary r values in case of non-centered moves in the sampling
 
@@ -580,6 +580,15 @@ class MICMAC_Sampler(Sampling_functions):
                 first_indices_patches_free_Bf = indexes_patches_Bf[condition]
                 max_len_patches_Bf = int(np.max(self.size_patches[condition]))
                 size_patches = self.size_patches[condition]
+
+        if self.sample_r_Metropolis:
+            if self.min_r_to_sample is None:
+                print("Setting minimum value of r for sampling, allow negative r")
+                self.min_r_to_sample = -theoretical_red_cov_r0_total[:,1,1]/theoretical_red_cov_r1_tensor[:,1,1]
+            else:
+                assert self.min_r_to_sample > -theoretical_red_cov_r0_total[:,1,1]/theoretical_red_cov_r1_tensor[:,1,1], "Minimum r value for sampling is too low for theoretical spectra given"
+
+        ## Preparing minmum value of r sampling
 
 
         ## Preparing the random JAX PRNG key

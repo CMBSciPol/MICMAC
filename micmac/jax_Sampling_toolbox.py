@@ -1823,6 +1823,11 @@ def bounded_single_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_size
         # Generating the proposal sample
         sample_proposal = dist.Normal(jnp.ravel(old_sample,order='F'), step_size).sample(key_proposal)
 
+        # Checking if the proposal is lower than the minimum value
+        sample_proposal = jnp.where(sample_proposal < min_value,
+                                    jnp.ravel(old_sample,order='F'),
+                                    sample_proposal)
+
         # Computing the acceptance probability
         accept_prob = -(log_proba(jnp.ravel(old_sample,order='F'), **model_kwargs) - log_proba(sample_proposal, **model_kwargs))
 
@@ -1830,11 +1835,6 @@ def bounded_single_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_size
         new_sample = jnp.where(jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, 
                                sample_proposal, 
                                jnp.ravel(old_sample,order='F'))
-        
-        # Checking if the proposal is lower than the minimum value
-        new_sample = jnp.where(new_sample < min_value,
-                               jnp.ravel(old_sample,order='F'),
-                               new_sample)
 
         return new_sample.reshape(old_sample.shape,order='F')
 
