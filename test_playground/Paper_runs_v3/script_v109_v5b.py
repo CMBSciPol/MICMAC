@@ -346,7 +346,7 @@ if former_file_ver != '':
     if MICMAC_obj.save_CMB_chain_maps:
         initial_wiener_filter_term = dict_all_params['all_s_c_WF_maps'][-1,:,:]
         initial_fluctuation_maps = dict_all_params['all_s_c_fluct_maps'][-1,:,:]
-    
+
     if MICMAC_obj.sample_r_Metropolis:
         initial_guess_r = jnp.ravel(jnp.squeeze(dict_all_params['all_r_samples']))[-1]
 
