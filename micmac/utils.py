@@ -56,6 +56,10 @@ def loading_params(directory_save_file, file_ver, MICMAC_sampler_obj):
     input_cmb_maps = np.load(initial_cmb_maps_path)
     dict_all_params['input_cmb_maps'] = input_cmb_maps
 
+    initial_noise_map_path = directory_save_file+file_ver+'_initial_noise_data.npy'
+    initial_noise_map = np.load(initial_noise_map_path)
+    dict_all_params['initial_noise_data'] = initial_noise_map
+
     if MICMAC_sampler_obj.save_eta_chain_maps:
         all_eta_maps_path = directory_save_file+file_ver+'_all_eta_maps.npy'
         all_eta_maps = np.load(all_eta_maps_path)
