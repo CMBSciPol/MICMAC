@@ -58,7 +58,7 @@ def loading_params(directory_save_file, file_ver, MICMAC_sampler_obj):
 
     initial_noise_map_path = directory_save_file+file_ver+'_initial_noise_data.npy'
     initial_noise_map = np.load(initial_noise_map_path)
-    dict_all_params['initial_noise_data'] = initial_noise_map
+    dict_all_params['input_noise_map'] = initial_noise_map
 
     if MICMAC_sampler_obj.save_eta_chain_maps:
         all_eta_maps_path = directory_save_file+file_ver+'_all_eta_maps.npy'
