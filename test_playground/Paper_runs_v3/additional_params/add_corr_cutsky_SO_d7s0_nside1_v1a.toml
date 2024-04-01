@@ -35,7 +35,7 @@ stack_former_file_ver = false
 
 name_toml = 'corr_cutsky_multipatch_SO_r0_v1a.toml' #
 name_file_spv = 'params_spv_SAT_nside1.yaml'
-file_ver_last_sample = 'corr_cutsky_SO_d7s0_nside0_v1091b_v1a_Harm_10000'
+file_ver_last_sample = 'corr_cutsky_SO_d7s0_nside0_v1091b_v2c7'
 # file_ver_last_sample = ''
 former_file_ver = ''
 file_ver = 'corr_cutsky_SO_d7s0_nside1_v1091c_r0_v1a'
