@@ -57,7 +57,6 @@ class MICMAC_Sampler(Sampling_functions):
                  use_binning=False,
                  bin_ell_distribution=None,
                  acceptance_posdef=False,
-                 min_r_to_sample=0,
                  r_true=0,
                  step_size_r=1e-4,
                  covariance_B_f=None,
@@ -106,7 +105,6 @@ class MICMAC_Sampler(Sampling_functions):
             use_binning : use binning for the sampling of inverse Wishart CMB covariance, bool
             bin_ell_distribution : binning distribution for the sampling of inverse Wishart CMB covariance, array of integers
             acceptance_posdef : accept only positive definite matrices C sampling, bool
-            min_r_to_sample : minimum accepted value for r to sample, float
 
             r_true : true value of r (only used to compute input CMB maps, not actually used in the sampling), float
             step_size_r : step size for the Metropolis-Hastings sampling of r, float
@@ -161,7 +159,6 @@ class MICMAC_Sampler(Sampling_functions):
         self.sample_C_inv_Wishart = bool(sample_C_inv_Wishart)
         self.use_binning = bool(use_binning) # To use binning for the sampling of inverse Wishart CMB covariance
         self.acceptance_posdef = bool(acceptance_posdef) # To accept only positive definite matrices for C sampling
-        self.min_r_to_sample = min_r_to_sample # Minimum accepted value for r to sample
         self.non_centered_moves = bool(non_centered_moves) # To use non-centered moves for C sampling
         self.save_intermediary_centered_moves = bool(save_intermediary_centered_moves) # To save intermediary r values in case of non-centered moves in the sampling
 
@@ -522,8 +519,8 @@ class MICMAC_Sampler(Sampling_functions):
         if self.use_binning:
             func_get_inverse_wishart_sampling_from_c_ells = self.get_binned_inverse_wishart_sampling_from_c_ells_v3
         ## Function to sample the CMB covariance parametrize from r
-        # r_sampling_MH = single_Metropolis_Hasting_step
-        r_sampling_MH = bounded_single_Metropolis_Hasting_step
+        r_sampling_MH = single_Metropolis_Hasting_step
+        # r_sampling_MH = bounded_single_Metropolis_Hasting_step
         if self.sample_r_Metropolis:
             log_proba_r = self.get_conditional_proba_C_from_r
             if self.sample_r_from_BB:
@@ -580,13 +577,6 @@ class MICMAC_Sampler(Sampling_functions):
                 first_indices_patches_free_Bf = indexes_patches_Bf[condition]
                 max_len_patches_Bf = int(np.max(self.size_patches[condition]))
                 size_patches = self.size_patches[condition]
-
-        if self.sample_r_Metropolis:
-            if self.min_r_to_sample is None:
-                print("Setting minimum value of r for sampling, allow negative r")
-                self.min_r_to_sample = -(theoretical_red_cov_r0_total[:,1,1]/theoretical_red_cov_r1_tensor[:,1,1]).min()
-            else:
-                assert self.min_r_to_sample > -(theoretical_red_cov_r0_total[:,1,1]/theoretical_red_cov_r1_tensor[:,1,1]).min(), "Minimum r value for sampling is too low for theoretical spectra given"
 
         ## Preparing minmum value of r sampling
 
@@ -858,8 +848,8 @@ class MICMAC_Sampler(Sampling_functions):
                                                       step_size=self.step_size_r, log_proba=log_proba_r, 
                                                       red_sigma_ell=red_c_ells_Wishart_modified, 
                                                       theoretical_red_cov_r1_tensor=theoretical_red_cov_r1_tensor, 
-                                                      theoretical_red_cov_r0_total=theoretical_red_cov_r0_total,
-                                                      min_value=self.min_r_to_sample)
+                                                      theoretical_red_cov_r0_total=theoretical_red_cov_r0_total)
+                                                    #   min_value=self.min_r_to_sample)
 
                 ## Reconstructing the new spectra from r
                 new_carry['red_cov_matrix_sample'] = theoretical_red_cov_r0_total + new_carry['r_sample']*theoretical_red_cov_r1_tensor
@@ -884,8 +874,8 @@ class MICMAC_Sampler(Sampling_functions):
                                                         s_cML=s_cML,
                                                         s_c_sample=s_c_sample, 
                                                         theoretical_red_cov_r1_tensor=theoretical_red_cov_r1_tensor, 
-                                                        theoretical_red_cov_r0_total=theoretical_red_cov_r0_total,
-                                                        min_value=self.min_r_to_sample)
+                                                        theoretical_red_cov_r0_total=theoretical_red_cov_r0_total)
+                                                        # min_value=self.min_r_to_sample)
 
                     new_carry['red_cov_matrix_sample'] = theoretical_red_cov_r0_total + new_carry['r_sample']*theoretical_red_cov_r1_tensor
 
