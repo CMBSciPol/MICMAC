@@ -592,7 +592,7 @@ class Sampling_functions(MixingMatrix):
         chx.assert_equal_shape((red_sigma_ell, red_cov_matrix_sampled))
 
         # Getting determinant of the covariance matrix
-        sum_dets = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(jnp.linalg.det(red_cov_matrix_sampled)) ).sum()
+        sum_dets = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(jnp.abs(jnp.linalg.det(red_cov_matrix_sampled)))).sum()
         
         return -( jnp.einsum('lij,lji->l', red_sigma_ell, jnp.linalg.pinv(red_cov_matrix_sampled)).sum() + sum_dets)/2
 
@@ -938,7 +938,7 @@ class Sampling_functions(MixingMatrix):
         red_cov_matrix_sampled = r_param * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
 
         # Getting determinant of the covariance matrix log det C(r) ; taking into account the factor 2ell+1 for the multiples m
-        sum_dets = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(jnp.linalg.det(red_cov_matrix_sampled)) ).sum()
+        sum_dets = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(jnp.abs(jnp.linalg.det(red_cov_matrix_sampled)))).sum()
 
         return -(jnp.einsum('lij,lji->l', red_sigma_ell, jnp.linalg.pinv(red_cov_matrix_sampled)).sum() + sum_dets)/2 # -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
 
@@ -1762,7 +1762,7 @@ class Sampling_functions(MixingMatrix):
                                       red_CMB_cell + red_noise_CMB, 
                                       jnp.linalg.pinv(red_noise_CMB + red_cov_approx_matrix))
         ## Computing the determinant of the operator taking into account the block diagonal structure per ell and m
-        third_term = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(jnp.linalg.det(red_contribution)) ).sum()
+        third_term = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(jnp.abs(jnp.linalg.det(red_contribution)))).sum()
 
         return -(first_term_complete + second_term_complete + third_term)/2
 
