@@ -196,7 +196,7 @@ if use_mask:
         mask = np.copy(apod_mask)
         mask[apod_mask>0] = 1
         mask[apod_mask==0] = 0
-    if use_treshold and not(use_nhits):
+    if not(use_nhits):
         template_mask = mask
     MICMAC_obj.mask = np.int32(mask)
 
