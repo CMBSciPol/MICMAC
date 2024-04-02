@@ -4,8 +4,8 @@
 #SBATCH --qos=qos_cpu-dev          # dev qos (10 jobs, 2h max.)
 #SBATCH --mail-user=magdy.morshed.fr@gmail.com
 #SBATCH --mail-type=ALL
-#SBATCH --nodes=4
-#SBATCH --ntasks=4                 # nbr of MPI processes
+#SBATCH --nodes=1
+#SBATCH --ntasks=1                 # nbr of MPI processes
 #SBATCH --ntasks-per-node=1       # Nombre de processus MPI par noeud
 #SBATCH --cpus-per-task=40          # nbr of OpenMP threads
 #SBATCH --hint=nomultithread       # 1 thread / physical core (no hyperthreading)
