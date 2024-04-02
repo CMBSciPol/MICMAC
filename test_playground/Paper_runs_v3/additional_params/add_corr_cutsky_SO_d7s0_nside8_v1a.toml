@@ -20,7 +20,7 @@ factor_Fisher = 1
 factor_Fisher_r = 1
 relative_treshold = 4e-1
 sigma_gap = 10
-fgs_model = 'd1s1'
+fgs_model = 'd7s0'
 initial_guess_r=1e-4
 name_mask = 'mask_SO_SAT_apodized'
 use_mask = true
@@ -31,11 +31,10 @@ use_treshold = true
 
 use_last_sample = true
 save_last_sample = true
-stack_former_file_ver = true
+stack_former_file_ver = false
 
-name_toml = 'corr_cutsky_multipatch_SO_r0_v1a.toml' #
-name_file_spv = 'params_spv_SAT_nside1.yaml'
-# file_ver_last_sample = 'corr_cutsky_SO_d1s1_nside0_v1091b_v2ab7'
-file_ver_last_sample = 'corr_cutsky_SO_d1s1_nside1_v1091c_r0_v1a5'
-former_file_ver = 'corr_cutsky_SO_d1s1_nside1_v1091c_r0_v1a5'
-file_ver = 'corr_cutsky_SO_d1s1_nside1_v1091c_r0_v1a6'
+name_toml = 'corr_cutsky_multipatch_SO_r0_v1c.toml' #
+name_file_spv = 'params_spv_SAT_nside8.yaml'
+file_ver_last_sample = 'corr_cutsky_SO_d7s0_nside1_v1091c_r0_v1a5'
+former_file_ver = ''
+file_ver = 'corr_cutsky_SO_d7s0_nside8_v1091c_r0_v1a'

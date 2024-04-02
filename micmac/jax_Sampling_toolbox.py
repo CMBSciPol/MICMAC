@@ -975,7 +975,7 @@ class Sampling_functions(MixingMatrix):
         BB_cov_matrix_sampled = r_param * theoretical_red_cov_r1_tensor[:,1,1] + theoretical_red_cov_r0_total[:,1,1]
 
         # Getting determinant of the covariance matrix log det C(r) ; taking into account the factor 2ell+1 for the multiples m
-        sum_dets = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(BB_cov_matrix_sampled) ).sum()
+        sum_dets = ( (2*jnp.arange(self.lmin, self.lmax+1) +1) * jnp.log(jnp.abs(BB_cov_matrix_sampled))).sum()
 
         return -((red_sigma_ell[:,1,1]/BB_cov_matrix_sampled).sum() + sum_dets)/2 # -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
 
