@@ -26,7 +26,7 @@ instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_n
 r_true = 0
 sample_r_Metropolis = true
 sample_C_inv_Wishart = false
-sample_r_from_BB = false
+sample_r_from_BB = true
 
 # [Problem_parameters]
 nside = 64
@@ -49,6 +49,6 @@ step_size_r = 1e-3 #1e-4 #1e-5 ???
 
 # [Sampling_parameters]
 # overrelax = 0 #-0.995 # Overrelaxation parameter for the sampling
-number_iterations_sampling = 150 #400 # Maximum number of iterations for the sampling
+number_iterations_sampling = 300 #400 # Maximum number of iterations for the sampling
 number_iterations_done = 0 # Number of iterations already accomplished, in case the chain is resuming from a previous run
 seed = 42

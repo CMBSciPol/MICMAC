@@ -27,7 +27,7 @@ instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_n
 r_true = 0
 sample_r_Metropolis = true
 sample_C_inv_Wishart = false
-sample_r_from_BB = false
+sample_r_from_BB = true
 
 # [Problem_parameters]
 nside = 64
