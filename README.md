@@ -4,14 +4,20 @@ Extension to component separation method of Leloup et al. 2024 (https://journals
 
 # Installation
 Create a clean virtual environment with the reuired dependencies:
-`conda env create -f micmac_env.yml`
+```bash
+conda env create -f micmac_env.yml
+```
 
 Install the micmac package by running:
-`cd micmac`
-`python -m pip install .`
+```bash
+cd micmac
+python -m pip install .
+```
 
 You can then use the package by importing it as:
-`import micmac`
+```bash
+import micmac
+```
 
 # Required dependencies
 Install jax as:
@@ -23,5 +29,5 @@ Optional (for tutorials):
 * cmbdb (https://github.com/dpole/cmbdb/tree/master)
 * fgbuster (only uses fgbuster.observation_helpers to get the input frequency maps in the tutorials, the src code is completely independent from fgbuster)
 
-# Notes
-* DO NOT USE THIS PACKAGE ON LOGIN NODES ON HPC !!! (do not perform any computation on login-node in general, but this package in particular might use all the login node resources available)
+__Note__
+DO NOT USE THIS PACKAGE ON LOGIN NODES ON HPC !!! (do not perform any computation on login-node in general, but this package in particular might use all the login node resources available)
