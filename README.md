@@ -1,6 +1,6 @@
 # Minimally Informed CMB MAp Constructor: MICMAC
 Pixel implementation for the non-parametric component separation.
-Extension to component separation method of Leloup et al. 2024 (https://journals.aps.org/prd/abstract/10.1103/PhysRevD.108.123547)
+Extension to component separation method of Leloup et al. 2023 (https://journals.aps.org/prd/abstract/10.1103/PhysRevD.108.123547)
 
 # Installation
 Create a clean virtual environment with the reuired dependencies:
@@ -20,6 +20,17 @@ import micmac
 ```
 
 # Required dependencies
+List of required dependencies:
+- camb
+- healpy
+- jax
+- jax-tqdm
+- jax-healpy
+- jaxopt
+- numpyro
+- lineax
+- chex
+
 Install jax as:
 ```bash
 pip install --upgrade pip
