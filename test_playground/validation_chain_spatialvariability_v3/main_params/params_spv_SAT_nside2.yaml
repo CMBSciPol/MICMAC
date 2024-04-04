@@ -1,0 +1,27 @@
+# Parameters to choose the configuration of the spatial variability
+
+nside_spv:
+  default: 
+    - 2
+  f1:
+    default:
+    b0:
+      default:
+    b1:
+      default:
+    b2:
+      default:
+    b3:
+      default:
+  f2:
+    default:
+     - 2
+    b0:
+      default:
+    b1:
+      default:
+    b2:
+      default:
+    b3:
+      default:
+

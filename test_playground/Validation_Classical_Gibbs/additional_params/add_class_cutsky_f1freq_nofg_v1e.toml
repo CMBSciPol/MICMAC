@@ -1,0 +1,33 @@
+## These are parameters useful to have the tests general and easy to change
+## will not be used in the final version of the code
+
+current_directory='Validation_Classical_Gibbs/'
+# MICMAC_directory = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/'
+MICMAC_directory = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/'
+directory_mask = "/gpfswork/rech/nih/commun/masks/"
+# directory_mask = "/Users/mag/Documents/PHD1Y/Masks/"
+save_directory = ''
+path_trace_jax = ''
+# path_cov_B_f_r = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/Fake_Fisher_matrix_LiteBIRD.txt'
+path_cov_B_f_r = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Fake_Fisher_matrix_LiteBIRD.txt'
+
+seed_realization_input=42
+
+delta_ell = 5
+
+reduction_noise = 1
+factor_Fisher = 1
+factor_Fisher_r = 1
+relative_treshold = 1e-1
+sigma_gap = 0
+fgs_model = ''
+initial_guess_r=1e-4
+use_nhits = false
+name_mask = 'Planck_mask_fsky_60'
+use_mask = true
+use_preconditioner = true
+
+name_toml = 'class_cutsky_1freq_BB_binned_3.toml'
+name_file_spv = ''
+former_file_ver = 'class_cutsky_binned_1freq_nofg_v1e2'
+file_ver = 'class_cutsky_binned_1freq_nofg_v1e3'

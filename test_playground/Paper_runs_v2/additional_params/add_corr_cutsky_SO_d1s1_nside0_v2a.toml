@@ -1,0 +1,39 @@
+## These are parameters useful to have the tests general and easy to change
+## will not be used in the final version of the code
+
+current_directory='Paper_runs_v2/'
+MICMAC_directory = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/'
+# MICMAC_directory = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/'
+directory_mask = "/gpfswork/rech/nih/commun/masks/"
+save_directory = ''
+path_trace_jax = ''
+# path_cov_B_f_r = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Fake_Fisher_matrix_LiteBIRD.txt'
+path_cov_B_f_r = ''
+
+seed_realization_input=42
+
+delta_ell = 1
+
+reduction_noise = 1
+factor_Fisher = 1
+factor_Fisher_r = 1
+relative_treshold = 1e-1
+sigma_gap = 10
+fgs_model = 'd1s1'
+initial_guess_r=1e-4
+name_mask = 'mask_SO_SAT_apodized'
+use_mask = true
+use_preconditioner = true
+
+use_treshold = true
+use_nhits = false
+
+use_last_sample = false
+save_last_sample = true
+stack_former_file_ver = true
+
+name_toml = 'corr_cutsky_SO_r0_v1b.toml' #
+name_file_spv = 'params_spv_SAT_nside0.yaml'
+file_ver_last_sample = ''
+former_file_ver = ''
+file_ver = 'corr_cutsky_SO_d1s1_nside0_v1091b_v2a'
