@@ -17,4 +17,17 @@ setup(name='micmac',
         ]      
         },
       python_requires=">=3.7",
-      )
+      install_requires = [
+        'camb',
+        'healpy',
+        'jax',
+        'jaxlib',
+        'jax-tqdm',
+        'jax-healpy',
+        'jaxopt',
+        'numpyro',
+        'lineax',
+        'chex',
+        'fgbuster @ git+https://github.com/fgbuster/fgbuster.git'
+      ],
+)

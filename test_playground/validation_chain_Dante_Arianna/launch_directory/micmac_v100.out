@@ -1,3 +1,0 @@
-/work/rizzieri/.conda/envs/micmac_env/lib/python3.9/site-packages/jax/_src/numpy/lax_numpy.py:2172: ComplexWarning: Casting complex values to real discards the imaginary part
-  out_array: Array = lax_internal._convert_element_type(
-  0%|          | 0/100 [00:00<?, ?it/s]Running for 100 iterations:  10%|█         | 10/100 [10:41<1:36:13, 64.15s/it]Running for 100 iterations:  15%|█▌        | 15/100 [21:22<2:08:42, 90.85s/it]

@@ -1,0 +1,63 @@
+[build-system]
+build-backend = 'setuptools.build_meta'
+requires = [
+    'setuptools==64.0.3',
+    'setuptools_scm[toml]>=6.2',
+    'wheel',
+]
+
+[project]
+name = 'astrosim'
+authors = [
+    {name = 'Magdy Morshed', email = 'morshed@apc.in2p3.fr'},
+    {name = 'Arianna Rizzieri', email = 'rizzieri@apc.in2p3.fr'},
+]
+maintainers = [
+    {name = 'Magdy Morshed', email = 'morshed@apc.in2p3.fr'},
+    {name = 'Arianna Rizzieri', email = 'rizzieri@apc.in2p3.fr'},
+]
+description = 'Component separation package for CMB cosmology data analysis.'
+readme = 'README.md'
+keywords = [
+    'scientific computing',
+]
+classifiers = [
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3',
+    'Intended Audience :: Science/Research',
+    'Operating System :: OS Independent',
+    'Topic :: Scientific/Engineering',
+]
+requires-python = '>=3.9'
+license = {file = 'LICENSE'}
+dependencies = [
+    'camb',
+    'healpy>=0.16.6',
+    'jax>=0.4.23',
+    'numpy',
+    'scipy',
+    'jaxlib',
+    'jax-tqdm',
+    'jax-healpy',
+    'jaxopt',
+    'numpyro',
+    'lineax',
+    'chex',
+    'fgbuster @ git+https://github.com/fgbuster/fgbuster.git',
+    'matplotlib',
+]
+dynamic = ['version']
+
+[project.urls]
+homepage = 'https://scipol.in2p3.fr'
+repository = 'https://github.com/CMBSciPol/MICMAC'
+
+[[tool.mypy.overrides]]
+module = [
+    'micmac',
+]
+ignore_missing_imports = true
+
+[tool.setuptools_scm]
+version_scheme = 'pre-release'
+fallback_version = '0.0.0'
