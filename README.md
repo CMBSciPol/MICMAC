@@ -1,4 +1,4 @@
-# Minimally Informed CMB MAp Constructor: MICMAC
+# Minimally Informed CMB MAp Constructor: MICMAC [Release soon]
 Pixel implementation for the non-parametric component separation.
 Extension to component separation method of Leloup et al. 2023 (https://journals.aps.org/prd/abstract/10.1103/PhysRevD.108.123547)
 
