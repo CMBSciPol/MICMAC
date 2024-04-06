@@ -1,44 +1,46 @@
-# Minimally Informed CMB MAp Constructor: MICMAC [Release soon]
-Pixel implementation for the non-parametric component separation.
-Extension to component separation method of Leloup et al. 2023 (https://journals.aps.org/prd/abstract/10.1103/PhysRevD.108.123547)
+# Minimally Informed CMB MAp Constructor: MICMAC
+# [Release coming soon]
 
-# Installation
-Create a clean virtual environment with the reuired dependencies:
-```bash
-conda env create -f micmac_env.yml
-```
+Pixel implementation of the non-parametric component separation.
+Extension to component separation method of [Leloup et al. (2023)](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.108.123547)
 
-Install the micmac package by running:
-```bash
-cd micmac
-python -m pip install .
-```
+**Note**: Make sure **not to use** this package on supercomputer **LOGIN NODES** or it will use all the available resources.
 
-You can then use the package by importing it as:
-```bash
-import micmac
-```
 
-# Required dependencies
-List of required dependencies:
-- camb
-- healpy
-- jax
-- jax-tqdm
-- jax-healpy
-- jaxopt
-- numpyro
-- lineax
-- chex
+## Installation
 
-Install jax as:
-```bash
-pip install --upgrade pip
-pip install --upgrade "jax[cpu]"
-```
-Optional (for tutorials):
-* cmbdb (https://github.com/dpole/cmbdb/tree/master)
-* fgbuster (only uses fgbuster.observation_helpers to get the input frequency maps in the tutorials, the src code is completely independent from fgbuster)
+The easiest way to install and use `micmac` is the following
 
-__Note__
-DO NOT USE THIS PACKAGE ON LOGIN NODES ON HPC !!! (do not perform any computation on login-node in general, but this package in particular might use all the login node resources available)
+- clone the repo
+    ```
+    git clone https://github.com/CMBSciPol/MICMAC && cd MICMAC
+    ```
+- create a virtual environment with the required dependencies
+    ```bash
+    conda env create -f micmac_env.yml
+    ```
+- install `micmac`
+    ```bash
+    conda activate micmac_env
+    python -m pip install .
+    ```
+
+**Note:** this package uses the [JAX library](ttps://jax.readthedocs.io), for which you should follow the official [installation guide](https://jax.readthedocs.io/en/latest/installation.html) in order to make sure the installation can go through.
+
+## How to use `micmac`
+
+You will find in the `tutorial` directory a list of notebooks showcasing how to use `micmac`.
+
+The tutorials make use of two additional Python libraries not installed by default
+- `cmbdb`
+    ```shell
+    python -m pip install git+https://github.com/dpole/cmbdb
+    ```
+- `fgbuster`
+    ```shell
+    python -m pip install git+https://github.com/fgbuster/fgbuster
+    ```
+  (only uses `fgbuster.observation_helpers` to get the input frequency maps in the tutorials, the source code is completely independent from `fgbuster`)
+
+## License
+This code is released under the GPLv3 license, which can be found in the [LICENSE](./LICENSE) file.
