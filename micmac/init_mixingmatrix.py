@@ -1,15 +1,13 @@
 """
-Module to initialize the Mixing Matrix 
+Module to initialize the Mixing Matrix
 with parameter values coming from the SEDs.
 """
 
 import numpy as np
-import sympy
-from scipy import constants
 from astropy.cosmology import Planck15
+from scipy import constants
 
-from .templates_spv import create_one_template, get_n_patches_b
-
+from .templates_spv import get_n_patches_b
 
 h_over_k = constants.h * 1e9 / constants.k
 
@@ -22,7 +20,7 @@ class InitMixingMatrix:
         self.freqs = freqs  # all input freq bands
         self.ncomp = ncomp  # all comps (also cmb)
         self.pos_special_freqs = pos_special_freqs
-        self.spv_nodes_b = spv_nodes_b   # tree containing info to build spv_templates
+        self.spv_nodes_b = spv_nodes_b  # tree containing info to build spv_templates
         self.beta_mbb = beta_mbb
         self.temp_mbb = temp_mbb
         self.beta_pl = beta_pl
@@ -30,9 +28,7 @@ class InitMixingMatrix:
     def K_rj2K_cmb(self, nu):
         Tcmb = Planck15.Tcmb(0).value
         # Conversion factor at frequency nu
-        K_rj2K_cmb = np.expm1(h_over_k * nu / Tcmb) ** 2 / (
-            np.exp(h_over_k * nu / Tcmb) * (h_over_k * nu / Tcmb) ** 2
-        )
+        K_rj2K_cmb = np.expm1(h_over_k * nu / Tcmb) ** 2 / (np.exp(h_over_k * nu / Tcmb) * (h_over_k * nu / Tcmb) ** 2)
 
         return K_rj2K_cmb
 
@@ -95,7 +91,7 @@ class InitMixingMatrix:
         inv_A_f1 = np.linalg.inv(A_f1)
         # get params w SEDs for redefined fgs (true B entries)
         # B = A invM
-        params_no_spv = np.einsum("fc,cg->fg", params_, inv_A_f1)
+        params_no_spv = np.einsum('fc,cg->fg', params_, inv_A_f1)
 
         # params spv (one parameter per patch)
         # TODO: for the moment just repeated the values for d0s0, extend to d1s1
@@ -106,7 +102,7 @@ class InitMixingMatrix:
             # (maybe easier to extend it by looking at the spv_templates
             # or add a function in the templates_spv.py to get the number of patches for each b)
             n_patches_b_s = get_n_patches_b(self.spv_nodes_b[ind_f])
-            n_patches_b_d = get_n_patches_b(self.spv_nodes_b[ind_f+len(unknown_freqs)])
+            n_patches_b_d = get_n_patches_b(self.spv_nodes_b[ind_f + len(unknown_freqs)])
             for patch in range(n_patches_b_s):
                 params_s.append(params_no_spv[ind_f, 0])
             for patch in range(n_patches_b_d):

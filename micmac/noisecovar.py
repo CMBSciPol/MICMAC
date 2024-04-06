@@ -1,10 +1,9 @@
 """
 Noise covariance matrix and useful recurring operations.
 """
-import numpy as np
 import healpy as hp
 import jax.numpy as jnp
-import chex as chx
+import numpy as np
 
 # Note: we only consider diagonal noise covariance
 
@@ -24,7 +23,7 @@ def get_noise_covar(depth_p, nside):
 def get_noise_covar_extended(depth_p, nside):
     invN = get_noise_covar(depth_p, nside)
     # invN_extended = np.repeat(invN.ravel(order='F'), 12*nside**2).reshape((invN.shape[0],invN.shape[0],12*nside**2), order='C')
-    invN_extended = np.broadcast_to(invN, (12*nside**2,invN.shape[0],invN.shape[0])).swapaxes(0,2)
+    invN_extended = np.broadcast_to(invN, (12 * nside**2, invN.shape[0], invN.shape[0])).swapaxes(0, 2)
     return invN_extended
 
 
@@ -36,9 +35,9 @@ def get_BtinvN(invN, B, jax_use=False):
     """
 
     if jax_use:
-        return jnp.einsum("fc...,fh...->ch...", B, invN)
+        return jnp.einsum('fc...,fh...->ch...', B, invN)
 
-    return np.einsum("fc...,fh...->ch...", B, invN)
+    return np.einsum('fc...,fh...->ch...', B, invN)
 
 
 def get_BtinvNB(invN, B, jax_use=False):
@@ -50,9 +49,9 @@ def get_BtinvNB(invN, B, jax_use=False):
     BtinvN = get_BtinvN(invN, B, jax_use)
 
     if jax_use:
-        return jnp.einsum("ch...,hf...->cf...", BtinvN, B)
+        return jnp.einsum('ch...,hf...->cf...', BtinvN, B)
 
-    return np.einsum("ch...,hf...->cf...", BtinvN, B)
+    return np.einsum('ch...,hf...->cf...', BtinvN, B)
 
 
 def get_inv_BtinvNB(invN, B, jax_use=False):
@@ -64,9 +63,9 @@ def get_inv_BtinvNB(invN, B, jax_use=False):
     BtinvNB = get_BtinvNB(invN, B, jax_use)
 
     if jax_use:
-        return jnp.linalg.pinv(BtinvNB.swapaxes(0,-1)).swapaxes(0,-1)
+        return jnp.linalg.pinv(BtinvNB.swapaxes(0, -1)).swapaxes(0, -1)
 
-    return np.linalg.pinv(BtinvNB.swapaxes(0,-1)).swapaxes(0,-1)
+    return np.linalg.pinv(BtinvNB.swapaxes(0, -1)).swapaxes(0, -1)
 
 
 def get_Wd(invN, B, d, jax_use=False):
@@ -79,59 +78,61 @@ def get_Wd(invN, B, d, jax_use=False):
     invBtinvNB = get_inv_BtinvNB(invN, B, jax_use)
 
     if jax_use:
-        return jnp.einsum("cg...,hg...,hf...,f...->c...", invBtinvNB, B, invN, d)
+        return jnp.einsum('cg...,hg...,hf...,f...->c...', invBtinvNB, B, invN, d)
 
-    return np.einsum("cg...,hg...,hf...,f...->c...", invBtinvNB, B, invN, d)
-
-
+    return np.einsum('cg...,hg...,hf...,f...->c...', invBtinvNB, B, invN, d)
 
 
 ### Objects in harmonic domain
 def get_Cl_noise(depth_p, A, lmax):
     """
     Function used only in harmonic case
-    A: is pixel independent MixingMatrix, 
-    thus if you want to get it from full MixingMatrix 
+    A: is pixel independent MixingMatrix,
+    thus if you want to get it from full MixingMatrix
     you have to select the entry correspondind to one pixel
     """
-    assert len(np.shape(A))==2
-    bl = np.ones((len(depth_p), lmax+1))
+    assert len(np.shape(A)) == 2
+    bl = np.ones((len(depth_p), lmax + 1))
 
-    nl = (bl / np.radians(depth_p/60.)[:, np.newaxis])**2
+    nl = (bl / np.radians(depth_p / 60.0)[:, np.newaxis]) ** 2
     AtNA = np.einsum('fi, fl, fj -> lij', A, nl, A)
     inv_AtNA = np.linalg.inv(AtNA)
     return inv_AtNA.swapaxes(-3, -1)
 
+
 def get_Cl_noise_JAX(depth_p, A, lmax):
     """
     Function used only in harmonic case
-    A: is pixel independent MixingMatrix, 
-    thus if you want to get it from full MixingMatrix 
+    A: is pixel independent MixingMatrix,
+    thus if you want to get it from full MixingMatrix
     you have to select the entry correspondind to one pixel
     """
-    assert len(np.shape(A))==2
-    bl = jnp.ones((jnp.size(depth_p), lmax+1))
+    assert len(np.shape(A)) == 2
+    bl = jnp.ones((jnp.size(depth_p), lmax + 1))
 
-    nl = (bl / jnp.radians(depth_p/60.)[:, jnp.newaxis])**2
+    nl = (bl / jnp.radians(depth_p / 60.0)[:, jnp.newaxis]) ** 2
     AtNA = jnp.einsum('fi, fl, fj -> lij', A, nl, A)
     inv_AtNA = jnp.linalg.inv(AtNA)
     return inv_AtNA.swapaxes(-3, -1)
 
+
 def get_freq_inv_noise_JAX(depth_p, lmax):
-    return jnp.einsum('fg,l->fgl',jnp.diag(1/jnp.radians(depth_p/60.),jnp.ones(lmax+1)))
+    return jnp.einsum('fg,l->fgl', jnp.diag(1 / jnp.radians(depth_p / 60.0), jnp.ones(lmax + 1)))
+
 
 def get_inv_BtinvNB_c_ell(freq_inv_noise, mixing_matrix):
     """
     Function used only in harmonic case
-    mixing_matrix: is pixel independent MixingMatrix, 
-    thus if you want to get it from full MixingMatrix 
+    mixing_matrix: is pixel independent MixingMatrix,
+    thus if you want to get it from full MixingMatrix
     you have to select the entry correspondind to one pixel
     """
-    BtinvNB = jnp.einsum('fc,fgl,gk->lck',mixing_matrix,freq_inv_noise, mixing_matrix)
-    return jnp.linalg.pinv(BtinvNB).swapaxes(-3,-1)
+    BtinvNB = jnp.einsum('fc,fgl,gk->lck', mixing_matrix, freq_inv_noise, mixing_matrix)
+    return jnp.linalg.pinv(BtinvNB).swapaxes(-3, -1)
+
 
 def get_true_Cl_noise(depth_p, lmax):
-    bl = jnp.ones((jnp.size(depth_p), lmax+1))
+    bl = jnp.ones((jnp.size(depth_p), lmax + 1))
 
-    nl = (bl / jnp.radians(depth_p/60.)[:, jnp.newaxis])**2
+    nl = (bl / jnp.radians(depth_p / 60.0)[:, jnp.newaxis]) ** 2
     return jnp.einsum('fl,fk->fkl', nl, jnp.eye(jnp.size(depth_p)))

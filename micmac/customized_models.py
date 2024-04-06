@@ -2,19 +2,16 @@
 Module to create fake fgs models starting from the PySM ones.
 """
 
-import numpy as np
 import healpy as hp
-import sympy
+import numpy as np
 import pysm3.units as u
-import matplotlib.pyplot as plt
+from fgbuster.observation_helpers import (
+    get_instrument,
+    get_noise_realization,
+    standardize_instrument,
+)
 from pysm3 import Sky
 from scipy import constants
-from astropy.cosmology import Planck15
-from collections.abc import Iterable
-
-from fgbuster.observation_helpers import get_instrument, get_sky, get_observation, \
-                                        standardize_instrument, get_noise_realization
-
 
 h_over_k = constants.h * 1e9 / constants.k
 
@@ -48,10 +45,8 @@ def d1s1_sky_customized(nside_map, nside_spv):
     return sky
 
 
-
-def get_observation_customized(instrument='', sky=None,
-                    noise=False, nside=None, unit='uK_CMB'):
-    """ 
+def get_observation_customized(instrument='', sky=None, noise=False, nside=None, unit='uK_CMB'):
+    """
     NOTE: This is a customized version of the FGBuster function
           it takes the PySm Sky directly instead of a string tag
 
@@ -94,11 +89,11 @@ def get_observation_customized(instrument='', sky=None,
     elif not isinstance(sky, str):
         try:
             assert nside == sky.nside, (
-                "Mismatch between the value of the nside of the pysm3.Sky "
-                "argument and the one passed in the nside argument.")
+                'Mismatch between the value of the nside of the pysm3.Sky '
+                'argument and the one passed in the nside argument.'
+            )
         except AttributeError:
-            raise ValueError("Either provide a pysm3.Sky as sky argument "
-                             " or specify the nside argument.")
+            raise ValueError('Either provide a pysm3.Sky as sky argument ' ' or specify the nside argument.')
 
     if noise:
         res = get_noise_realization(nside, instrument, unit)
@@ -106,13 +101,10 @@ def get_observation_customized(instrument='', sky=None,
         res = np.zeros((len(instrument.frequency), 3, hp.nside2npix(nside)))
 
     for res_freq, freq in zip(res, instrument.frequency):
-        emission = sky.get_emission(freq * u.GHz).to(
-            getattr(u, unit),
-            equivalencies=u.cmb_equivalencies(freq * u.GHz))
+        emission = sky.get_emission(freq * u.GHz).to(getattr(u, unit), equivalencies=u.cmb_equivalencies(freq * u.GHz))
         res_freq += emission.value
 
     return res
-
 
 
 # # Testing
@@ -129,4 +121,3 @@ def get_observation_customized(instrument='', sky=None,
 # hp.mollview(my_freq_maps[0, 1, :], title='My freq map')
 # hp.mollview(my_freq_maps[0, 1, :]-freq_maps[0, 1, :], title='My freq map - d1s1 freq maps')
 # plt.show()
-
