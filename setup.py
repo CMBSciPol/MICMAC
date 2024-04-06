@@ -13,7 +13,7 @@ setup(
     package_data={'': ['*.toml']},
     zip_safe=False,
     entry_points={'console_scripts': ['micmac = micmac.pipeline:__main__']},
-    python_requires='>=3.7',
+    python_requires='>=3.9',
     install_requires=[
         'camb',
         'healpy',
