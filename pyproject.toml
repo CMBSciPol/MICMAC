@@ -7,7 +7,7 @@ requires = [
 ]
 
 [project]
-name = 'astrosim'
+name = 'micmac'
 authors = [
     {name = 'Magdy Morshed', email = 'morshed@apc.in2p3.fr'},
     {name = 'Arianna Rizzieri', email = 'rizzieri@apc.in2p3.fr'},
@@ -16,7 +16,7 @@ maintainers = [
     {name = 'Magdy Morshed', email = 'morshed@apc.in2p3.fr'},
     {name = 'Arianna Rizzieri', email = 'rizzieri@apc.in2p3.fr'},
 ]
-description = 'Component separation package for CMB cosmology data analysis.'
+description = 'Minimally Informed CMB MAp Constructor (MICMAC) for CMB polarization data'
 readme = 'README.md'
 keywords = [
     'scientific computing',
@@ -28,7 +28,7 @@ classifiers = [
     'Operating System :: OS Independent',
     'Topic :: Scientific/Engineering',
 ]
-requires-python = '>=3.9'
+requires-python = '>=3.7'
 license = {file = 'LICENSE'}
 dependencies = [
     'camb',
@@ -43,13 +43,12 @@ dependencies = [
     'numpyro',
     'lineax',
     'chex',
-    'fgbuster @ git+https://github.com/fgbuster/fgbuster.git',
     'matplotlib',
 ]
 dynamic = ['version']
 
 [project.urls]
-homepage = 'https://scipol.in2p3.fr'
+homepage = 'https://scipol.in2p3.fr/micmac'
 repository = 'https://github.com/CMBSciPol/MICMAC'
 
 [[tool.mypy.overrides]]
