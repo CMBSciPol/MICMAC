@@ -1,4 +1,4 @@
-name: test_env2
+name: micmac_env
 channels:
   - conda-forge
   - defaults
@@ -24,4 +24,3 @@ dependencies:
       - lineax
       - chex
       - anytree
-      - fgbuster @ git+https://github.com/fgbuster/fgbuster.git
