@@ -31,16 +31,11 @@ The easiest way to install and use `micmac` is the following
 
 You will find in the `tutorial` directory a list of notebooks showcasing how to use `micmac`.
 
-The tutorials make use of two additional Python libraries not installed by default
+The tutorials make use of an additional Python library not installed by default
 - `cmbdb`
     ```shell
     python -m pip install git+https://github.com/dpole/cmbdb
     ```
-- `fgbuster`
-    ```shell
-    python -m pip install git+https://github.com/fgbuster/fgbuster
-    ```
-  (only uses `fgbuster.observation_helpers` to get the input frequency maps in the tutorials, the source code is completely independent from `fgbuster`)
 
 ## License
 This code is released under the GPLv3 license, which can be found in the [LICENSE](./LICENSE) file.

@@ -24,3 +24,4 @@ dependencies:
       - lineax
       - chex
       - anytree
+      - fgbuster @ git+https://github.com/fgbuster/fgbuster.git

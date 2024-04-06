@@ -44,6 +44,7 @@ dependencies = [
     'lineax',
     'chex',
     'matplotlib',
+    'fgbuster @ git+https://github.com/fgbuster/fgbuster.git',
 ]
 dynamic = ['version']
 
