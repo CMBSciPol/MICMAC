@@ -30,12 +30,12 @@ use_preconditioner = true
 use_treshold = false
 use_nhits = false
 
-use_last_sample = false
+use_last_sample = true
 save_last_sample = true
-stack_former_file_ver = false
+stack_former_file_ver = true
 
 name_toml = 'corr_fullsky_LB_r0_v1a.toml'
-name_file_spv = ''
-file_ver_last_sample = ''
-former_file_ver = ''
-file_ver = 'corr_fullsky_LB_d0s0_r0_v1b' # r=2
+name_file_spv = 'params_spv_LB_nside0.yaml'
+file_ver_last_sample = 'corr_fullsky_LB_d0s0_r0_v1b'
+former_file_ver = 'corr_fullsky_LB_d0s0_r0_v1b'
+file_ver = 'corr_fullsky_LB_d0s0_r0_v1b2' # r=2
