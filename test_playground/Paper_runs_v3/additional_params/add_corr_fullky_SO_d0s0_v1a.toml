@@ -9,7 +9,8 @@ directory_mask = "/gpfswork/rech/nih/commun/masks/"
 save_directory = ''
 path_trace_jax = ''
 # path_cov_B_f_r = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/Fake_Fisher_matrix_LiteBIRD.txt'
-path_cov_B_f_r = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Fake_Fisher_matrix_LiteBIRD.txt'
+# path_cov_B_f_r = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Fake_Fisher_matrix_LiteBIRD.txt'
+path_cov_B_f_r = ''
 
 seed_realization_input=42
 seed_realization_CMB = 40
