@@ -36,6 +36,6 @@ stack_former_file_ver = true
 
 name_toml = 'corr_fullsky_LB_r0_v1a.toml'
 name_file_spv = 'params_spv_LB_nside0.yaml'
-file_ver_last_sample = 'corr_fullsky_LB_d0s0_r0_v1b2'
-former_file_ver = 'corr_fullsky_LB_d0s0_r0_v1b2'
-file_ver = 'corr_fullsky_LB_d0s0_r0_v1b3'
+file_ver_last_sample = 'corr_fullsky_LB_d0s0_r0_v1b3'
+former_file_ver = 'corr_fullsky_LB_d0s0_r0_v1b3'
+file_ver = 'corr_fullsky_LB_d0s0_r0_v1b4'
