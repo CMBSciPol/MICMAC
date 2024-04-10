@@ -37,6 +37,6 @@ stack_former_file_ver = true
 
 name_toml = 'corr_fullsky_SO_r2_v1a.toml'
 name_file_spv = ''
-file_ver_last_sample = 'corr_fullsky_SO_d0s0_r2_v1a8'
-former_file_ver = 'corr_fullsky_SO_d0s0_r2_v1a8'
-file_ver = 'corr_fullsky_SO_d0s0_r2_v1a9'
+file_ver_last_sample = 'corr_fullsky_SO_d0s0_r2_v1a9'
+former_file_ver = 'corr_fullsky_SO_d0s0_r2_v1a9'
+file_ver = 'corr_fullsky_SO_d0s0_r2_v1a10'
