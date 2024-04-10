@@ -51,6 +51,7 @@ class MICMAC_Sampler(Sampling_functions):
                  simultaneous_accept_rate=False,
                  non_centered_moves=False,
                  save_intermediary_centered_moves=False,
+                 limit_r_value=False,
                  full_sky_correction=False,
                  biased_version=False,
                  classical_Gibbs=False,
@@ -161,6 +162,7 @@ class MICMAC_Sampler(Sampling_functions):
         self.acceptance_posdef = bool(acceptance_posdef) # To accept only positive definite matrices for C sampling
         self.non_centered_moves = bool(non_centered_moves) # To use non-centered moves for C sampling
         self.save_intermediary_centered_moves = bool(save_intermediary_centered_moves) # To save intermediary r values in case of non-centered moves in the sampling
+        self.limit_r_value = bool(limit_r_value) # To limit the r value to be positive
 
         # CMB parameters for input maps generation
         self.r_true = float(r_true)
@@ -620,6 +622,8 @@ class MICMAC_Sampler(Sampling_functions):
             print("Sample for r instead of C !", flush=True)
             if self.sample_r_from_BB:
                 print("Sample for r with the BB likelihood !", flush=True)
+            if self.limit_r_value:
+                print("Limiting the r value to be positive !", flush=True)
         if self.non_centered_moves:
             print("Using non-centered moves for C sampling !", flush=True)
             if self.save_intermediary_centered_moves:
@@ -850,6 +854,9 @@ class MICMAC_Sampler(Sampling_functions):
                                                       theoretical_red_cov_r1_tensor=theoretical_red_cov_r1_tensor, 
                                                       theoretical_red_cov_r0_total=theoretical_red_cov_r0_total)
                                                     #   min_value=self.min_r_to_sample)
+                
+                if self.limit_r_value:
+                    new_carry['r_sample'] = jnp.where(new_carry['r_sample']<0, carry['r_sample'], new_carry['r_sample'])
 
                 ## Reconstructing the new spectra from r
                 new_carry['red_cov_matrix_sample'] = theoretical_red_cov_r0_total + new_carry['r_sample']*theoretical_red_cov_r1_tensor
@@ -876,8 +883,11 @@ class MICMAC_Sampler(Sampling_functions):
                                                         theoretical_red_cov_r1_tensor=theoretical_red_cov_r1_tensor, 
                                                         theoretical_red_cov_r0_total=theoretical_red_cov_r0_total)
                                                         # min_value=self.min_r_to_sample)
+                    
+                    if self.limit_r_value:
+                        new_carry['r_sample'] = jnp.where(new_r_sample['r_sample']<0, new_r_sample, new_carry['r_sample'])
 
-                    new_carry['red_cov_matrix_sample'] = theoretical_red_cov_r0_total + new_carry['r_sample']*theoretical_red_cov_r1_tensor
+                    new_carry['red_cov_matrix_sample'] = theoretical_red_cov_r0_total + new_r_sample*theoretical_red_cov_r1_tensor
 
                     if self.save_intermediary_centered_moves:
                         all_samples['r_sample'] = jnp.stack((new_carry['r_sample'], new_r_sample))
