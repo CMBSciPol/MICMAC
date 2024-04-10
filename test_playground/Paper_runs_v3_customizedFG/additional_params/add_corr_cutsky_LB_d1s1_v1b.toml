@@ -4,10 +4,12 @@
 current_directory='Paper_runs_v3_customizedFG/'
 # MICMAC_directory = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/'
 # MICMAC_directory = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/'
-MICMAC_directory = '/Users/arizzieri/APC/PhD/cmb_work/comp_sep/Non_param/MICMAC/'
+# MICMAC_directory = '/Users/arizzieri/APC/PhD/cmb_work/comp_sep/Non_param/MICMAC/'
+MICMAC_directory = '/work/rizzieri/MICMAC/'
 # directory_mask = "/gpfswork/rech/nih/commun/masks/"
 # directory_mask = "/Users/mag/Documents/PHD1Y/Masks/"
-directory_mask = '/Users/arizzieri/APC/PhD/cmb_work/common/masks/'
+# directory_mask = '/Users/arizzieri/APC/PhD/cmb_work/common/masks/'
+directory_mask = '/work/rizzieri/common/masks/'
 save_directory = ''
 path_trace_jax = ''
 # path_cov_B_f_r = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Fake_Fisher_matrix_LiteBIRD.txt'
