@@ -965,7 +965,7 @@ class Sampling_functions(MixingMatrix):
             :return: log-proba of C parametrized by r_param
         """
 
-        chx.assert_shape(theoretical_red_cov_r1_tensor, (self.lmax+1-self.lmin,))
+        chx.assert_shape(theoretical_red_cov_r1_tensor, (self.lmax+1-self.lmin,self.nstokes,self.nstokes))
         chx.assert_equal_shape((red_sigma_ell, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total))
 
         # Getting the sigma_ell in the format [lmax,nstokes,nstokes] multiplied by 2 ell+1, to take into account the m
