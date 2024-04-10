@@ -31,11 +31,12 @@ use_treshold = true
 
 use_last_sample = true
 save_last_sample = true
-stack_former_file_ver = false
+stack_former_file_ver = true
 
 name_toml = 'corr_cutsky_SO_r2_v1ab.toml' #
 name_file_spv = 'params_spv_SAT_nside0.yaml'
 # file_ver_last_sample = 'corr_cutsky_SO_d0s0_nside0_v1091c_r0_v1b'
-file_ver_last_sample = 'corr_cutsky_SO_d0s0_nside0_v1091c_r2_inhom_v1b9'
-former_file_ver = ''
-file_ver = 'corr_cutsky_SO_d0s0_nside0_v1091c_r2_inhom_v1d'
+# file_ver_last_sample = 'corr_cutsky_SO_d0s0_nside0_v1091c_r2_inhom_v1b9'
+file_ver_last_sample = 'corr_cutsky_SO_d0s0_nside0_v1091c_r2_inhom_v1d'
+former_file_ver = 'corr_cutsky_SO_d0s0_nside0_v1091c_r2_inhom_v1d'
+file_ver = 'corr_cutsky_SO_d0s0_nside0_v1091c_r2_inhom_v1d2'
