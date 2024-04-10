@@ -358,7 +358,7 @@ class MICMAC_Sampler(Sampling_functions):
                 if self.save_intermediary_centered_moves:
                     self.all_samples_r = self.update_variable(self.all_samples_r, jnp.expand_dims(jnp.stack((one_sample['r_sample'],one_sample['r_sample'])),axis=0))
                 else:
-                    self.all_samples_r = self.update_variable(self.all_samples_r, one_sample['r_sample'],axis=0)
+                    self.all_samples_r = self.update_variable(self.all_samples_r, one_sample['r_sample'])
             else:
                 self.all_samples_r = self.update_variable(self.all_samples_r, one_sample['r_sample'])
 
