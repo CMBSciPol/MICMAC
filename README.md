@@ -25,7 +25,7 @@ The easiest way to install and use `micmac` is the following
     python -m pip install .
     ```
 
-**Note:** this package uses the [JAX library](ttps://jax.readthedocs.io), for which you should follow the official [installation guide](https://jax.readthedocs.io/en/latest/installation.html) in order to make sure the installation can go through.
+**Note:** this package uses the [JAX library](https://jax.readthedocs.io), for which you should follow the official [installation guide](https://jax.readthedocs.io/en/latest/installation.html) in order to make sure the installation can go through.
 
 ## How to use `micmac`
 
