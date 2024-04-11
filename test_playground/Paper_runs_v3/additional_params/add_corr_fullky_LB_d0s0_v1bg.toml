@@ -34,10 +34,11 @@ below_0_min_r_value = false
 
 use_last_sample = true
 save_last_sample = true
-stack_former_file_ver = false
+stack_former_file_ver = true
 
 name_toml = 'corr_fullsky_LB_r0_v1c.toml'
 name_file_spv = 'params_spv_LB_nside0.yaml'
-file_ver_last_sample = 'corr_fullsky_LB_d0s0_r0_v1bd2'
-former_file_ver = ''
-file_ver = 'corr_fullsky_LB_d0s0_r0_v1bg' # Test with bound r>0
+# file_ver_last_sample = 'corr_fullsky_LB_d0s0_r0_v1bd2'
+file_ver_last_sample = 'corr_fullsky_LB_d0s0_r0_v1bg'
+former_file_ver = 'corr_fullsky_LB_d0s0_r0_v1bg'
+file_ver = 'corr_fullsky_LB_d0s0_r0_v1bg2' # Test with bound r>0
