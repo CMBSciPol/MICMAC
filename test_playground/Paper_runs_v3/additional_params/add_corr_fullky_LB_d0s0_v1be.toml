@@ -38,6 +38,6 @@ stack_former_file_ver = true
 
 name_toml = 'corr_fullsky_LB_r0_v1c.toml'
 name_file_spv = 'params_spv_LB_nside0.yaml'
-file_ver_last_sample = 'corr_fullsky_LB_d0s0_r0_v1be'
-former_file_ver = 'corr_fullsky_LB_d0s0_r0_v1be'
-file_ver = 'corr_fullsky_LB_d0s0_r0_v1be2'
+file_ver_last_sample = 'corr_fullsky_LB_d0s0_r0_v1be2'
+former_file_ver = 'corr_fullsky_LB_d0s0_r0_v1be2'
+file_ver = 'corr_fullsky_LB_d0s0_r0_v1be3'
