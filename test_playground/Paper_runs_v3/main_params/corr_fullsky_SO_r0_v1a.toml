@@ -10,7 +10,6 @@ full_sky_correction = true
 non_centered_moves = false
 use_binning=false
 save_intermediary_centered_moves = false
-
 limit_r_value = true
 min_r_value = 0
 
@@ -35,7 +34,7 @@ sample_r_from_BB = true
 nside = 64
 lmax = 128
 nstokes = 2
-lmin = 30
+lmin = 2
 n_iter = 8 # Number of iterations for Python estimation of alms
 n_components = 3
 pos_special_freqs = [0,-1]
@@ -52,6 +51,6 @@ step_size_r = 1e-3 #1e-4 #1e-5 ???
 
 # [Sampling_parameters]
 # overrelax = 0 #-0.995 # Overrelaxation parameter for the sampling
-number_iterations_sampling = 375 #400 # Maximum number of iterations for the sampling
+number_iterations_sampling = 1600 #400 # Maximum number of iterations for the sampling
 number_iterations_done = 0 # Number of iterations already accomplished, in case the chain is resuming from a previous run
 seed = 42

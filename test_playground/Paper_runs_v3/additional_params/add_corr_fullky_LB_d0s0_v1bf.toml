@@ -8,34 +8,36 @@ directory_mask = "/gpfswork/rech/nih/commun/masks/"
 # directory_mask = "/Users/mag/Documents/PHD1Y/Masks/"
 save_directory = ''
 path_trace_jax = ''
-# path_cov_B_f_r = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Fake_Fisher_matrix_LiteBIRD.txt'
-path_cov_B_f_r = ''
+# path_cov_B_f_r = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/test_playground/Fake_Fisher_matrix_LiteBIRD.txt'
+path_cov_B_f_r = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Fake_Fisher_matrix_LiteBIRD.txt'
 
 seed_realization_input=42
+seed_realization_CMB = 40
 
 delta_ell = 1
 
 reduction_noise = 1
 factor_Fisher = 1
 factor_Fisher_r = 1
-relative_treshold = 4e-1
+relative_treshold = 0
 sigma_gap = 0
 fgs_model = 'd0s0'
-initial_guess_r=1e-3
-name_mask = 'mask_SO_SAT_apodized'
-use_mask = true
+initial_guess_r=1e-5
+name_mask = ''
+use_mask = false
 use_preconditioner = true
 
+use_treshold = false
 use_nhits = false
-use_treshold = true
 
-use_last_sample = true
+below_0_min_r_value = true
+
+use_last_sample = false
 save_last_sample = true
-stack_former_file_ver = true
+stack_former_file_ver = false
 
-name_toml = 'corr_cutsky_SO_r2_v1a.toml' #
-name_file_spv = 'params_spv_SAT_nside0.yaml'
-# file_ver_last_sample = 'corr_cutsky_SO_d0s0_nside0_v1091c_r0_v1b'
-file_ver_last_sample = 'corr_cutsky_SO_d0s0_nside0_v1091c_r2_v1e11'
-former_file_ver = 'corr_cutsky_SO_d0s0_nside0_v1091c_r2_v1e11'
-file_ver = 'corr_cutsky_SO_d0s0_nside0_v1091c_r2_v1e12'
+name_toml = 'corr_fullsky_LB_r0_v1b.toml'
+name_file_spv = 'params_spv_LB_nside0.yaml'
+file_ver_last_sample = ''
+former_file_ver = ''
+file_ver = 'corr_fullsky_LB_d0s0_r0_v1bf'

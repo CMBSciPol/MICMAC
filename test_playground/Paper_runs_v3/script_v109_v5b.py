@@ -86,6 +86,10 @@ print("Seed realization input :", seed_realization_input, flush=True)
 use_preconditioner = dictionary_additional_parameters['use_preconditioner']
 # path_trace_jax = dictionary_additional_parameters['path_trace_jax']
 
+put_below_0_min_r_value = False
+if 'below_0_min_r_value' in dictionary_additional_parameters:
+    put_below_0_min_r_value = dictionary_additional_parameters['below_0_min_r_value']
+
 save_last_sample = dictionary_additional_parameters['save_last_sample']
 use_last_sample = dictionary_additional_parameters['use_last_sample']
 file_ver_last_sample = dictionary_additional_parameters['file_ver_last_sample']
@@ -285,6 +289,12 @@ else:
 c_ell_approx = np.zeros((3,MICMAC_obj.lmax+1))
 c_ell_approx[0,MICMAC_obj.lmin:] = theoretical_r0_total[0,:]
 c_ell_approx[1,MICMAC_obj.lmin:] = theoretical_r0_total[1,:]
+
+
+# Setting min r value
+if put_below_0_min_r_value:
+    new_min_r_value = -np.min(theoretical_red_cov_r0_total[:,1,1]/theoretical_red_cov_r0_total[:,1,1])
+    MICMAC_obj.min_r_value = new_min_r_value
 
 
 # First guesses preparation
