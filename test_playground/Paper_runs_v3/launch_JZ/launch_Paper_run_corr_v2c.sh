@@ -42,7 +42,6 @@ export OMP_PLACES=cores
 export VER=corr_cutsky_SO_d0s0_nside0_v1091c_r0_v1db13
 export additional_config_file=add_corr_cutsky_SO_d0s0_nside0_v1d.toml
 
-
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Paper_runs_v3
 
 srun python $SRC_PATH/script_v109_v5b.py $additional_config_file  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
