@@ -1,0 +1,46 @@
+## These are parameters useful to have the tests general and easy to change
+## will not be used in the final version of the code
+
+current_directory='Paper_runs_v3_customizedFG/'
+# MICMAC_directory = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/'
+# MICMAC_directory = '/Users/mag/Documents/PHD1Y/Space_Work/Pixel_non_P2D/MICMAC/'
+# MICMAC_directory = '/Users/arizzieri/APC/PhD/cmb_work/comp_sep/Non_param/MICMAC/'
+MICMAC_directory = '/work/rizzieri/MICMAC/'
+# directory_mask = "/gpfswork/rech/nih/commun/masks/"
+# directory_mask = "/Users/mag/Documents/PHD1Y/Masks/"
+# directory_mask = '/Users/arizzieri/APC/PhD/cmb_work/common/masks/'
+directory_mask = '/work/rizzieri/common/masks/'
+
+save_directory = ''
+path_trace_jax = ''
+# path_cov_B_f_r = '/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Fake_Fisher_matrix_LiteBIRD.txt'
+path_cov_B_f_r = ''
+
+seed_realization_input=42
+
+delta_ell = 1
+
+reduction_noise = 1
+factor_Fisher = 1
+factor_Fisher_r = 1
+relative_treshold = 0
+sigma_gap = 10
+fgs_model = 'd1s1'
+initial_guess_r=1e-4
+name_mask = 'Planck_mask_fsky_60'
+use_mask = true
+use_preconditioner = true
+
+use_nhits = false
+use_treshold = false
+
+use_last_sample = true
+save_last_sample = true
+stack_former_file_ver = true
+
+name_toml = 'corr_cutsky_d1s1custom1_LB_r0_v1b_spvns0.toml' #
+name_file_spv = 'params_spv_LB_nside0.yaml'
+
+file_ver_last_sample = 'corr_cutsky_d1s1custom1_LB_r0_v1a_spvns0'
+former_file_ver = 'corr_cutsky_d1s1custom1_LB_r0_v1a_spvns0'
+file_ver = 'corr_cutsky_d1s1custom1_LB_r0_v1b_spvns0'

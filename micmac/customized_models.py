@@ -42,22 +42,28 @@ def d1s1_sky_customized(nside_map, nside_spv):
     # beta dust
     beta_mbb = sky.components[0].mbb_index.value
     beta_mbb_dowgraded = hp.ud_grade(beta_mbb, nside_spv)
-    beta_mbb_new = np.repeat(beta_mbb_dowgraded, hp.nside2npix(nside_map) // hp.nside2npix(nside_spv))
+    # hp.mollview(beta_mbb_dowgraded, title='Downgraded beta dust')
+    beta_mbb_new = hp.ud_grade(beta_mbb_dowgraded, nside_map)
+    # hp.mollview(beta_mbb_new, title='New beta dust')
     for i, item in enumerate(beta_mbb_new):
         sky.components[0].mbb_index.value[i] = item
     # temp dust
     temp_mbb = sky.components[0].mbb_temperature.value
     temp_mbb_dowgraded = hp.ud_grade(temp_mbb, nside_spv)
-    temp_mbb_new = np.repeat(temp_mbb_dowgraded, hp.nside2npix(nside_map) // hp.nside2npix(nside_spv))
+    # hp.mollview(temp_mbb_dowgraded, title='Downgraded temp dust')
+    temp_mbb_new = hp.ud_grade(temp_mbb_dowgraded, nside_map)
+    # hp.mollview(temp_mbb_new, title='New temp dust')
     for i, item in enumerate(temp_mbb_new):
         sky.components[0].mbb_temperature.value[i] = item
     # beta synch
     beta_pl = sky.components[1].pl_index.value
     beta_pl_dowgraded = hp.ud_grade(beta_pl, nside_spv)
-    beta_pl_new = np.repeat(beta_pl_dowgraded, hp.nside2npix(nside_map) // hp.nside2npix(nside_spv))
+    # hp.mollview(beta_pl_dowgraded, title='Downgraded beta synch')
+    beta_pl_new = hp.ud_grade(beta_pl_dowgraded, nside_map)
+    # hp.mollview(beta_pl_new, title='New beta synch')
     for i, item in enumerate(beta_pl_new):
         sky.components[1].pl_index[i] = item
-
+    # plt.show()
     return sky
 
 
