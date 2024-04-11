@@ -29,7 +29,7 @@ The easiest way to install and use `micmac` is the following
 
 ## How to use `micmac`
 
-You will find in the `tutorial` directory a list of notebooks showcasing how to use `micmac`.
+You will find in the `tutorials` directory a list of notebooks showcasing how to use `micmac`.
 
 The tutorials make use of an additional Python library not installed by default
 - `cmbdb`
