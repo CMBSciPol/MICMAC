@@ -887,7 +887,7 @@ class MICMAC_Sampler(Sampling_functions):
                                                         # min_value=self.min_r_to_sample)
                     
                     if self.limit_r_value:
-                        new_carry['r_sample'] = jnp.where(new_r_sample['r_sample']<self.min_r_value, new_r_sample, new_carry['r_sample'])
+                        new_r_sample = jnp.where(new_r_sample<self.min_r_value, new_r_sample, new_carry['r_sample'])
 
                     new_carry['red_cov_matrix_sample'] = theoretical_red_cov_r0_total + new_r_sample*theoretical_red_cov_r1_tensor
 
