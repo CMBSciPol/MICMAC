@@ -1,4 +1,4 @@
-name: test_env2
+name: micmac_env
 channels:
   - conda-forge
   - defaults
