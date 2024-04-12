@@ -45,7 +45,7 @@ export OMP_PLACES=cores
 # export VER=corr_fullsky_LB_d0s0_r0_v1be6
 # export additional_config_file=add_corr_fullky_LB_d0s0_v1be.toml
 
-export VER=corr_fullsky_LB_d0s0_r0_v1beb6
+export VER=corr_fullsky_LB_d0s0_r0_v1beb7
 export additional_config_file=add_corr_fullky_LB_d0s0_v1beb.toml
 
 
