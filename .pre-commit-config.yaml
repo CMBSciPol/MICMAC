@@ -11,6 +11,7 @@ repos:
   - id: pycln
     args:
     - --all
+    exclude: ^test_playground/
 
 - repo: https://github.com/PyCQA/isort
   rev: '5.13.2'

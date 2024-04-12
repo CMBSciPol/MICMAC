@@ -42,8 +42,11 @@ export OMP_PLACES=cores
 # export VER=corr_fullsky_LB_d0s0_r0_v1b10
 # export additional_config_file=add_corr_fullky_LB_d0s0_v1b.toml
 
-export VER=corr_fullsky_LB_d0s0_r0_v1be6
-export additional_config_file=add_corr_fullky_LB_d0s0_v1be.toml
+# export VER=corr_fullsky_LB_d0s0_r0_v1be6
+# export additional_config_file=add_corr_fullky_LB_d0s0_v1be.toml
+
+export VER=corr_fullsky_LB_d0s0_r0_v1beb
+export additional_config_file=add_corr_fullky_LB_d0s0_v1beb.toml
 
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Paper_runs_v3
