@@ -556,7 +556,7 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
                 )
                 return MHState(new_sample, rng_key)
 
-        mcmc_obj = MCMC(
+        mcmc_obj = numpyro.infer.mcmc.MCMC(
             MetropolisHastings(log_proba=self.harmonic_marginal_probability, covariance_matrix=covariance_B_f_r),
             num_warmup=0,
             num_samples=self.number_iterations_sampling - self.number_iterations_done,
@@ -605,10 +605,10 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
         all_samples_B_f_r = np.zeros(
             (self.number_iterations_sampling, (self.n_frequencies - len(self.pos_special_freqs)) * 2 + 1)
         )
-        all_samples_B_f_r[:, :-1] = MICMAC_Harm_obj.all_params_mixing_matrix_samples.reshape(
+        all_samples_B_f_r[:, :-1] = self.all_params_mixing_matrix_samples.reshape(
             (self.number_iterations_sampling, (self.n_frequencies - len(self.pos_special_freqs)) * 2)
         )
-        all_samples_B_f_r[:, -1] = MICMAC_Harm_obj.all_samples_r
+        all_samples_B_f_r[:, -1] = self.all_samples_r
 
         return jnp.cov(all_samples_B_f_r, rowvar=False)
 
