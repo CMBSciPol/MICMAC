@@ -210,6 +210,22 @@ def get_cell_from_map_jax(pixel_maps, lmax, n_iter=8):
     return c_ells_output
 
 
+def get_bool_array_in_boundary(input_array, boundary):
+    """
+    Return a boolean array of the same shape as the input array, with True values where the input array is within the boundary
+
+    Parameters
+    ----------
+    :param input_array: input array
+    :param boundary: array of dimension (2,dim(input_array)), representing the boundary
+
+    Returns
+    -------
+    :return: bool_array: boolean array of the same shape as the input array
+    """
+    return (input_array >= boundary[0]) & (input_array <= boundary[1])
+
+
 @partial(jax.jit, static_argnames=('lmax'))
 def alm_dot_product_JAX(alm_1, alm_2, lmax):
     """

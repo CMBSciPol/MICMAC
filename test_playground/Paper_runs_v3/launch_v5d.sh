@@ -30,7 +30,7 @@ export add_param_toml=add_corr_cutsky_SO_d0s0_nside0_v1c
 export file_ver=corr_cutsky_LB_d0s0_nside0_v1091c_r0_v1b
 export add_param_toml=add_corr_cutsky_LB_d0s0_nside0_v1b
 
-export file_ver=corr_cutsky_LB_d0s0_nside0_v1091c_r0_v1c2
+export file_ver=corr_cutsky_LB_d0s0_nside0_v1091c_r0_v1c3
 export add_param_toml=add_corr_cutsky_LB_d0s0_nside0_v1c
 
 

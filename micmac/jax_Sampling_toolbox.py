@@ -1089,7 +1089,7 @@ class Sampling_functions(MixingMatrix):
         :return: log-proba of C parametrized by r_param
         """
 
-        chx.assert_shape(theoretical_red_cov_r1_tensor, (self.lmax + 1 - self.lmin,self.nstokes,self.nstokes))
+        chx.assert_shape(theoretical_red_cov_r1_tensor, (self.lmax + 1 - self.lmin, self.nstokes, self.nstokes))
         chx.assert_equal_shape((red_sigma_ell, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total))
 
         # Getting the sigma_ell in the format [lmax,nstokes,nstokes] multiplied by 2 ell+1, to take into account the m
@@ -2118,6 +2118,51 @@ def multivariate_Metropolis_Hasting_step_numpyro(state, covariance_matrix, log_p
     new_sample = jnp.where(
         jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, sample_proposal, jnp.ravel(old_sample, order='F')
     )
+    return new_sample.reshape(old_sample.shape, order='F'), random_PRNGKey
+
+
+def multivariate_Metropolis_Hasting_step_numpyro_bounded(state, covariance_matrix, log_proba, boundary, **model_kwargs):
+    """
+    Metropolis-Hasting step for a multivariate parameter, with a multivariate Gaussian proposal distribution,
+    from a Numpyro state
+
+    Parameters
+    ----------
+    :param state: Numpyro state
+    :param covariance_matrix: covariance matrix for the proposal distribution
+    :param log_proba: log-probability function of the model
+    :param model_kwargs: additional arguments for the log-probability function
+    :param boundary: boundary for the parameters
+
+    Returns
+    -------
+    :return: new sample of the parameter
+    """
+    # Retrieving the old sample and the random key from the Numpyro state
+    old_sample, random_PRNGKey = state
+
+    # Splitting the random key
+    random_PRNGKey, key_proposal, key_accept = random.split(random_PRNGKey, 3)
+
+    # Generating the proposal sample with a multivariate Gaussian distribution
+    sample_proposal = dist.MultivariateNormal(jnp.ravel(old_sample, order='F'), covariance_matrix).sample(key_proposal)
+
+    # Computing the acceptance probability
+    accept_prob = -(
+        log_proba(jnp.ravel(old_sample, order='F'), **model_kwargs) - log_proba(sample_proposal, **model_kwargs)
+    )
+
+    # Accepting or rejecting the proposal
+    new_sample = jnp.where(
+        jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, sample_proposal, jnp.ravel(old_sample, order='F')
+    )
+
+    new_sample = jnp.where(
+        get_bool_array_in_boundary(new_sample.reshape(old_sample.shape, order='F'), boundary).all(),
+        new_sample,
+        jnp.ravel(old_sample, order='F'),
+    )
+
     return new_sample.reshape(old_sample.shape, order='F'), random_PRNGKey
 
 

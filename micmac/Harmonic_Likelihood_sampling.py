@@ -55,6 +55,8 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
         spv_nodes_b=None,
         biased_version=False,
         r_true=0,
+        boundary_B_f=None,
+        boundary_r=None,
         step_size_r=1e-4,
         covariance_B_f=None,
         number_iterations_sampling=100,
@@ -123,6 +125,18 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
         # Metropolis-Hastings step-size and covariance parameters
         self.covariance_B_f = covariance_B_f
         self.step_size_r = step_size_r
+        if boundary_B_f is None:
+            boundary_B_f = jnp.zeros((2, (self.n_frequencies - len(self.pos_special_freqs)) * (self.n_components - 1)))
+            boundary_B_f = boundary_B_f.at[0, :].set(-jnp.inf)
+            boundary_B_f = boundary_B_f.at[1, :].set(jnp.inf)
+        if boundary_r is None:
+            boundary_r = jnp.array([-jnp.inf, jnp.inf])
+        assert np.array(boundary_B_f).shape == (
+            2,
+            (self.n_frequencies - len(self.pos_special_freqs)) * (self.n_components - 1),
+        )
+        assert np.array(boundary_r).shape == (2,)
+        self.boundary_B_f_r = jnp.hstack((boundary_B_f, jnp.expand_dims(boundary_r, axis=0).T))
 
         # Sampling parameters
         self.number_iterations_sampling = int(
@@ -540,9 +554,10 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
         class MetropolisHastings(numpyro.infer.mcmc.MCMCKernel):
             sample_field = 'u'
 
-            def __init__(self, log_proba, covariance_matrix):
+            def __init__(self, log_proba, covariance_matrix, boundary_B_f_r=self.boundary_B_f_r):
                 self.log_proba = log_proba
                 self.covariance_matrix = covariance_matrix
+                self.boundary_B_f_r = boundary_B_f_r
 
             def init(self, rng_key, num_warmup, init_params, model_args, model_kwargs):
                 return MHState(init_params, rng_key)
@@ -551,8 +566,12 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
                 """
                 One Metropolis-Hastings sampling step
                 """
-                new_sample, rng_key = multivariate_Metropolis_Hasting_step_numpyro(
-                    state, covariance_matrix=self.covariance_matrix, log_proba=self.log_proba, **model_kwargs
+                new_sample, rng_key = multivariate_Metropolis_Hasting_step_numpyro_bounded(
+                    state,
+                    covariance_matrix=self.covariance_matrix,
+                    log_proba=self.log_proba,
+                    boundary=self.boundary_B_f_r,
+                    **model_kwargs,
                 )
                 return MHState(new_sample, rng_key)
 
