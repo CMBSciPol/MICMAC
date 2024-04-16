@@ -1,6 +1,10 @@
 # Minimally Informed CMB MAp Constructor: MICMAC
 # [Release coming soon]
-![MICMAC Logo, credits: Ema](micmac.png)
+
+<img src="./micmac.png" alt="drawing" width="200">
+
+MICMAC Logo, credits: Ema Tsang King Sang
+
 Pixel implementation of the non-parametric component separation.
 Extension to component separation method of [Leloup et al. (2023)](https://journals.aps.org/prd/abstract/10.1103/PhysRevD.108.123547)
 
