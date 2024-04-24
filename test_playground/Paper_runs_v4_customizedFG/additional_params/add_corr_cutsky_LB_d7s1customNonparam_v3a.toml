@@ -41,7 +41,7 @@ use_last_sample = false
 save_last_sample = true
 stack_former_file_ver = false
 
-name_toml = 'corr_cutsky_d7s1customNonparam_LB_r0_v1a.toml' #
+name_toml = 'corr_cutsky_d7s1customNonparam_LB_r0_v3a.toml' #
 name_file_spv = 'params_spv_LB_nside1.yaml'
 
 file_ver_last_sample = ''
