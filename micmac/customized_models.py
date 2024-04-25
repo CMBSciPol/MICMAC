@@ -27,6 +27,7 @@ from fgbuster.observation_helpers import (
     get_observation,
     standardize_instrument,
 )
+from fgbuster.separation_recipes import _my_ud_grade
 from pysm3 import Sky
 from scipy import constants
 
@@ -162,13 +163,17 @@ def fgs_freq_maps_from_customized_model_nonparam(nside_map, nside_spv, instrumen
     # Loop over fgs components (typically synch and dust)
     for i, model_i in enumerate(fgs_models):
         # Take initial freq maps
-        freq_maps_fgs_i = get_observation(instrument, model_i, nside=nside_spv, noise=False)[
-            :, 1, :
-        ]  # keep only Q (assumed same mixing mat elements for Q and U)
+        if nside_spv == 0:
+            freq_maps_fgs_i = get_observation(instrument, model_i, nside=1, noise=False)[:, 1, :]
+            freq_maps_fgs_i = np.average(freq_maps_fgs_i, axis=1)
+        else:
+            freq_maps_fgs_i = get_observation(instrument, model_i, nside=nside_spv, noise=False)[
+                :, 1, :
+            ]  # keep only Q (assumed same mixing mat elements for Q and U)
         # Build new mixing matrix elements
         mixing_mat[:, i, :] = np.array(
             [
-                hp.ud_grade(freq_maps_fgs_i[f] / freq_maps_fgs_i[idx_ref_freq], nside_map)
+                _my_ud_grade(freq_maps_fgs_i[f] / freq_maps_fgs_i[idx_ref_freq], nside_map)
                 for f in range(len(instrument.frequency))
             ]
         )
