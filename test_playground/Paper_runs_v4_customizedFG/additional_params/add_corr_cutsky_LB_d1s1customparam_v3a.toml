@@ -22,13 +22,13 @@ delta_ell = 1
 
 reduction_noise = 1
 factor_Fisher = 1
-factor_Fisher_r = 100
+factor_Fisher_r = 50
 relative_treshold = 0
 sigma_gap = 10
-fgs_model = 'customized_nonparametric'
-fgs_model_init = ['s1','d7']
+fgs_model = 'customized_parametric'
+fgs_model_init = ['s1','d1']
 nside_spv_model = 1
-idx_ref_freq = 6   # ref freq to build new scaling laws (here taken 100GHz of LB)
+# idx_ref_freq = 6   # ref freq to build new scaling laws (here taken 100GHz of LB)
 initial_guess_r=1e-4
 name_mask = 'Planck_mask_fsky_60'
 use_mask = true
@@ -42,9 +42,9 @@ use_last_sample = false
 save_last_sample = true
 stack_former_file_ver = false
 
-name_toml = 'corr_cutsky_d7s1customNonparam_LB_r0_v3a.toml' #
+name_toml = 'corr_cutsky_d1s1customparam_LB_r0_v3a.toml' #
 name_file_spv = 'params_spv_LB_nside1.yaml'
 
 file_ver_last_sample = ''
 former_file_ver = ''
-file_ver = 'corr_cutsky_d7s1customNonparam_LB_r0_v3a'
+file_ver = 'corr_cutsky_d1s1customparam_LB_r0_v3a'
