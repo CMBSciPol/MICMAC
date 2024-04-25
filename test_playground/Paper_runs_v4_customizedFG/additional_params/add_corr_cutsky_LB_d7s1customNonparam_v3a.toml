@@ -22,7 +22,7 @@ delta_ell = 1
 
 reduction_noise = 1
 factor_Fisher = 1
-factor_Fisher_r = 1
+factor_Fisher_r = 100
 relative_treshold = 0
 sigma_gap = 10
 fgs_model = 'customized_nonparametric'
@@ -36,6 +36,7 @@ use_preconditioner = true
 
 use_nhits = false
 use_treshold = false
+below_0_min_r_value = true
 
 use_last_sample = false
 save_last_sample = true
