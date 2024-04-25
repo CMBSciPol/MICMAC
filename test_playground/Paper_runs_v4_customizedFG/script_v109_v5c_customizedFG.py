@@ -254,7 +254,7 @@ if fgs_model_ == 'customized_parametric':
     freq_maps_fgs_denoised = micmac.get_observation_customized(instrument, my_sky, nside=MICMAC_obj.nside, noise=False)[
         :, 1:, :
     ]  # keep only Q and U
-elif fgs_model_ == 'customized_non_parametric':
+elif fgs_model_ == 'customized_nonparametric':
     np.random.seed(seed_realization_input)
     nside_map = MICMAC_obj.nside
     freq_maps_fgs_denoised, mixing_mat_fgs = micmac.fgs_freq_maps_from_customized_model_nonparam(
