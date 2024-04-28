@@ -37,8 +37,11 @@ export add_param_toml=add_corr_cutsky_LB_d0s0_nside0_v1c
 export file_ver=corr_cutsky_LB_d0s0_nside0_v1091c_r0_v1d2
 export add_param_toml=add_corr_cutsky_LB_d0s0_nside0_v1d
 
-export file_ver=corr_cutsky_LB_d0s0_nside0_v1091c_r0_v1e
+export file_ver=corr_cutsky_LB_d0s0_nside0_v1091c_r0_v1e5
 export add_param_toml=add_corr_cutsky_LB_d0s0_nside0_v1e
+
+export file_ver=corr_cutsky_LB_d0s0_nside0_v1091c_r0_v1eb
+export add_param_toml=add_corr_cutsky_LB_d0s0_nside0_v1eb
 
 export additional_params=$path_directory_main/additional_params/$add_param_toml.toml
 
