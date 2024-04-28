@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=corr_Paper_run_SO_v2a
+#SBATCH --job-name=corr_Paper_run_SO_v2ab
 #SBATCH --account=nih@cpu          # use CPU allocation
 #SBATCH --qos=qos_cpu-dev          # dev qos (10 jobs, 2h max.)
 #SBATCH --mail-user=magdy.morshed.fr@gmail.com
@@ -35,26 +35,8 @@ export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 # OpenMP binding
 export OMP_PLACES=cores
 
-
-# export VER=corr_cutsky_SO_d0s0_nside0_v1091c_r0_v1a5
-# export additional_config_file=add_corr_cutsky_SO_d0s0_nside0_v1a.toml
-
-# export VER=corr_fullsky_LB_d0s0_r0_v1b10
-# export additional_config_file=add_corr_fullky_LB_d0s0_v1b.toml
-
-# export VER=corr_fullsky_LB_d0s0_r0_v1be6
-# export additional_config_file=add_corr_fullky_LB_d0s0_v1be.toml
-
-# export VER=corr_fullsky_LB_d0s0_r0_v1beb7
-# export additional_config_file=add_corr_fullky_LB_d0s0_v1beb.toml
-
-# export VER=corr_fullsky_LB_d0s0_r0_v1bec24
-# export additional_config_file=add_corr_fullky_LB_d0s0_v1bec.toml
-
-# srun python $SRC_PATH/script_v109_v5b.py $additional_config_file  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
-
-export VER=corr_cutsky_d7s1customNonparam_SO_nside0_v1091c_r0_v1a
-export additional_config_file=add_corr_cutsky_SO_d7s1customNonparam_nside0_v1a.toml
+export VER=corr_cutsky_LB_d0s0_nside0_v1091c_r2_v2a
+export additional_config_file=add_corr_cutsky_LB_d0s0_nside0_v2a.toml
 
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Paper_runs_v3
