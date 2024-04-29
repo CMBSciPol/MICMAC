@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=corr_Paper_run_SO_v2d
+#SBATCH --job-name=corr_Paper_run_SO_v2db
 #SBATCH --account=nih@cpu          # use CPU allocation
 #SBATCH --qos=qos_cpu-dev          # dev qos (10 jobs, 2h max.)
 #SBATCH --mail-user=magdy.morshed.fr@gmail.com
@@ -43,10 +43,11 @@ export OMP_PLACES=cores
 # export additional_config_file=add_corr_cutsky_SO_d0s0_nside0_v1e.toml
 
 export VER=corr_cutsky_SO_d0s0_nside0_v1091c_r2_v1e23b
-export additional_config_file=add_corr_cutsky_SO_d0s0_nside0_v1eb.toml
+# export additional_config_file=add_corr_cutsky_SO_d0s0_nside0_v1eb.toml
+export additional_config_file=add_corr_cutsky_SO_d0s0_nside0_v1ec.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Paper_runs_v3
 
-srun python $SRC_PATH/script_v109_v5b.py $additional_config_file  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
+srun python $SRC_PATH/script_v109_v5c_customizedFG.py $additional_config_file  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
 
 echo "Run finished !"
