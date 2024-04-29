@@ -260,6 +260,11 @@ elif fgs_model_ == 'customized_nonparametric':#'customized_non_parametric':
     freq_maps_fgs_denoised, mixing_mat_fgs = micmac.fgs_freq_maps_from_customized_model_nonparam(
         nside_map, nside_spv_model, instrument, fgs_models=fgs_model_init, idx_ref_freq=idx_ref_freq
     )
+elif fgs_model_ != '':
+    np.random.seed(seed_realization_input)
+    freq_maps_fgs_denoised = get_observation(instrument, fgs_model_, nside=MICMAC_obj.nside, noise=False)[
+        :, 1:, :
+    ]  # keep only Q and U
 else:
     freq_maps_fgs_denoised = np.zeros((MICMAC_obj.n_frequencies, MICMAC_obj.nstokes, MICMAC_obj.n_pix))
 np.random.seed(seed_realization_input)
