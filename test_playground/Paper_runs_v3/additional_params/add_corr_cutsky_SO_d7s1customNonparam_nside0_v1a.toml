@@ -22,7 +22,7 @@ factor_Fisher = 1
 # factor_Fisher_r = 0.1
 factor_Fisher_r = 1
 # factor_Fisher_r = 10
-relative_treshold = 0
+relative_treshold = 4e-1
 sigma_gap = 0
 fgs_model = 'customized_nonparametric'
 fgs_model_init = ['s1','d7']
@@ -35,18 +35,17 @@ use_mask = true
 use_preconditioner = true
 
 use_nhits = false
-use_treshold = false
+use_treshold = true
 
 below_0_min_r_value = true
 
-use_last_sample = true
+use_last_sample = false
 save_last_sample = true
 stack_former_file_ver = false
 
 name_toml = 'corr_cutsky_SO_r0_v1f.toml' #
 name_file_spv = 'params_spv_SAT_nside0.yaml'
-file_ver_last_sample = 'corr_cutsky_d7s0customNonparam_SO_nside0_v1091c_r0_v1a0_Harm_10000'
-# file_ver_last_sample = ''
+# file_ver_last_sample = 'corr_cutsky_d7s0customNonparam_SO_nside0_v1091c_r0_v1a0_Harm_10000'
+file_ver_last_sample = ''
 former_file_ver = ''
 file_ver = 'corr_cutsky_d7s1customNonparam_SO_nside0_v1091c_r0_v1a'
-
