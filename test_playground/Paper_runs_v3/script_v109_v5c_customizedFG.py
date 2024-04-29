@@ -2,18 +2,18 @@ import argparse
 import os
 import sys
 import time
-from functools import partial
+# from functools import partial
 
-import astropy.io.fits as fits
-import camb
+# import astropy.io.fits as fits
+# import camb
 import healpy as hp
-import jax
+# import jax
 import jax.numpy as jnp
-import jax.scipy as jsp
-import jax_healpy as jhp
-import matplotlib.pyplot as plt
+# import jax.scipy as jsp
+# import jax_healpy as jhp
+# import matplotlib.pyplot as plt
 import numpy as np
-import numpyro
+# import numpyro
 import scipy
 import toml
 from fgbuster.observation_helpers import *
