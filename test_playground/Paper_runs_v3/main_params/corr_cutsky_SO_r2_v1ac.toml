@@ -10,6 +10,8 @@ full_sky_correction = true
 non_centered_moves = false
 use_binning=false
 save_intermediary_centered_moves = false
+limit_r_value = true
+min_r_value = 0
 
 # [Data]
 save_CMB_chain_maps = false # If true, all the sampled CMB maps which are marginalized over will be saved
@@ -17,7 +19,7 @@ save_eta_chain_maps = false # If true, all the sampled eta maps which are margin
 save_s_c_spectra = true # If true, the s_c spectra will be saved
 
 # [Instrument_parameters]
-instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_noise and frequency_array will be taken from fgbuster, 
+instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_noise and frequency_array will be taken from fgbuster,
 # or provide expcitely freq_inverse_noise and frequency_array with instrument_name="customized_instrument"
 # frequency_array = [90]
 # depth_p = [4]
