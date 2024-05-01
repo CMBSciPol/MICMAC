@@ -142,7 +142,9 @@ def get_observation_customized(instrument='', sky=None, noise=False, nside=None,
     return res
 
 
-def fgs_freq_maps_from_customized_model_nonparam(nside_map, nside_spv, instrument, fgs_models, idx_ref_freq):
+def fgs_freq_maps_from_customized_model_nonparam(
+    nside_map, nside_spv, instrument, fgs_models, idx_ref_freq, return_mixing_matrix=True
+):
     """
     Gives non-parametric model built from input (parametric) fgs_model,
     with a different level of spv of the scaling laws given by nside_spv.
@@ -156,6 +158,7 @@ def fgs_freq_maps_from_customized_model_nonparam(nside_map, nside_spv, instrumen
                 must have key "frequency" containing a list of the instr freqs
     fgs_models: list of strings refferrinf to the PySM fgs models to start from
     idx_ref_freq: index of the reference frequency to use for normalization in A
+    return_mixing_matrix: return mixing matrix A in addition to maps d
     """
     n_fgs_comp = len(fgs_models)
     mixing_mat = np.zeros((len(instrument.frequency), n_fgs_comp, hp.nside2npix(nside_map)))
@@ -182,7 +185,9 @@ def fgs_freq_maps_from_customized_model_nonparam(nside_map, nside_spv, instrumen
     # Build final frequency maps
     freq_maps_final = np.einsum('fcp,csp->fsp', mixing_mat, np.array(ref_maps_QU))
 
-    return freq_maps_final, mixing_mat
+    if return_mixing_matrix:
+        return freq_maps_final, mixing_mat
+    return freq_maps_final
 
 
 #### Deprecated (but still used in old version v3_customized of multinode notebook):

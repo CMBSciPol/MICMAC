@@ -257,10 +257,13 @@ if fgs_model_ == 'customized_parametric':
 elif fgs_model_ == 'customized_nonparametric':#'customized_non_parametric':
     np.random.seed(seed_realization_input)
     nside_map = MICMAC_obj.nside
-    freq_maps_fgs_denoised, mixing_mat_fgs = micmac.fgs_freq_maps_from_customized_model_nonparam(
-        nside_map, nside_spv_model, instrument, fgs_models=fgs_model_init, idx_ref_freq=idx_ref_freq
+    # freq_maps_fgs_denoised, mixing_mat_fgs = micmac.fgs_freq_maps_from_customized_model_nonparam(
+    #     nside_map, nside_spv_model, instrument, fgs_models=fgs_model_init, idx_ref_freq=idx_ref_freq
+    # )
+    # del mixing_mat_fgs
+    freq_maps_fgs_denoised = micmac.fgs_freq_maps_from_customized_model_nonparam(
+        nside_map, nside_spv_model, instrument, fgs_models=fgs_model_init, idx_ref_freq=idx_ref_freq, return_mixing_matrix=False
     )
-    del mixing_mat_fgs
 elif fgs_model_ != '':
     np.random.seed(seed_realization_input)
     freq_maps_fgs_denoised = get_observation(instrument, fgs_model_, nside=MICMAC_obj.nside, noise=False)[
