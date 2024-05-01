@@ -53,7 +53,7 @@ export OMP_PLACES=cores
 
 # srun python $SRC_PATH/script_v109_v5b.py $additional_config_file  1> $SRC_PATH/logs/log_$VER.log 2> $SRC_PATH/errs/err_$VER.log
 
-export VER=corr_cutsky_d7s1customNonparam_SO_nside0_v1091c_r0_v1a
+export VER=corr_cutsky_d7s1customNonparam_SO_nside0_v1091c_r0_v1a2
 export additional_config_file=add_corr_cutsky_SO_d7s1customNonparam_nside0_v1a.toml
 
 
