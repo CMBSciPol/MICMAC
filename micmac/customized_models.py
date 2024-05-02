@@ -17,7 +17,6 @@
 """
 Module to create fake fgs models starting from the PySM ones.
 """
-
 import healpy as hp
 import numpy as np
 import pysm3.units as u
@@ -32,6 +31,25 @@ from pysm3 import Sky
 from scipy import constants
 
 h_over_k = constants.h * 1e9 / constants.k
+
+
+def get_spectral_params_true_values(nside, model=['s0', 'd0']):
+    """
+    For a given PySM model returns the true values
+    of the spectral parameters.
+    The first fgs must have attribute pl_index
+    and the second mbb_index and mbb_temperature.
+    """
+    sky = Sky(nside=nside, preset_strings=model)
+    # Synchrotron
+    synch = sky.components[0]
+    beta_pl = synch.pl_index.value
+    # Dust
+    dust = sky.components[1]
+    beta_mbb = dust.mbb_index.value
+    temp_mbb = dust.mbb_temperature.value
+
+    return beta_pl, beta_mbb, temp_mbb
 
 
 def parametric_sky_customized(fgs_models, nside_map, nside_spv):
@@ -143,7 +161,7 @@ def get_observation_customized(instrument='', sky=None, noise=False, nside=None,
 
 
 def fgs_freq_maps_from_customized_model_nonparam(
-    nside_map, nside_spv, instrument, fgs_models, idx_ref_freq, return_mixing_matrix=True
+    nside_map, nside_spv, instrument, fgs_models, idx_ref_freq, return_mixing_mat=False
 ):
     """
     Gives non-parametric model built from input (parametric) fgs_model,
@@ -156,9 +174,8 @@ def fgs_freq_maps_from_customized_model_nonparam(
     nside_spv: nside at which the spv in the scaling laws is downgraded
     instrument: dictionary containing the instrument configuration,
                 must have key "frequency" containing a list of the instr freqs
-    fgs_models: list of strings refferrinf to the PySM fgs models to start from
+    fgs_models: list of strings refferring to the PySM fgs models to start from
     idx_ref_freq: index of the reference frequency to use for normalization in A
-    return_mixing_matrix: return mixing matrix A in addition to maps d
     """
     n_fgs_comp = len(fgs_models)
     mixing_mat = np.zeros((len(instrument.frequency), n_fgs_comp, hp.nside2npix(nside_map)))
@@ -185,8 +202,9 @@ def fgs_freq_maps_from_customized_model_nonparam(
     # Build final frequency maps
     freq_maps_final = np.einsum('fcp,csp->fsp', mixing_mat, np.array(ref_maps_QU))
 
-    if return_mixing_matrix:
+    if return_mixing_mat:
         return freq_maps_final, mixing_mat
+
     return freq_maps_final
 
 
