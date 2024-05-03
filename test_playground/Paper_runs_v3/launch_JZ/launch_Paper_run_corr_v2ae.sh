@@ -38,8 +38,11 @@ export OMP_PLACES=cores
 # export VER=corr_fullsky_LB_d0s0_nside0_v1091c_r2_v1a
 # export additional_config_file=add_corr_fullsky_LB_d0s0_nside0_v2a.toml
 
-export VER=corr_fullsky_SO_d0s0_r2_v1ae6
-export additional_config_file=add_corr_fullky_SO_d0s0_v1ae.toml
+# export VER=corr_fullsky_SO_d0s0_r2_v1ae5
+# export additional_config_file=add_corr_fullky_SO_d0s0_v1ae.toml
+
+export VER=corr_fullsky_SO_d0s0_r2_v1aeb
+export additional_config_file=add_corr_fullky_SO_d0s0_v1aeb.toml
 
 export SRC_PATH=/gpfswork/rech/nih/ube74zo/MICMAC/MICMAC/test_playground/Paper_runs_v3
 
