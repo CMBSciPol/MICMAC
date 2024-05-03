@@ -3,7 +3,7 @@ disable_chex = true
 classical_Gibbs = false
 biased_version = false
 perturbation_eta_covariance = true
-simultaneous_accept_rate = true
+simultaneous_accept_rate = false
 full_sky_correction = true
 
 # [C sampling]
