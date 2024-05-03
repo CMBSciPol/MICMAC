@@ -254,11 +254,11 @@ if fgs_model_ == 'customized_parametric':
     freq_maps_fgs_denoised = micmac.get_observation_customized(instrument, my_sky, nside=MICMAC_obj.nside, noise=False)[
         :, 1:, :
     ]  # keep only Q and U
-elif fgs_model_ == 'customized_nonparametric':#'customized_non_parametric':
+elif fgs_model_ == 'customized_nonparametric':
     np.random.seed(seed_realization_input)
     nside_map = MICMAC_obj.nside
-    freq_maps_fgs_denoised, mixing_mat_fgs = micmac.fgs_freq_maps_from_customized_model_nonparam(
-        nside_map, nside_spv_model, instrument, fgs_models=fgs_model_init, idx_ref_freq=idx_ref_freq
+    freq_maps_fgs_denoised, non_param_fgs_SEDs = micmac.fgs_freq_maps_from_customized_model_nonparam(
+        nside_map, nside_spv_model, instrument, fgs_models=fgs_model_init, idx_ref_freq=idx_ref_freq, return_mixing_mat=True
     )
 else:
     freq_maps_fgs_denoised = np.zeros((MICMAC_obj.n_frequencies, MICMAC_obj.nstokes, MICMAC_obj.n_pix))
@@ -347,6 +347,7 @@ if MICMAC_obj.n_components == 3:
         ncomp=MICMAC_obj.n_components,
         pos_special_freqs=MICMAC_obj.pos_special_freqs,
         spv_nodes_b=MICMAC_obj.spv_nodes_b,
+        non_param_fgs_mixing_matrix=non_param_fgs_SEDs,
     )
     exact_params_mixing_matrix = init_mixing_matrix_obj.init_params()
 else:
