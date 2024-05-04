@@ -342,14 +342,23 @@ theoretical_r1_tensor = micmac.get_c_ells_from_red_covariance_matrix(
 
 # Preparing params mixing matrix
 if MICMAC_obj.n_components == 3:
-    init_mixing_matrix_obj = micmac.InitMixingMatrix(
-        freqs=MICMAC_obj.frequency_array,
-        ncomp=MICMAC_obj.n_components,
-        pos_special_freqs=MICMAC_obj.pos_special_freqs,
-        spv_nodes_b=MICMAC_obj.spv_nodes_b,
-        non_param_fgs_mixing_matrix=non_param_fgs_SEDs,
-    )
-    exact_params_mixing_matrix = init_mixing_matrix_obj.init_params()
+    if fgs_model_ == 'customized_nonparametric':
+        init_mixing_matrix_obj = micmac.InitMixingMatrix(
+            freqs=MICMAC_obj.frequency_array,
+            ncomp=MICMAC_obj.n_components,
+            pos_special_freqs=MICMAC_obj.pos_special_freqs,
+            spv_nodes_b=MICMAC_obj.spv_nodes_b,
+            non_param_fgs_mixing_matrix=non_param_fgs_SEDs,
+        )
+        exact_params_mixing_matrix = init_mixing_matrix_obj.init_params()
+    else:    
+        init_mixing_matrix_obj = micmac.InitMixingMatrix(
+            freqs=MICMAC_obj.frequency_array,
+            ncomp=MICMAC_obj.n_components,
+            pos_special_freqs=MICMAC_obj.pos_special_freqs,
+            spv_nodes_b=MICMAC_obj.spv_nodes_b,
+        )
+        exact_params_mixing_matrix = init_mixing_matrix_obj.init_params()
 else:
     exact_params_mixing_matrix = np.zeros(MICMAC_obj.n_frequencies - len(MICMAC_obj.pos_special_freqs))
 
