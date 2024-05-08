@@ -100,6 +100,10 @@ initial_guess_r_ = dictionary_additional_parameters['initial_guess_r']
 use_nhits = dictionary_additional_parameters['use_nhits']
 use_treshold = dictionary_additional_parameters['use_treshold']
 
+use_noise = True
+if 'use_noise' in dictionary_additional_parameters:
+    use_noise = dictionary_additional_parameters['use_noise']
+
 name_mask = dictionary_additional_parameters['name_mask']
 use_mask = dictionary_additional_parameters['use_mask']
 name_toml = dictionary_additional_parameters['name_toml']
@@ -254,11 +258,11 @@ if fgs_model_ == 'customized_parametric':
     freq_maps_fgs_denoised = micmac.get_observation_customized(instrument, my_sky, nside=MICMAC_obj.nside, noise=False)[
         :, 1:, :
     ]  # keep only Q and U
-elif fgs_model_ == 'customized_nonparametric':#'customized_non_parametric':
+elif fgs_model_ == 'customized_nonparametric':
     np.random.seed(seed_realization_input)
     nside_map = MICMAC_obj.nside
-    freq_maps_fgs_denoised = micmac.fgs_freq_maps_from_customized_model_nonparam(
-        nside_map, nside_spv_model, instrument, fgs_models=fgs_model_init, idx_ref_freq=idx_ref_freq, return_mixing_mat=False
+    freq_maps_fgs_denoised, non_param_fgs_SEDs = micmac.fgs_freq_maps_from_customized_model_nonparam(
+        nside_map, nside_spv_model, instrument, fgs_models=fgs_model_init, idx_ref_freq=idx_ref_freq, return_mixing_mat=True
     )
 elif fgs_model_ != '':
     np.random.seed(seed_realization_input)
@@ -267,10 +271,15 @@ elif fgs_model_ != '':
     ]  # keep only Q and U
 else:
     freq_maps_fgs_denoised = np.zeros((MICMAC_obj.n_frequencies, MICMAC_obj.nstokes, MICMAC_obj.n_pix))
-np.random.seed(seed_realization_input)
-noise_map = get_noise_realization(MICMAC_obj.nside, instrument)[:, 1:, :]
 
-# noise_map = freq_maps_fgs_noised - freq_maps_fgs_denoised
+# Generating noise map
+if use_noise:
+    print("Setting up noise !", flush=True)
+    np.random.seed(seed_realization_input)
+    noise_map = get_noise_realization(MICMAC_obj.nside, instrument)[:, 1:, :]
+else:
+    print("Noiseless run !", flush=True)
+    noise_map = np.zeros((MICMAC_obj.n_frequencies, MICMAC_obj.nstokes, MICMAC_obj.n_pix))
 
 # Modifying the noise map with the hits map
 if use_nhits:
@@ -347,13 +356,23 @@ theoretical_r1_tensor = micmac.get_c_ells_from_red_covariance_matrix(
 
 # Preparing params mixing matrix
 if MICMAC_obj.n_components == 3:
-    init_mixing_matrix_obj = micmac.InitMixingMatrix(
-        freqs=MICMAC_obj.frequency_array,
-        ncomp=MICMAC_obj.n_components,
-        pos_special_freqs=MICMAC_obj.pos_special_freqs,
-        spv_nodes_b=MICMAC_obj.spv_nodes_b,
-    )
-    exact_params_mixing_matrix = init_mixing_matrix_obj.init_params()
+    if fgs_model_ == 'customized_nonparametric':
+        init_mixing_matrix_obj = micmac.InitMixingMatrix(
+            freqs=MICMAC_obj.frequency_array,
+            ncomp=MICMAC_obj.n_components,
+            pos_special_freqs=MICMAC_obj.pos_special_freqs,
+            spv_nodes_b=MICMAC_obj.spv_nodes_b,
+            non_param_fgs_mixing_matrix=non_param_fgs_SEDs,
+        )
+        exact_params_mixing_matrix = init_mixing_matrix_obj.init_params()
+    else:
+        init_mixing_matrix_obj = micmac.InitMixingMatrix(
+            freqs=MICMAC_obj.frequency_array,
+            ncomp=MICMAC_obj.n_components,
+            pos_special_freqs=MICMAC_obj.pos_special_freqs,
+            spv_nodes_b=MICMAC_obj.spv_nodes_b,
+        )
+        exact_params_mixing_matrix = init_mixing_matrix_obj.init_params()
 else:
     exact_params_mixing_matrix = np.zeros(MICMAC_obj.n_frequencies - len(MICMAC_obj.pos_special_freqs))
 
@@ -476,11 +495,12 @@ print(f'Initial r : {initial_guess_r}')
 print(f'Exact param matrix : {exact_params_mixing_matrix}')
 print(f'Initial param matrix : {init_params_mixing_matrix}')
 
-# Launching the sampling !!!
+# Setting up the path for the trace
 # if path_trace_jax != '':
 #     print("Tracing with JAX !", flush=True)
 #     jax.profiler.start_trace(path_trace_jax, create_perfetto_link=False, create_perfetto_trace=True)
 
+# Launching the sampling !!!
 time_start_sampling = time.time()
 MICMAC_obj.perform_Gibbs_sampling(
     input_freq_maps_masked,
