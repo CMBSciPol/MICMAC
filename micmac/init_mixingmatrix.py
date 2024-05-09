@@ -36,11 +36,15 @@ class InitMixingMatrix:
         nside (int): nside of the map
         non_param_fgs_mixing_matrix (arr): only the fgs part of mixing matrix (A)
 
+        The main goal of this class is create the initial parameter values,
+        with init_params, which returns the params as a flattened array of values ordered
+        by components, freqs, patches.
+
         Note:
         * units are K_CMB.
         * you must be always coherent with the order of fgs:
           e.g. if you put first synchrotron and then dust in the mixing matrix (A)
-               that you pass to this class, then also in the pos_special_freqs,
+               that you pass to this class, then also in the pos_special_freqs, etc
 
         """
         self.freqs = freqs  # all input freq bands
