@@ -112,7 +112,8 @@ class MICMAC_Sampler(Sampling_functions):
 
         Parameters
         ----------
-        nside : nside of the input frequency maps, int
+        nside : int
+            nside of the input frequency maps,
         lmax : maximum multipole for the spherical harmonics transforms and harmonic domain objects, int
         nstokes : number of Stokes parameters, int
         frequency_array : array of frequencies, in GHz
