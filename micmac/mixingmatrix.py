@@ -21,7 +21,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from .templates_spv import (
+from micmac.templates_spv import (
     create_one_template,
     create_one_template_from_bdefaultvalue,
     get_n_patches_b,

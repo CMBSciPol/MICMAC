@@ -24,7 +24,7 @@ import jax_healpy as jhp
 import numpyro.distributions as dist
 from jax import random
 
-from .jax_tools import (
+from micmac.jax_tools import (
     alm_dot_product_JAX,
     alms_x_red_covariance_cell_JAX,
     frequency_alms_x_obj_red_covariance_cell_JAX,
@@ -33,8 +33,8 @@ from .jax_tools import (
     get_sqrt_reduced_matrix_from_matrix_jax,
     maps_x_red_covariance_cell_JAX,
 )
-from .mixingmatrix import MixingMatrix
-from .noisecovar import get_BtinvN, get_inv_BtinvNB, get_inv_BtinvNB_c_ell
+from micmac.mixingmatrix import MixingMatrix
+from micmac.noisecovar import get_BtinvN, get_inv_BtinvNB, get_inv_BtinvNB_c_ell
 
 
 class Sampling_functions(MixingMatrix):

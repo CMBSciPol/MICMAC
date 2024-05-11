@@ -28,18 +28,21 @@ import numpyro
 import toml
 from jax import config
 
-from .jax_Sampling_toolbox import (
+from micmac.jax_Sampling_toolbox import (
     Sampling_functions,
     multivariate_Metropolis_Hasting_step_numpyro_bounded,
 )
-from .jax_tools import (
+from micmac.jax_tools import (
     frequency_alms_x_obj_red_covariance_cell_JAX,
     get_reduced_matrix_from_c_ell_jax,
 )
-from .noisecovar import get_true_Cl_noise
-from .templates_spv import get_nodes_b, tree_spv_config
-from .tools import get_c_ells_from_red_covariance_matrix, get_reduced_matrix_from_c_ell
-from .utils import generate_power_spectra_CAMB
+from micmac.noisecovar import get_true_Cl_noise
+from micmac.templates_spv import get_nodes_b, tree_spv_config
+from micmac.tools import (
+    get_c_ells_from_red_covariance_matrix,
+    get_reduced_matrix_from_c_ell,
+)
+from micmac.utils import generate_power_spectra_CAMB
 
 config.update('jax_enable_x64', True)
 

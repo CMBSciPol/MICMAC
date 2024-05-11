@@ -28,7 +28,7 @@ import toml
 from jax import config
 from jax_tqdm import scan_tqdm
 
-from .jax_Sampling_toolbox import (
+from micmac.jax_Sampling_toolbox import (
     Sampling_functions,
     separate_single_MH_step_index_accelerated,
     separate_single_MH_step_index_v2b,
@@ -36,19 +36,20 @@ from .jax_Sampling_toolbox import (
     separate_single_MH_step_index_v4b_pixel,
     single_Metropolis_Hasting_step,
 )
-from .jax_tools import (
+from micmac.jax_tools import (
     get_cell_from_map_jax,
     get_reduced_matrix_from_c_ell_jax,
     get_sqrt_reduced_matrix_from_matrix_jax,
     maps_x_red_covariance_cell_JAX,
 )
-from .noisecovar import (
+from micmac.noisecovar import (
     get_BtinvN,
     get_inv_BtinvNB,
     get_inv_BtinvNB_c_ell,
     get_noise_covar_extended,
     get_Wd,
 )
+
 from .templates_spv import get_nodes_b, tree_spv_config
 from .tools import get_c_ells_from_red_covariance_matrix, get_reduced_matrix_from_c_ell
 from .utils import generate_power_spectra_CAMB, get_instr
