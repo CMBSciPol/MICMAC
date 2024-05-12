@@ -40,11 +40,13 @@ def get_reduced_matrix_from_c_ell_jax(c_ells_input):
 
     Parameters
     ----------
-    :param c_ells_input: array of shape (n_correlations, lmax)
+    c_ells_input: array of shape (n_correlations, lmax)
+        Input c_ells
 
     Returns
     -------
-    :return: reduced_matrix: array of shape (lmax+1-lmin, nstokes, nstokes)
+    reduced_matrix: array of shape (lmax+1-lmin, nstokes, nstokes)
+        Reduced format of the covariance matrix
     """
     c_ells_array = jnp.copy(c_ells_input)
     n_correlations = c_ells_array.shape[0]
@@ -109,11 +111,13 @@ def get_c_ells_from_red_covariance_matrix_JAX(red_cov_mat, nstokes=0):
 
     Parameters
     ----------
-    :param red_cov_mat: reduced spectra of shape (lmax+1-lmin, nstokes, nstokes)
+    red_cov_mat: array[float] of dimensions [lmax+1-lmin, nstokes, nstokes]
+        reduced spectra of the covariance matrix
 
     Returns
     -------
-    :return: c_ells: array of shape (n_correlations, lmax+1-lmin)
+    c_ells: array of dimensions [n_correlations, lmax+1-lmin]
+        power specturm of the input reduced covariance matrix
     """
 
     lmax = red_cov_mat.shape[0]
@@ -144,11 +148,13 @@ def get_sqrt_reduced_matrix_from_matrix_jax(red_matrix):
 
     Parameters
     ----------
-    :param red_matrix: reduced spectra of shape (lmax, nstokes, nstokes)
+    red_matrix: array of dimensions [lmax+1-lmin, nstokes, nstokes]
+        reduced spectra of the covariance matrix
 
     Returns
     -------
-    :return: reduced_sqrtm: array of shape (lmax, nstokes, nstokes)
+    reduced_sqrtm: array of dimensions [lmax+1-lmin, nstokes, nstokes]
+        matrix square root of the covariance matrix
     """
 
     red_matrix = jnp.array(red_matrix, dtype=jnp.float64)
@@ -170,13 +176,17 @@ def get_cell_from_map_jax(pixel_maps, lmax, n_iter=8):
 
     Parameters
     ----------
-    :param pixel_maps: array of shape (nstokes, n_pix)
-    :param lmax: maximum ell for the spectrum, int
-    :param n_iter: number of iterations for harmonic operations, int
+    pixel_maps: array of dimensions [nstokes, n_pix]
+        input maps
+    lmax: int
+        maximum ell for the spectrum
+    n_iter: int
+        number of iterations for harmonic operations
 
     Returns
     -------
-    :return: c_ells: array of shape (nstokes, lmax+1)
+    c_ells: array of dimensions[n_correlations,lmin:lmax+1]
+        power specturm of the input maps
     """
 
     # Wrapper for anafast, to prepare the pure callback of JAX
@@ -216,12 +226,16 @@ def get_bool_array_in_boundary(input_array, boundary):
 
     Parameters
     ----------
-    :param input_array: input array
-    :param boundary: array of dimension (2,dim(input_array)), representing the boundary
+    input_array: array
+        array to test
+    boundary: array of dimension [2,dim(input_array)]
+        represents the boundary
 
     Returns
     -------
-    :return: bool_array: boolean array of the same shape as the input array
+    bool_array: array[bool]
+        boolean array of the same shape as the input array,
+        with True values where the input array is within the boundary
     """
     return (input_array >= boundary[0]) & (input_array <= boundary[1])
 
@@ -233,13 +247,17 @@ def alm_dot_product_JAX(alm_1, alm_2, lmax):
 
     Parameters
     ----------
-    :param alm_1: input alms of shape (...,(lmax + 1) * (lmax // 2 + 1))
-    :param alm_2: input alms of shape (...,(lmax + 1) * (lmax // 2 + 1))
-    :param lmax: maximum ell for the spectrum, int
+    alm_1: array
+        input alms of shape (...,(lmax + 1) * (lmax // 2 + 1))
+    alm_2: array
+        input alms of shape (...,(lmax + 1) * (lmax // 2 + 1))
+    lmax: int
+        maximum ell for the power spectrum
 
     Returns
     -------
-    :return: dot_product: dot product of the two alms
+    dot_product: float
+        dot product of the two alms
     """
 
     real_part = alm_1.real * alm_2.real
@@ -263,12 +281,15 @@ def JAX_almxfl(alm, c_ell_x_, lmax):
 
     Parameters
     ----------
-    :param alm: input alms of shape ((lmax + 1) * (lmax // 2 + 1))
-    :param c_ell_x_: input spectra of shape (lmax+1)
+    alm:  array
+        input alms of shape ((lmax + 1) * (lmax // 2 + 1))
+    c_ell_x_: array of shape [lmax+1]
+        input power spectrum
 
     Returns
     -------
-    :return: alms_output: output alms of shape ((lmax + 1) * (lmax // 2 + 1))
+    alms_output: array
+        updated output alms of shape ((lmax + 1) * (lmax // 2 + 1))
     """
 
     # Identifying the m indices of a set of alms according to Healpy convention
@@ -297,15 +318,21 @@ def maps_x_red_covariance_cell_JAX(maps_input, red_matrix_sqrt, nside, lmin, n_i
 
     Parameters
     ----------
-    :param maps_input: input maps of shape (nstokes, n_pix)
-    :param red_matrix_sqrt: input reduced spectra of shape (lmax+1-lmin, nstokes, nstokes)
-    :param nside: nside of the input maps, int
-    :param lmin: minimum ell for the spectrum, int
-    :param n_iter: number of iterations for harmonic operations, int
+    maps_input: array[float] of shape [nstokes, n_pix]
+         input maps
+    red_matrix_sqrt: array[float] of shape [lmax+1-lmin, nstokes, nstokes]
+        input reduced spectra
+    nside: int
+        nside of the input maps
+    lmin: int
+        minimum ell for the spectrum
+    n_iter: int
+        number of iterations for harmonic operations
 
     Returns
     -------
-    :return: maps_output: input maps convolved with input spectra, dimensions (nstokes, n_pix)
+    maps_output: array[float] of shape [nstokes, n_pix]
+        input maps convolved with input spectra
     """
 
     # Getting scalar parameters from the input covariance
@@ -390,13 +417,17 @@ def alms_x_red_covariance_cell_JAX(alm_Stokes_input, red_matrix, lmin):
 
     Parameters
     ----------
-    :param alms_Stokes_input: input alms of shape (nstokes, (lmax + 1) * (lmax // 2 + 1)))
-    :param red_matrix: input reduced spectra of shape (lmax+1-lmin, nstokes, nstokes)
-    :param lmin: minimum ell for the spectrum, int
+    alms_Stokes_input: arary of shape [nstokes, (lmax + 1) * (lmax // 2 + 1)]
+        input alms
+    red_matrix: array of shape [lmax+1-lmin, nstokes, nstokes]
+        input reduced covariance matrix
+    lmin: int
+        minimum ell for the spectrum
 
     Returns
     -------
-    :return: maps_output: output maps of shape (nstokes, n_pix)
+    maps_output: array of shape [nstokes, n_pix]
+        output maps
     """
 
     # Getting scalar parameters from the input covariance
@@ -447,14 +478,19 @@ def frequency_alms_x_obj_red_covariance_cell_JAX(freq_alm_Stokes_input, freq_red
 
     Parameters
     ----------
-    :param freq_alm_Stokes_input: input alms of shape [frequency, nstokes, (lmax + 1) * (lmax // 2 + 1)))
-    :param red_matrix: input reduced spectra of shape [first_dim, frequency, lmax+1-lmin, nstokes, nstokes]
-    :param lmin: minimum ell for the spectrum, int
-    :param n_iter: number of iterations for harmonic operations, int
+    freq_alm_Stokes_input: array of shape [frequency, nstokes, (lmax + 1) * (lmax // 2 + 1))]
+         input alms per frequency
+    red_matrix: array of shape [first_dim, frequency, lmax+1-lmin, nstokes, nstokes]
+        input reduced covariance matrix
+    lmin: int
+        minimum ell for the power spectrum
+    n_iter: int
+        number of iterations for harmonic operations
 
     Returns
     -------
-    :return: maps_output: output maps of shape (nstokes, n_pix)
+    maps_output: array[float] of shape [nstokes, n_pix]
+        output maps
     """
 
     # Getting scalar parameters from the input covariance

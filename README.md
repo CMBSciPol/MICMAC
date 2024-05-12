@@ -43,3 +43,11 @@ The tutorials make use of an additional Python library not installed by default
 
 ## License
 This code is released under the GPLv3 license, which can be found in the [LICENSE](./LICENSE) file.
+
+## Contribution
+
+For any contribution sollicitation, please contact morshed at apc.in2p3.fr or rizzieri at apc.in2p3.fr
+
+Note: When using pre-commit, your changes will probably be reformatted, you must then re-add them and re-commit.
+
+## Citation

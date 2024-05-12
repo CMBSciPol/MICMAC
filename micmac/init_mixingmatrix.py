@@ -29,12 +29,6 @@ class InitMixingMatrix:
         temp_mbb=20.0,
     ):
         """
-        freqs (arr): all input freq bands
-        ncomp (int): all comps (also cmb)
-        pos_special_freqs (arr): indices of the freqs that are known
-        spv_nodes_b (arr): tree containing info to build spv_templates
-        nside (int): nside of the map
-        non_param_fgs_mixing_matrix (arr): only the fgs part of mixing matrix (A)
 
         The main goal of this class is create the initial parameter values,
         with init_params, which returns the params as a flattened array of values ordered
@@ -44,8 +38,28 @@ class InitMixingMatrix:
         * units are K_CMB.
         * you must be always coherent with the order of fgs:
           e.g. if you put first synchrotron and then dust in the mixing matrix (A)
-               that you pass to this class, then also in the pos_special_freqs, etc
+               that you pass to this class, then also in the pos_special_freqs, etc.
 
+        Parameters
+        ----------
+        freqs: array
+            all input freq bands
+        ncomp: int
+            all comps (also cmb)
+        pos_special_freqs: array
+            indices of the freqs that are known
+        spv_nodes_b: array
+            tree containing info to build spv_templates
+        nside: int
+            nside of the map
+        non_param_fgs_mixing_matrix: array
+            only the fgs part of mixing matrix (A)
+        beta_pl: float or array[float]
+            spectral idx of the synchrotron power law (pl), if given as array it is expected to correspond to different patches
+        beta_mbb: float or array[float]
+            spectral idx of the dust modified black body (mbb), if given as array it is expected to correspond to different patches
+        temp_mbb: float or array[float]
+            temperature of the dust  modified black body (mbb), if given as array it is expected to correspond to different patches
         """
         self.freqs = freqs  # all input freq bands
         self.ncomp = ncomp  # all comps (also cmb)
@@ -74,6 +88,11 @@ class InitMixingMatrix:
         Main function to initialize the mixing matrix B.
         * if non_param_mixing_matrix (A) is passed that is used to build the init values
         * otherwise the init values are build from beta_mbb, temp_mbb, beta_pl
+
+        Returns
+        -------
+        init_param_values: array
+            initial parameter values as a flattened array of values ordered as [B_f1_comp1_patch1, B_f1_comp1_patch2, ..., B_f2_comp1_patch1, ..., B_f1_comp2_patch1, ..., B_fn_comp2_patchn, ...]
         """
         # Get params of B pixel indep or with pixel dimension
         if isinstance(self.non_param_fgs_mixing_matrix, Iterable):
@@ -91,7 +110,13 @@ class InitMixingMatrix:
 
     def fgs_SEDs_from_spectral_params(self):
         """
-        In Mixing Matrix we consider first synch then dust
+        Get the SEDs of the foregrounds (fgs) from the spectral parameters.
+        Note: In Mixing Matrix we consider first synch then dust
+
+        Returns
+        -------
+        fgs_SEDs: array
+            SEDs of the fgs
         """
         fgs_SEDs_pl = self.powerlaw(self.known_freqs[0], self.freqs[:, None], self.beta_pl)
         fgs_SEDs_mbb = self.modifiedblackbody(self.known_freqs[1], self.freqs[:, None], self.temp_mbb, self.beta_mbb)
@@ -106,6 +131,11 @@ class InitMixingMatrix:
         in A only fgs entries are needed (no CMB column)
         in M only the fgs entries are needed (only A_f1)
         build M
+
+        Parameters
+        ----------
+        fgs_SEDs: array
+            SEDs of the fgs
         """
         # Get A_f1
         A_f1 = fgs_SEDs[[self.pos_special_freqs[0], self.pos_special_freqs[-1]], :, :]
@@ -118,6 +148,11 @@ class InitMixingMatrix:
         """
         Take one mixing matrix value on the full sky or one per pixel
         and returns one mixing matrix value per patch.
+
+        Parameters
+        ----------
+        params_: array
+            mixing matrix values
         """
         assert self.ncomp - 1 == 2
         # Modify to have a value per patch
@@ -161,7 +196,19 @@ class InitMixingMatrix:
 
     ### Functions to get the parametric scaling laws
     def K_rj2K_cmb(self, nu):
-        """Conversion factor from K_rj to K_CMB at frequency nu"""
+        """
+        Conversion factor from K_rj to K_CMB at frequency nu
+
+        Parameters
+        ----------
+        nu: float or array[float]
+            frequency in GHz
+
+        Returns
+        -------
+        K_rj2K_cmb: float or array[float]
+            conversion factor from K_rj to K_CMB at frequency nu
+        """
         Tcmb = Planck15.Tcmb(0).value
         # Conversion factor at frequency nu
         K_rj2K_cmb = np.expm1(h_over_k * nu / Tcmb) ** 2 / (np.exp(h_over_k * nu / Tcmb) * (h_over_k * nu / Tcmb) ** 2)
@@ -169,15 +216,42 @@ class InitMixingMatrix:
         return K_rj2K_cmb
 
     def K_rj2K_cmb_nu0(self, nu, nu0):
-        """Conversion factor at frequency nu divided by the one at frequency nu0"""
+        """
+        Conversion factor at frequency nu divided by the one at frequency nu0
+
+        Parameters
+        ----------
+        nu: float or array[float]
+            frequency in GHz
+        nu0: float or array[float]
+            reference frequency in GHz
+
+        Returns
+        -------
+        K_rj2K_cmb_nu0: float or array[float]
+            conversion factor at frequency nu divided by the one at frequency nu0
+        """
         K_rj2K_cmb_nu0 = self.K_rj2K_cmb(nu) / self.K_rj2K_cmb(nu0)
 
         return K_rj2K_cmb_nu0
 
     def powerlaw(self, nu0, nu, beta_pl):
-        """Scaling lawing law for pl (in K_CMB)
+        """
+        Scaling lawing law for synchrotron power law (pl) in K_CMB
 
-        beta_pl (arr): spectral idx of the pl
+        Parameters
+        ----------
+        nu0: float or array[float]
+            reference frequency in GHz
+        nu: float or array[float]
+            frequency in GHz
+        beta_pl: array
+            spectral idx of the pl
+
+        Returns
+        -------
+        analytic_expr: array[float]
+            scaling law for pl (in K_CMB)
         """
         analytic_expr = (nu / nu0) ** (beta_pl)
         # conversion to K_CMB units
@@ -186,10 +260,24 @@ class InitMixingMatrix:
         return analytic_expr
 
     def modifiedblackbody(self, nu0, nu, temp_mbb, beta_mbb):
-        """Scaling law for mbb (in K_CMB)
+        """
+        Scaling law for modified balck body (mbb) in K_CMB
 
-        temp_mbb (arr): temperature of the mbb
-        beta_mbb (arr): spectral idx of the mbb
+        Parameters
+        ----------
+        nu0: float or array[float]
+            reference frequency in GHz
+        nu: float or array[float]
+            frequency in GHz
+        temp_mbb: array
+            temperature of the mbb
+        beta_mbb: array
+            spectral idx of the mbb
+
+        Returns
+        -------
+        analytic_expr: array[float]
+            scaling law for dust mbb (in K_CMB)
         """
         analytic_expr = (
             (np.exp(nu0 / temp_mbb * h_over_k) - 1)

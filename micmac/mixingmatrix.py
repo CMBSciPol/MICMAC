@@ -35,7 +35,23 @@ from micmac.templates_spv import (
 
 
 def get_indexes_b(n_frequencies, n_components, spv_nodes_b):
-    """Return indexes of params for all frequencies and components"""
+    """
+    Return indexes of params for all frequencies and components
+
+    Parameters
+    ----------
+    n_frequencies: int
+        Number of frequencies
+    n_components: int
+        Number of components
+    spv_nodes_b: list
+        List of nodes for b containing info patches to build spv_templates
+
+    Returns
+    -------
+    indexes: array
+        Indexes of params for all frequencies and components
+    """
     indexes = np.zeros((n_frequencies, n_components), dtype=int)
     for freq in range(n_frequencies):
         for comp in range(n_components):
@@ -44,8 +60,22 @@ def get_indexes_b(n_frequencies, n_components, spv_nodes_b):
     return indexes.ravel(order='F').cumsum().reshape((n_frequencies, n_components), order='F')
 
 
-def get_indexes_patches(indexes_b, len_params, jax_use=False):
-    """Return indexes of params for all patches of a b"""
+def get_indexes_patches(indexes_b, len_params):
+    """
+    Return indexes of params for all patches of a b
+
+    Parameters
+    ----------
+    indexes_b: array
+        Indexes of params for all frequencies and components
+    len_params: int
+        Total number of free parameters (per frequency, component, patch)
+
+    Returns
+    -------
+    indexes_patches_list: list
+        List of indexes of params for all patches of a b
+    """
     indexes_patches_list = []
     for i in range(indexes_b.shape[0] - 1):
         indexes_patches_list.append(jnp.arange(indexes_b[i], indexes_b[i + 1]))
@@ -54,6 +84,19 @@ def get_indexes_patches(indexes_b, len_params, jax_use=False):
 
 
 def get_len_params(spv_nodes_b):
+    """
+    Return total number of free parameters (per frequency, component, patch)
+
+    Parameters
+    ----------
+    spv_nodes_b: list
+        List of nodes for b containing info patches to build spv_templates
+
+    Returns
+    -------
+    len_params: int
+        Total number of free parameters (per frequency, component, patch)
+    """
     len_params = 0
     for node in spv_nodes_b:
         len_params += get_n_patches_b(node)
@@ -64,13 +107,30 @@ class MixingMatrix:
     def __init__(self, frequency_array, n_components, spv_nodes_b, nside, params=None, pos_special_freqs=[0, -1]):
         """
         Note: units are K_CMB.
+
+        Parameters
+        ----------
+        frequency_array: array
+            Array of frequencies
+        n_components: int
+            Number of components
+        spv_nodes_b: list
+            List of nodes for b containing info patches to build spv_templates
+        nside: int
+            Healpix nside of the expected input maps
+        params: array (optional)
+            Initial values of the parameters of the mixing matrix, default None (then initialized with zeros)
+        pos_special_freqs: list (optional)
+            List of indexes of special frequencies (e.g. 0 for synchrotron, -1 for dust)
         """
         self.frequency_array = np.array(frequency_array, dtype=int)  # all input freq bands
         self.n_frequencies = np.size(frequency_array)  # all input freq bands
         self.n_components = n_components  # all comps (also cmb)
         self.spv_nodes_b = spv_nodes_b  # nodes for b containing info patches to build spv_templates
-        self.nside = nside
-        self.len_params = get_len_params(self.spv_nodes_b)
+        self.nside = nside  # nside of the expected input maps
+        self.len_params = get_len_params(
+            self.spv_nodes_b
+        )  # total number of free parameters (per frequency, component, patch)
         if params is None:
             params = np.zeros(self.len_params)
         else:
@@ -85,8 +145,10 @@ class MixingMatrix:
         self.indexes_frequency_array_no_special = np.delete(np.arange(self.n_frequencies), pos_special_freqs)
 
         ### checks on pos_special_freqs
+
         # check no duplicates
         assert len(pos_special_freqs) == len(set(pos_special_freqs))
+
         # make pos_special_freqs only positive
         for i, val_i in enumerate(pos_special_freqs):
             if val_i < 0:
@@ -111,20 +173,30 @@ class MixingMatrix:
             )
             self.max_len_patches_Bf = int(self.size_patches.max())
         else:
-            self.values_b = None
-            self.indexes_b = jnp.array([[0]])
-            self.size_patches = None
-            self.sum_size_patches_indexed_freq_comp = None
-            self.max_len_patches_Bf = None
+            self.values_b = None  # Values of the patch nsides corresponding to each node
+            self.indexes_b = jnp.array([[0]])  # Values of the first index of each B_f parameter in params
+            self.size_patches = None  # Number of patches for each node
+            self.sum_size_patches_indexed_freq_comp = None  # Cumulative sum of the number of patches for each node
+            self.max_len_patches_Bf = None  # Maximum number of patches for each node
 
     @property
     def n_pix(self):
-        """Number of pixels of one input freq map"""
+        """
+        Number of pixels of one input freq map
+        """
         return 12 * self.nside**2
 
     def update_params(self, new_params, jax_use=False):
         """
         Update values of the params in the mixing matrix.
+
+        Parameters
+        ----------
+        new_params: array
+            New values of the parameters of the mixing matrix
+
+        jax_use: bool (optional)
+            If True, use JAX to update it as JAX Array, default False
         """
         if jax_use:
             chx.assert_shape(new_params, (self.len_params,))
@@ -138,7 +210,22 @@ class MixingMatrix:
     def get_params_long_python(self, params, print_bool=False):
         # only python version
         """
-        From the params to all the entries of the mixing matrix
+        From the params (B_f) to all the entries of the mixing matrix
+        only with Python (numpy) without JAX
+
+        Parameters
+        ----------
+        params: array[float]
+            Flattened version of all free parameters of the mixing matrix per patch
+            expected to be stored as [B_f1_comp1_patch1, B_f1_comp1_patch2, ..., B_f2_comp1_patch1, ..., B_f1_comp2_patch1, ..., B_fn_comp2_patchn, ...]
+
+        print_bool: bool (optional)
+            If True, print the node names
+
+        Returns
+        -------
+        params_long: array[float] of dimensions [n_frequencies - n_components + 1, n_components - 1, n_pix]
+            Reshaped free parameters of the mixing matrix
         """
         n_unknown_freqs = self.n_frequencies - self.n_components + 1
         n_comp_fgs = self.n_components - 1
@@ -173,7 +260,7 @@ class MixingMatrix:
 
     #         Parameters
     #         ----------
-    #         params : compressed version of the parameters of the mixing matrix
+    #         params: compressed version of the parameters of the mixing matrix
 
     #         Returns
     #         -------
@@ -190,14 +277,17 @@ class MixingMatrix:
 
         Parameters
         ----------
-        idx_template : index of params of the corresponding template which will be saved
-        params : flatttened compressed array of the free params of the mixing matrix
+        idx_template: array[int]
+            index of params of the corresponding template which will be saved
+        params: array[float]
+            flatttened compressed array of the free params of the mixing matrix
+            expected to be stored as [B_f1_comp1_patch1, B_f1_comp1_patch2, ..., B_f2_comp1_patch1, ..., B_f1_comp2_patch1, ..., B_fn_comp2_patchn, ...]
 
         Returns
         -------
-        Full parameters of the mixing matrix and some templates
-
-
+        idx_template: array[int]
+            Full parameters of the mixing matrix re-flattened as [(n_frequencies - n_components + 1)*(n_components - 1), n_pix]
+            stacked with one patch distribution template indicated by idx_template
         """
         n_unknown_freqs = self.n_frequencies - self.n_components + 1
         n_comp_fgs = self.n_components - 1
@@ -239,7 +329,7 @@ class MixingMatrix:
     #         Parameters
     #         ----------
     #         idx_template
-    #         params : compressed version of the parameters of the mixing matrix
+    #         params: compressed version of the parameters of the mixing matrix
 
     #         Returns
     #         -------
@@ -255,6 +345,12 @@ class MixingMatrix:
         """
         Retrieve all templates maps whose values correspond to the indices of params,
         and indexed per frequency and component
+
+        Returns
+        -------
+        all_templates: array[int] of dimensions [n_frequencies - n_components + 1, n_components - 1, 12*nside**2]
+            All templates indexes maps whose values correspond to the indices of params
+            for all the patches distributions per frequency and component
         """
         n_unknown_freqs = self.n_frequencies - self.n_components + 1
         n_comp_fgs = self.n_components - 1
@@ -282,6 +378,17 @@ class MixingMatrix:
         """
         Retrieve all templates maps whose values correspond to the indices of params,
         and indexed per frequency and component
+
+        Parameters
+        ----------
+        nside_patch: int
+            Healpix nside of one patch distribution
+
+        Returns
+        -------
+        template: array[int] of dimensions [12*nside_patch**2]
+            One template indexes map whose values correspond to the indices of params
+            for one patch distribution according to Healpix pixelization
         """
         return create_one_template_from_bdefaultvalue(
             jnp.expand_dims(nside_patch, axis=0),
@@ -293,7 +400,19 @@ class MixingMatrix:
         )
 
     def get_params_long(self, jax_use=False):
-        """From the params to all the entries of the mixing matrix"""
+        """
+        From the params to all the entries of the mixing matrix
+
+        Parameters
+        ----------
+        jax_use: bool (optional)
+            If True, params are expected as JAX Array, default False
+
+        Returns
+        -------
+        params_long: array[float] of dimensions [n_frequencies - n_components + 1, n_components - 1, n_pix]
+            Reshaped free parameters of the mixing matrix
+        """
 
         if jax_use:
             templates_to_fill = self.get_all_templates()
@@ -305,7 +424,17 @@ class MixingMatrix:
 
     def get_B_fgs(self, jax_use=False):
         """
-        fgs part of the mixing matrix.
+        Foreground part of the mixing matrix.
+
+        Parameters
+        ----------
+        jax_use: bool (optional)
+            If True, params are expected as JAX Array, default False
+
+        Returns
+        -------
+        B_fgs: array[float] of dimensions [n_frequencies, n_components - 1, n_pix]
+            Foreground part of the mixing matrix (including special frequencies)
         """
         ncomp_fgs = self.n_components - 1
         params_long = self.get_params_long(jax_use=jax_use)
@@ -341,6 +470,16 @@ class MixingMatrix:
     def get_B_cmb(self, jax_use=False):
         """
         CMB column of the mixing matrix.
+
+        Parameters
+        ----------
+        jax_use: bool (optional)
+            If True, returned as JAX Array, default False
+
+        Returns
+        -------
+        B_cmb: array[float] of dimensions [n_frequencies, 1, n_pix]
+            CMB column of the mixing matrix, filled with ones
         """
         if jax_use:
             B_cmb = jnp.ones((self.n_frequencies, self.n_pix))
@@ -354,7 +493,17 @@ class MixingMatrix:
     def get_B(self, jax_use=False):
         """
         Full mixing matrix, (n_frequencies*n_components).
-        cmb is given as the first component.
+        CMB is given as the first component.
+
+        Parameters
+        ----------
+        jax_use: bool (optional)
+            If True, returned as JAX Array, default False
+
+        Returns
+        -------
+        B_mat: array[float] of dimensions [n_frequencies, n_components, n_pix]
+            Full mixing matrix
         """
         if jax_use:
             if self.n_components != 1:
@@ -369,7 +518,20 @@ class MixingMatrix:
 
     def get_B_fgs_from_params(self, params, jax_use=False):
         """
-        fgs part of the mixing matrix.
+        Foreground part of the mixing matrix obtained from the parameters.
+
+        Parameters
+        ----------
+        params: array[float]
+            Flattened version of all free parameters of the mixing matrix per patch
+            expected to be stored as [B_f1_comp1_patch1, B_f1_comp1_patch2, ..., B_f2_comp1_patch1, ..., B_f1_comp2_patch1, ..., B_fn_comp2_patchn, ...]
+        jax_use: bool (optional)
+            If True, params are expected as JAX Array and B_fgs will be returned as JAX Array, default False
+
+        Returns
+        -------
+        B_fgs: array[float] of dimensions [n_frequencies, n_components - 1, n_pix]
+            Foreground part of the mixing matrix (including special frequencies)
         """
         ncomp_fgs = self.n_components - 1
 
@@ -408,8 +570,21 @@ class MixingMatrix:
 
     def get_B_from_params(self, params, jax_use=False):
         """
-        Full mixing matrix, (n_frequencies*n_components).
-        cmb is given as the first component.
+        Full mixing matrix, (n_frequencies*n_components), obtained from the parameters.
+        CMB is given as the first component.
+
+        Parameters
+        ----------
+        params: array[float]
+            Flattened version of all free parameters of the mixing matrix per patch
+            expected to be stored as [B_f1_comp1_patch1, B_f1_comp1_patch2, ..., B_f2_comp1_patch1, ..., B_f1_comp2_patch1, ..., B_fn_comp2_patchn, ...]
+        jax_use: bool (optional)
+            If True, params are expected as JAX Array and B_mat will be returned as JAX Array, default False
+
+        Returns
+        -------
+        B_mat: array[float] of dimensions [n_frequencies, n_components, n_pix]
+            Full mixing matrix
         """
         if jax_use:
             if self.n_components != 1:
@@ -424,7 +599,26 @@ class MixingMatrix:
 
     def get_template_B_fgs_from_params(self, nside_patch, params, jax_use=False):
         """
-        fgs part of the mixing matrix.
+        Foreground (fgs) part of the mixing matrix and one patch distribution template
+        obtained from nside_patch expected lower than nside of the input maps.
+
+        Parameters
+        ----------
+        nside_patch: int
+            Healpix nside of one patch distribution, expected lower than nside of the input maps
+        params: array[float]
+            Flattened version of all free parameters of the mixing matrix per patch
+            expected to be stored as [B_f1_comp1_patch1, B_f1_comp1_patch2, ..., B_f2_comp1_patch1, ..., B_f1_comp2_patch1, ..., B_fn_comp2_patchn, ...]
+        jax_use: bool (optional)
+            If True, params are expected as JAX Array and the results will be returned as JAX Array, default False
+
+        Returns
+        -------
+        B_fgs: array[float] of dimensions [n_frequencies, n_components - 1, n_pix]
+            Foreground part of the mixing matrix (including special frequencies)
+        template: array[int] of dimensions [12*nside_patch**2]
+            One template indexes map whose values correspond to the indices of params
+            for one patch distribution according to Healpix pixelization
         """
         ncomp_fgs = self.n_components - 1
 
@@ -444,6 +638,8 @@ class MixingMatrix:
             # freq_idx_template, comp_idx_template = jnp.argwhere(self.indexes_b==idx_template)
 
             return B_fgs, self.get_one_template(nside_patch)
+
+        assert nside_patch <= self.nside
 
         if ncomp_fgs != 0:
             assert params_long.shape == ((self.n_frequencies - len(self.pos_special_freqs)), ncomp_fgs, self.n_pix)
@@ -466,8 +662,26 @@ class MixingMatrix:
 
     def get_patch_B_from_params(self, nside_patch, params, jax_use=False):
         """
-        Full mixing matrix, (n_frequencies*n_components).
+        Full mixing matrix, (n_frequencies*n_components) from params and one patch distribution template.
         cmb is given as the first component.
+
+        Parameters
+        ----------
+        nside_patch: int
+            Healpix nside of one patch distribution, expected lower than nside of the input maps
+        params: array[float]
+            Flattened version of all free parameters of the mixing matrix per patch
+            expected to be stored as [B_f1_comp1_patch1, B_f1_comp1_patch2, ..., B_f2_comp1_patch1, ..., B_f1_comp2_patch1, ..., B_fn_comp2_patchn, ...]
+        jax_use: bool (optional)
+            If True, params are expected as JAX Array and the results will be returned as JAX Array, default False
+
+        Returns
+        -------
+        B_mat: array[float] of dimensions [n_frequencies, n_components, n_pix]
+            Full mixing matrix
+        template: array[int] of dimensions [12*nside_patch**2]
+            One template indexes map whose values correspond to the indices of params
+            for one patch distribution according to Healpix pixelization
         """
         if jax_use:
             B_fgs, template = self.get_template_B_fgs_from_params(nside_patch, params, jax_use=jax_use)
@@ -480,6 +694,8 @@ class MixingMatrix:
     def get_params_db(self, jax_use=False):
         # TODO: adjust with spv
         """
+        STATUS: Not used currently, to be adjusted with spv
+
         Derivatives of the part of the Mixing Matrix w params
         (wrt to each entry of first comp and then each entry of second comp)
         Note: w/o pixel dimension
@@ -508,6 +724,8 @@ class MixingMatrix:
 
     def get_B_db(self, jax_use=False):
         """
+        STATUS: Not used currently, to be adjusted with spv
+
         List of derivatives of the Mixing Matrix
         (wrt to each entry of first comp and then each entry of second comp)
         Note: w/o pixel dimension
@@ -527,5 +745,4 @@ class MixingMatrix:
             # add the zeros of CMB
             B_db_i = np.column_stack((np.zeros(self.n_frequencies), B_db_i))
             B_db.append(B_db_i)
-
         return B_db

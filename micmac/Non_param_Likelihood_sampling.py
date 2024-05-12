@@ -17,7 +17,6 @@
 import time
 
 import chex as chx
-import fgbuster
 import healpy as hp
 import jax
 import jax.lax as jlx
@@ -25,6 +24,7 @@ import jax.numpy as jnp
 import jax.scipy as jsp
 import numpy as np
 import toml
+from fgbuster import get_instrument
 from jax import config
 from jax_tqdm import scan_tqdm
 
@@ -72,7 +72,7 @@ class MICMAC_Sampler(Sampling_functions):
         n_iter=8,
         limit_iter_cg=200,
         limit_iter_cg_eta=200,
-        tolerance_CG=1e-10,
+        tolerance_CG=1e-8,
         atol_CG=1e-8,
         mask=None,
         save_CMB_chain_maps=False,
@@ -112,52 +112,98 @@ class MICMAC_Sampler(Sampling_functions):
 
         Parameters
         ----------
-        nside : int
-            nside of the input frequency maps,
-        lmax : maximum multipole for the spherical harmonics transforms and harmonic domain objects, int
-        nstokes : number of Stokes parameters, int
-        frequency_array : array of frequencies, in GHz
-        freq_inverse_noise : array of inverse noise for each frequency, in uK^-2
-        pos_special_freqs : indexes of the special frequencies in the frequency array respectively for synchrotron and dust, default is [0,-1] for first and last frequencies
-        freq_noise_c_ell : optional, noise power spectra for each frequency, in uK^2, dimensions [frequencies, frequencies, lmax+1-lmin] or [frequencies, frequencies, lmax] (in which case it will be cut to lmax+1-lmin)
-        n_components : number of components for the mixing matrix, int
-        lmin : minimum multipole for the spherical harmonics transforms and harmonic domain objects, int
-        n_iter : number of iterations the spherical harmonics transforms (for map2alm transformations), int
-        limit_iter_cg : maximum number of iterations for the conjugate gradient for the CMB map sampling, int
-        limit_iter_cg_eta : maximum number of iterations for the conjugate gradient for eta maps sampling, int
-        tolerance_CG : tolerance for the conjugate gradient, float
-        atol_CG : absolute tolerance for the conjugate gradient, float
-        mask : optional, mask to use in the sampling, dimensions [nstokes, n_pix] ; if not given, no mask is used
+        nside: int
+            nside of the input frequency maps
+        lmax: int
+            maximum multipole for the spherical harmonics transforms and harmonic domain objects,
+        nstokes: int
+            number of Stokes parameters
+        frequency_array: array[float]
+            array of frequencies, in GHz
+        freq_inverse_noise: array[float]
+            array of inverse noise for each frequency, in uK^-2
+        pos_special_freqs: list[int] (optional)
+            indexes of the special frequencies in the frequency array respectively for synchrotron and dust, default is [0,-1] for first and last frequencies
+        freq_noise_c_ell: array[float] of dimensions [frequencies, frequencies, lmax+1-lmin] or [frequencies, frequencies, lmax] (in which case it will be cut to lmax+1-lmin)
+            optional, noise power spectra for each frequency, in uK^2, dimensions
+        n_components: int (optional)
+            number of components for the mixing matrix, default 3
+        lmin: int (optional)
+            minimum multipole for the spherical harmonics transforms and harmonic domain objects, default 2
+        n_iter: int (optional)
+            number of iterations the spherical harmonics transforms (for map2alm transformations), default 8
+        limit_iter_cg: int (optional)
+            maximum number of iterations for the conjugate gradient for the CMB map sampling, default 200
+        limit_iter_cg_eta: int (optional)
+            maximum number of iterations for the conjugate gradient for eta maps sampling, default 200
+        tolerance_CG: float (optional)
+            tolerance for the conjugate gradient, default 1e-8
+        atol_CG: float (optional)
+            absolute tolerance for the conjugate gradient, default 1e-8
+        mask: None or array[float] of dimensions [n_pix] (optional)
+            mask to use in the sampling  ; if not given, no mask is used, default None
+            Note: the mask WILL NOT be applied to the input maps, it will be only used for the propagated noise covariance
 
-        save_CMB_chain_maps : optional, save the CMB chain maps, bool
-        save_eta_chain_maps : optional, save the eta chain maps, bool
+        save_CMB_chain_maps: bool (optional)
+            save the CMB chain maps, default False
+        save_eta_chain_maps: bool (optional)
+            save the eta chain maps, default False
 
-        sample_r_Metropolis : sample r with Metropolis-Hastings instead of the full power spectrum being sampled, bool
-        sample_C_inv_Wishart : sample C_inv with Wishart distribution instead of simply r being sampled, bool
+        sample_r_Metropolis: bool (optional)
+            sample r with Metropolis-Hastings instead of the full power spectrum being sampled, default True
+            Either sample_r_Metropolis or sample_C_inv_Wishart should True but not both
+        sample_C_inv_Wishart: bool (optional)
+            sample C_inv with Wishart distribution instead of simply r being sampled, default False
+            Either sample_r_Metropolis or sample_C_inv_Wishart should True but not both
 
-        perturbation_eta_covariance : approach to compute difference between CMB noise component for eta log proba instead of repeating the CG for each B_f sampling, bool
-        simultaneous_accept_rate : use the simultaneous accept rate for the patches of the B_f sampling, bool
+        sample_r_from_BB: bool (optional)
+            sample r from the BB power spectrum, only relevant if sample_r_Metropolis is True, default False
+        limit_r_value: bool (optional)
+            limit r value being sampled with the minmum r value given by min_r_value, default False
+        min_r_value: float (optional)
+            minimum r value accepted for r sample if limit_r_value is True, default 0
 
-        biased_version : use the biased version of the likelihood, so no computation of the correction term, bool
-        classical_Gibbs : sampling only for s_c and the CMB covariance, and neither B_f or eta, bool
+        perturbation_eta_covariance: bool (optional)
+            approach to compute difference between CMB noise component for eta log proba instead of repeating the CG for each B_f sampling, default False
+        simultaneous_accept_rate: bool (optional)
+            use the simultaneous accept rate for the patches of the B_f sampling, default False
 
-        use_binning : use binning for the sampling of inverse Wishart CMB covariance, bool
-        bin_ell_distribution : binning distribution for the sampling of inverse Wishart CMB covariance, array of integers
-        acceptance_posdef : accept only positive definite matrices C sampling, bool
+        biased_version: bool (optional)
+            use the biased version of the likelihood, so no computation of the correction term, default False
+        classical_Gibbs: bool (optional)
+            sampling only for s_c and the CMB covariance, and neither B_f or eta, default False
 
-        r_true : true value of r (only used to compute input CMB maps, not actually used in the sampling), float
-        step_size_r : step size for the Metropolis-Hastings sampling of r, float
-        covariance_B_f : covariance for the Metropolis-Hastings sampling of B_f, given by a matrix of dimensions [(n_frequencies-len(pos_special_freqs))*(n_components-1), (n_frequencies-len(pos_special_freqs))*(n_components-1)] ; will be repeated if multiresoltion case
-        indexes_free_Bf : indexes of the free B_f parameters to actually sample and leave the rest of the indices fixed, array of integers, default False to sample all B_f
+        use_binning: bool (optional)
+            use binning for the sampling of inverse Wishart CMB covariance, if False bin_ell_distribution will not be used, default False
+        bin_ell_distribution: array[int] (optional)
+            binning distribution for the sampling of inverse Wishart CMB covariance, default None
+        acceptance_posdef: accept only positive definite matrices C sampling, bool
 
-        number_iterations_sampling : maximum number of iterations for the sampling, int
-        number_iterations_done : number of iterations already accomplished, in case the chain is resuming from a previous run, int
+        r_true: float (optional)
+            true value of r (only used to compute input CMB maps, not actually used in the sampling), default 0
+        step_size_r: float (optional)
+            step size for the Metropolis-Hastings sampling of r, default 1e-4
+        covariance_B_f: None or array[float] of dimensions [(n_frequencies-len(pos_special_freqs))*(n_components-1), (n_frequencies-len(pos_special_freqs))*(n_components-1)] (optional)
+            covariance for the Metropolis-Hastings sampling of B_f ; will be repeated if multiresoltion case, default None
+        indexes_free_Bf: bool or array[int] (optional)
+            indexes of the free B_f parameters to actually sample and leave the rest of the indices fixed, array of integers, default False to sample all B_f
 
-        seed : seed for the JAX PRNG random number generator to start the chain, int
-        disable_chex : disable chex tests (to improve speed), bool
+        number_iterations_sampling: int (optional)
+            maximum number of iterations for the sampling, default 100
+        number_iterations_done: int (optional)
+            number of iterations already accomplished, in case the chain is resuming from a previous run, usually set by exterior routines, default 0
 
-        instrument_name : optional, name of the instrument, str
-        spv_nodes_b : tree for the spatial variability, to generate from a yaml file, list of dictionaries
+        seed: int or array[jnp.uint32] (optional)
+            seed for the JAX PRNG random number generator to start the chain or array of a previously computed seed, default 0
+        disable_chex: bool (optional)
+            disable chex tests (to improve speed)
+
+        instrument_name: str (optional)
+            name of the instrument as expected by cmbdb or given as 'customized_instrument' if redefined by user, default 'SO_SAT'
+            see https://github.com/dpole/cmbdb/blob/master/cmbdb/experiments.yaml
+        spv_nodes_b: list[dictionaries] (optional)
+            tree for the spatial variability, to generate from a yaml file, default []
+            in principle set up by get_nodes_b
         """
 
         ## Give the parameters to the parent class
@@ -204,9 +250,9 @@ class MICMAC_Sampler(Sampling_functions):
         assert ((sample_r_Metropolis and sample_C_inv_Wishart) == False) and (
             (sample_r_Metropolis or not (sample_C_inv_Wishart)) or (not (sample_r_Metropolis) or sample_C_inv_Wishart)
         )
-        self.sample_r_Metropolis = bool(sample_r_Metropolis)
+        self.sample_r_Metropolis = bool(sample_r_Metropolis)  # To sample r with Metropolis-Hastings
         assert (sample_r_from_BB and sample_r_Metropolis) or not (sample_r_from_BB)
-        self.sample_r_from_BB = bool(sample_r_from_BB)
+        self.sample_r_from_BB = bool(sample_r_from_BB)  # To sample r from the BB power spectrum
         self.sample_C_inv_Wishart = bool(sample_C_inv_Wishart)
         self.use_binning = bool(use_binning)  # To use binning for the sampling of inverse Wishart CMB covariance
         self.acceptance_posdef = bool(acceptance_posdef)  # To accept only positive definite matrices for C sampling
@@ -323,16 +369,23 @@ class MICMAC_Sampler(Sampling_functions):
 
         Parameters
         ----------
-        freq_maps_fgs : input frequency foregrounds maps, dimensions [n_frequencies,nstokes,n_pix]
-        return_only_freq_maps : optional, return only the full frequency maps, bool
-        return_only_maps : optional, return only the full frequency and CMB maps alone, bool
+        freq_maps_fgs: array[float] of dimensions [n_frequencies,nstokes,n_pix]
+            input frequency foregrounds maps
+        return_only_freq_maps: bool (optional)
+            return only the full frequency maps, bool
+        return_only_maps: bool (optional)
+            return only the full frequency and CMB maps alone, bool
 
         Returns
         -------
-        input_freq_maps : input frequency maps, dimensions [n_frequencies,nstokes,n_pix]
-        input_cmb_maps : input CMB maps, dimensions [nstokes,n_pix]
-        theoretical_red_cov_r0_total : theoretical reduced covariance matrix for the CMB scalar modes
-        theoretical_red_cov_r1_tensor : theoretical reduced covariance matrix for the CMB tensor modes
+        input_freq_maps: array[float] of dimensions [n_frequencies,nstokes,n_pix]
+            input frequency maps
+        input_cmb_maps: array[float] of dimensions [nstokes,n_pix]
+            input CMB maps
+        theoretical_red_cov_r0_total: array[float] of dimensions [lmax+1-lmin,nstokes,nstokes]
+            theoretical reduced covariance matrix for the CMB scalar modes
+        theoretical_red_cov_r1_tensor: array[float] of dimensions [lmax+1-lmin,nstokes,nstokes]
+            theoretical reduced covariance matrix for the CMB tensor modes
         """
         indices_polar = np.array([1, 2, 4])
 
@@ -361,7 +414,19 @@ class MICMAC_Sampler(Sampling_functions):
 
     def update_variable(self, all_samples, new_samples_to_add):
         """
-        Update the samples with new samples to add
+        Update the samples with new samples to add by stacking them
+
+        Parameters
+        ----------
+        all_samples: array[float] of dimensions [n_samples,n_pix]
+            previous samples to update
+        new_samples_to_add: array[float] of dimensions [n_samples,n_pix]
+            new samples to add
+
+        Returns
+        -------
+        all_samples: array[float] of dimensions [n_samples+n_samples,n_pix]
+            updated samples
         """
         if jnp.size(all_samples) == 0:
             return new_samples_to_add
@@ -373,10 +438,17 @@ class MICMAC_Sampler(Sampling_functions):
     def update_samples(self, all_samples):
         """
         Update the samples with new samples to add
+
+        Parameters
+        ----------
+        all_samples: dictionary
+            dictionary of all the samples to update
         """
+        # Update the eta samples if they were saved and/or if they were sampled
         if self.save_eta_chain_maps and not (self.classical_Gibbs):
             self.all_samples_eta = self.update_variable(self.all_samples_eta, all_samples['eta_maps'])
 
+        # Update the CMB chain maps if they were saved
         if self.save_CMB_chain_maps:
             self.all_samples_wiener_filter_maps = self.update_variable(
                 self.all_samples_wiener_filter_maps, all_samples['wiener_filter_term']
@@ -385,11 +457,13 @@ class MICMAC_Sampler(Sampling_functions):
                 self.all_samples_fluctuation_maps, all_samples['fluctuation_maps']
             )
 
+        # Update the s_c spectra if they were saved
         if self.save_s_c_spectra:
             self.all_samples_s_c_spectra = self.update_variable(
                 self.all_samples_s_c_spectra, all_samples['s_c_spectra']
             )
 
+        # Update the CMB covariance if they were sampled
         if self.sample_C_inv_Wishart:
             if all_samples['red_cov_matrix_sample'].shape[1] == self.lmax + 1 - self.lmin:
                 all_samples_CMB_c_ell = jnp.array(
@@ -401,11 +475,13 @@ class MICMAC_Sampler(Sampling_functions):
             else:
                 all_samples_CMB_c_ell = all_samples['red_cov_matrix_sample']
             self.all_samples_CMB_c_ell = self.update_variable(self.all_samples_CMB_c_ell, all_samples_CMB_c_ell)
+        # Update the r samples if they were sampled
         if self.sample_r_Metropolis:
             if len(all_samples['r_sample'].shape) != len(self.all_samples_r.shape):
                 all_samples['r_sample'] = all_samples['r_sample'].squeeze()
             self.all_samples_r = self.update_variable(self.all_samples_r, all_samples['r_sample'])
 
+        # Update the mixing matrix B_f parameters if they were sampled
         if self.save_all_B_f_params:
             self.all_params_mixing_matrix_samples = self.update_variable(
                 self.all_params_mixing_matrix_samples, all_samples['params_mixing_matrix_sample']
@@ -461,19 +537,18 @@ class MICMAC_Sampler(Sampling_functions):
         c_ell_approx,
         CMB_c_ell,
         init_params_mixing_matrix,
-        initial_guess_r=0,
+        initial_guess_r=1e-8,
         initial_wiener_filter_term=jnp.empty(0),
         initial_fluctuation_maps=jnp.empty(0),
         theoretical_r0_total=jnp.empty(0),
         theoretical_r1_tensor=jnp.empty(0),
-        suppress_low_modes_input_freq_maps=False,
     ):
         r"""
-        Perform sampling steps with :
-            1. The sampling of \eta by computing \eta =  x + C_approx^(1/2) N_c^{-1/2} y
-            2. A CG for the Wiener filter (WF) and fluctuation variables s_c : (s_c - s_{c,WF})^t (C^{-1} + N_c^{-1}) (s_c - s_{c,WF})
+        Perform sampling steps with:
+            1. The sampling of \eta by computing \eta =  x + C_approx^(1/2) N_c^{-1/2} y ; where x is band-limited
+            2. A CG for the Wiener filter (WF) and fluctuation variables s_c: (s_c - s_{c,WF})^t (C^{-1} + N_c^{-1}) (s_c - s_{c,WF})
             3. The c_ell sampling, either by parametrizing it by r or by sampling an inverse Wishart distribution
-            4. Mixing matrix B_f sampling with : -(d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c) + \eta^t (Id + C_{approx}^{1/2} N_c^{-1} C_{approx}^{1/2}) \eta
+            4. Mixing matrix B_f sampling with: -(d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c) + \eta^t (Id + C_{approx}^{1/2} N_c^{-1} C_{approx}^{1/2}) \eta
 
         The results of the chain will be stored in the class attributes, depending if the save options are put to True or False:
             - self.all_samples_eta (if self.save_eta_chain_maps is True)
@@ -488,18 +563,24 @@ class MICMAC_Sampler(Sampling_functions):
 
         Parameters
         ----------
-        input_freq_maps : input frequency maps, dimensions [frequencies, nstokes, n_pix]
-        c_ell_approx : approximate CMB power spectra for the correction term, dimensions [number_correlations, lmax+1]
-        CMB_c_ell : CMB power spectra, dimensions [number_correlations, lmax+1]
-        init_params_mixing_matrix : initial parameters for the mixing matrix, dimensions [len_params]
-        initial_guess_r : optional, initial guess for r, float
-        initial_wiener_filter_term : optional, initial guess for the Wiener filter term, dimensions [nstokes, n_pix]
-        initial_fluctuation_maps : optional, initial guess for the fluctuation maps, dimensions [nstokes, n_pix]
-        theoretical_r0_total : optional, theoretical reduced covariance matrix for the CMB scalar modes, dimensions [number_correlations, lmax+1-lmin]
-        theoretical_r1_tensor : optional, theoretical reduced covariance matrix for the CMB tensor modes, dimensions [number_correlations, lmax+1-lmin]
-        suppress_low_modes_input_freq_maps : optional, suppress low modes in the input frequency maps, bool
-
-
+        input_freq_maps: array[float] of dimensions [frequencies, nstokes, n_pix]
+            input frequency maps
+        c_ell_approx: array[float] of dimensions [number_correlations, lmax+1]
+            approximate CMB power spectra for the latent parameter \eta defining the ad-hoc correction term
+        CMB_c_ell: array[float] of dimensions [number_correlations, lmax+1]
+            CMB power spectra, where number_correlations is the number of auto- and cross-correlations relevant considering the number of Stokes parameters
+        init_params_mixing_matrix: array[float] of dimensions [len_params]
+            initial parameters for the mixing matrix elements B_f; expected to be given flattened as [B_f_s1, B_f_s2, ..., B_f_sn, B_f_d1, ..., B_f_dn]
+        initial_guess_r: float (optional)
+            initial guess for r, default 1e-8
+        initial_wiener_filter_term: array[float] of dimensions [nstokes, n_pix] or empty (optional)
+            initial guess for the Wiener filter term, default empty array
+        initial_fluctuation_maps: array[float] of dimensions [nstokes, n_pix] or empty (optional)
+            initial guess for the fluctuation maps, default empty array
+        theoretical_r0_total: array[float] of dimensions [number_correlations, lmax+1-lmin] (optional)
+            theoretical reduced covariance matrix for the CMB scalar modes, default empty array
+        theoretical_r1_tensor: array[float] of dimensions [number_correlations, lmax+1-lmin] (optional)
+            theoretical reduced covariance matrix for the CMB tensor modes, default empty array
         """
 
         # Disabling all chex checks to speed up the code
@@ -522,7 +603,6 @@ class MICMAC_Sampler(Sampling_functions):
         else:
             assert len(initial_wiener_filter_term.shape) == 2
             assert initial_wiener_filter_term.shape == (self.nstokes, self.n_pix)
-            # assert initial_wiener_filter_term.shape[1] == self.n_pix
             wiener_filter_term = initial_wiener_filter_term
 
         ## Testing the initial fluctuation term, or initialize it properly
@@ -531,7 +611,6 @@ class MICMAC_Sampler(Sampling_functions):
         else:
             assert len(initial_fluctuation_maps.shape) == 2
             assert initial_fluctuation_maps.shape == (self.nstokes, self.n_pix)
-            # assert initial_fluctuation_maps.shape[1] == self.n_pix
             fluctuation_maps = initial_fluctuation_maps
 
         ## Testing the initial spectra given in case the sampling is done with r
@@ -575,17 +654,9 @@ class MICMAC_Sampler(Sampling_functions):
         # Preparing for the full Gibbs sampling
         len_pos_special_freqs = len(self.pos_special_freqs)
 
-        # input_freq_maps_ = jnp.array(input_freq_maps)
-        # if suppress_low_modes_input_freq_maps:
-        #     print("Suppressing out of band [lmin,lmax] modes in the input frequency maps !", flush=True)
-        #     def fmap(index):
-        #         return self.get_band_limited_maps(input_freq_maps_[index])
-        #     input_freq_maps = jax.vmap(fmap)(jnp.arange(self.n_frequencies))
-        # del input_freq_maps_
-
         if self.use_binning:
             print('Using binning for the sampling of CMB covariance !!!', flush=True)
-            print('Binning distribution :', self.bin_ell_distribution, flush=True)
+            print('Binning distribution:', self.bin_ell_distribution, flush=True)
 
         ## Initial guesses preparation
 
@@ -642,7 +713,7 @@ class MICMAC_Sampler(Sampling_functions):
                 ## MH step function to sample the mixing matrix free parameters with patches simultaneous computed accept rate
                 print('Using simultaneous accept rate version of mixing matrix sampling !!!', flush=True)
                 print(
-                    '---- ATTENTION : This assumes all patches are distributed in the same way for all parameters !',
+                    '---- ATTENTION: This assumes all patches are distributed in the same way for all parameters !',
                     flush=True,
                 )
                 jitted_Bf_func_sampling = jax.jit(
@@ -776,13 +847,17 @@ class MICMAC_Sampler(Sampling_functions):
 
             Parameters
             ----------
-            :param carry: dictionnary containing the following variables at 1 iteration depending on the option chosen : WF maps, fluctuation maps, CMB covariance, r samples, B_f samples, PRNGKey
-            :param iteration: current iteration number
+            carry: dictionary
+                dictionary containing the following variables at 1 iteration depending on the option chosen: WF maps, fluctuation maps, CMB covariance, r samples, B_f samples, PRNGKey
+            iteration: int
+                current iteration number
 
             Returns
             -------
-            :return new_carry: dictionnary containing the following variables at the next iteration : WF maps, fluctuation maps, CMB covariance, r sample, B_f sample, PRNGKey
-            :return all_samples: dictionnary containing the variables to save as chains, so depending on the options chosen: eta maps, WF maps, fluctuation maps, CMB covariance, r sample, B_f sample
+            new_carry: dictionary
+                dictionary containing the following variables at the next iteration: WF maps, fluctuation maps, CMB covariance, r sample, B_f sample, PRNGKey
+            all_samples: dictionary
+                dictionary containing the variables to save as chains, so depending on the options chosen: eta maps, WF maps, fluctuation maps, CMB covariance, r sample, B_f sample
             """
 
             # Extracting the JAX PRNG key from the carry
@@ -808,7 +883,7 @@ class MICMAC_Sampler(Sampling_functions):
             BtinvN_sqrt = get_BtinvN(jnp.sqrt(self.freq_inverse_noise), mixing_matrix_sampled, jax_use=True)
             s_cML = get_Wd(self.freq_inverse_noise, mixing_matrix_sampled, input_freq_maps, jax_use=True)[0]
 
-            # Sampling step 1 : sampling of Gaussian variable eta
+            # Sampling step 1: sampling of Gaussian variable eta
 
             ## Initialize the preconditioner for the eta contribution
             precond_func_eta = None
@@ -876,7 +951,7 @@ class MICMAC_Sampler(Sampling_functions):
                 if self.save_eta_chain_maps:
                     all_samples['eta_maps'] = new_carry['eta_maps']
 
-            # Sampling step 2 : sampling of Gaussian variable s_c, contrained CMB map realization
+            # Sampling step 2: sampling of Gaussian variable s_c, contrained CMB map realization
 
             ## Geting the square root matrix of the sampled CMB covariance
             red_cov_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(carry['red_cov_matrix_sample'])
@@ -956,7 +1031,7 @@ class MICMAC_Sampler(Sampling_functions):
             chx.assert_shape(new_carry['fluctuation_maps'], (self.nstokes, self.n_pix))
             chx.assert_shape(s_c_sample, (self.nstokes, self.n_pix))
 
-            # Sampling step 3 : sampling of CMB covariance C
+            # Sampling step 3: sampling of CMB covariance C
 
             ## Preparing the c_ell which will be used for the sampling
             c_ells_Wishart_ = get_cell_from_map_jax(s_c_sample, lmax=self.lmax, n_iter=self.n_iter)[:, self.lmin :]
@@ -1059,7 +1134,7 @@ class MICMAC_Sampler(Sampling_functions):
                 new_carry['red_cov_matrix_sample'], (self.lmax + 1 - self.lmin, self.nstokes, self.nstokes)
             )
 
-            # Sampling step 4 : sampling of mixing matrix B_f
+            # Sampling step 4: sampling of mixing matrix B_f
 
             ## Preparation of sampling step 4
 
@@ -1202,6 +1277,18 @@ def create_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv=''):
     Create a MICMAC_Sampler object from:
     * the path of a toml file: params for the sims and for the sampling
     * the path of a spv file: params for addressing spatial variability
+
+    Parameters
+    ----------
+    path_toml_file : str
+        path to the toml file for the main options of Harmonic_MICMAC_Sampler
+    path_file_spv : str
+        path to the yaml file for the spatial variability options
+
+    Returns
+    -------
+    MICMAC_Sampler_obj: MICMAC_Sampler
+        the MICMAC_Sampler object created from the toml file with the spatial variability from the yaml file
     """
     ### Opening first the toml file for the simulations and sampling, to create the MICMAC_Sampler object
     with open(path_toml_file) as f:
@@ -1210,7 +1297,7 @@ def create_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv=''):
 
     ## Getting the instrument and the noise covariance
     if dictionary_parameters['instrument_name'] != 'customized_instrument':  ## TODO: Improve a bit this part
-        instrument = fgbuster.get_instrument(dictionary_parameters['instrument_name'])
+        instrument = get_instrument(dictionary_parameters['instrument_name'])
 
     else:
         instrument = get_instr(dictionary_parameters['frequency_array'], dictionary_parameters['depth_p'])

@@ -19,14 +19,6 @@ Module to create fake fgs models starting from the PySM ones.
 """
 import healpy as hp
 import numpy as np
-import pysm3.units as u
-from fgbuster.observation_helpers import (
-    get_instrument,
-    get_noise_realization,
-    get_observation,
-    standardize_instrument,
-)
-from fgbuster.separation_recipes import _my_ud_grade
 from pysm3 import Sky
 from scipy import constants
 
@@ -39,6 +31,22 @@ def get_spectral_params_true_values(nside, model=['s0', 'd0']):
     of the spectral parameters.
     The first fgs must have attribute pl_index
     and the second mbb_index and mbb_temperature.
+
+    Parameters
+    ----------
+    nside: int
+        Healpix nside
+    model: list of str
+        PySM model to consider
+
+    Returns
+    -------
+    beta_pl: float
+        Synchrotron spectral index
+    beta_mbb: float
+        Dust spectral index
+    temp_mbb: float
+        Dust temperature
     """
     sky = Sky(nside=nside, preset_strings=model)
     # Synchrotron
@@ -57,6 +65,22 @@ def parametric_sky_customized(fgs_models, nside_map, nside_spv):
     Gives d1s1-like model with less spv of the spectral parameters
     (still parametric)
     Returns a PySM-like Sky object
+
+    Parameters
+    ----------
+    fgs_models: list of str
+        PySM model to consider
+    nside_map: int
+        Healpix nside of the final maps
+    nside_spv: int
+        Healpix nside of the spectral parameters
+
+    Returns
+    -------
+    sky: pysm3.Sky
+        PySM-like Sky object with the modified spectral parameters
+    new_spectral_params: list of np.array
+        List of the new spectral parameters
     """
     new_spectral_params = []
     ### Get the sky
@@ -133,6 +157,14 @@ def get_observation_customized(instrument='', sky=None, noise=False, nside=None,
     observation: array
         Shape is ``(n_freq, 3, n_pix)``
     """
+    import pysm3.units as u
+    from fgbuster.observation_helpers import (
+        get_instrument,
+        get_noise_realization,
+        get_observation,
+        standardize_instrument,
+    )
+
     if isinstance(instrument, str):
         instrument = get_instrument(instrument)
     else:
@@ -170,13 +202,31 @@ def fgs_freq_maps_from_customized_model_nonparam(
     downgraded to nside_spv.
     Returns the final freq maps elements built as d=As.
 
-    nside_map: nside at which the final maps are built
-    nside_spv: nside at which the spv in the scaling laws is downgraded
-    instrument: dictionary containing the instrument configuration,
-                must have key "frequency" containing a list of the instr freqs
-    fgs_models: list of strings refferring to the PySM fgs models to start from
-    idx_ref_freq: index of the reference frequency to use for normalization in A
+    Parameters
+    ----------
+    nside_map: int
+        nside at which the final maps are built
+    nside_spv: int
+        nside at which the spv in the scaling laws is downgraded
+    instrument: dictionary
+        dictionary containing the instrument configuration,
+        must have key "frequency" containing a list of the instr freqs
+    fgs_models: list[str]
+        list of strings refferring to the PySM fgs models to start from
+    idx_ref_freq: int
+        index of the reference frequency to use for normalization in A
+    return_mixing_mat: bool
+        if True, return also the mixing matrix
+
+    Returns
+    -------
+    freq_maps_final: array
+        final frequency maps
+    mixing_mat: array
+        mixing matrix, returned only if return_mixing_mat is True
     """
+    from fgbuster.separation_recipes import _my_ud_grade
+
     n_fgs_comp = len(fgs_models)
     mixing_mat = np.zeros((len(instrument.frequency), n_fgs_comp, hp.nside2npix(nside_map)))
     ref_maps_QU = []
@@ -213,6 +263,18 @@ def fgs_freq_maps_from_customized_model_nonparam(
 def d1s1_sky_customized(nside_map, nside_spv):
     """
     Gives d1s1-like model with less spv of the spectral parameters.
+
+    Parameters
+    ----------
+    nside_map: int
+        Healpix nside of the final maps
+    nside_spv: int
+        Healpix nside of the spectral parameters
+
+    Returns
+    -------
+    sky: pysm3.Sky
+        PySM-like Sky object with the modified spectral parameters
     """
     ### Get the sky
     sky = Sky(nside=nside_map, preset_strings=['d1', 's1'])

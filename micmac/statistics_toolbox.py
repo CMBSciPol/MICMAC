@@ -19,6 +19,9 @@ import numpy as np
 
 
 def get_MCMC_batch_error(sample_single_chain, batch_size):
+    """
+    Not used
+    """
     # number_iterations = np.size(sample_single_chain, axis=0)
     number_iterations = sample_single_chain.shape[0]
     assert number_iterations % batch_size == 0
@@ -29,7 +32,11 @@ def get_MCMC_batch_error(sample_single_chain, batch_size):
 
 
 def get_empirical_covariance_JAX(samples):
-    """Compute empirical covariance from samples"""
+    """
+    Not used
+
+    Compute empirical covariance from samples
+    """
     number_samples = jnp.size(samples, axis=0)
     mean_samples = jnp.mean(samples, axis=0)
 
@@ -40,11 +47,18 @@ def get_empirical_covariance_JAX(samples):
 
 
 def get_Gelman_Rubin_statistics(all_chain_samples):
-    """Compute Gelman-Rubin statistics
+    """
+    Compute Gelman-Rubin statistics
 
     Parameters
     ----------
-    :param all_chains_samples: all chains, with dimensions [n_chains, number_iterations, ...]
+    all_chains_samples: array with dimensions [n_chains, number_iterations, ...]
+        all chains
+
+    Returns
+    -------
+    GR: float
+        Gelman-Rubin statistics
     """
 
     mean_chain = all_chain_samples.mean(axis=0)

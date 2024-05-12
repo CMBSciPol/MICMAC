@@ -31,11 +31,13 @@ def get_reduced_matrix_from_c_ell(c_ells_input):
 
     Parameters
     ----------
-    :param c_ells_input: array of shape (n_correlations, lmax)
+    c_ells_input: array of shape (n_correlations, lmax)
+        input power spectra
 
     Returns
     -------
-    :return: reduced_matrix: array of shape (lmax+1-lmin, nstokes, nstokes)
+    reduced_matrix: array of shape (lmax+1-lmin, nstokes, nstokes)
+        reduced covariance matrix
     """
     c_ells_array = np.copy(c_ells_input)
     n_correlations = c_ells_array.shape[0]
@@ -119,11 +121,13 @@ def get_sqrt_reduced_matrix_from_matrix(red_matrix, tolerance=10 ** (-15)):
 
     Parameters
     ----------
-    :param red_matrix: reduced spectra of shape (lmax, nstokes, nstokes)
+    red_matrix: array of shape (lmax, nstokes, nstokes)
+        reduced covariance matrix
 
     Returns
     -------
-    :return: reduced_sqrtm: array of shape (lmax, nstokes, nstokes)
+    reduced_sqrtm: array of shape (lmax, nstokes, nstokes)
+        reduced matrix square root of the covariance matrix
     """
 
     lmax = red_matrix.shape[0]
@@ -165,13 +169,17 @@ def get_cell_from_map(pixel_maps, lmax, n_iter=8):
 
     Parameters
     ----------
-    :param pixel_maps: array of shape (nstokes, n_pix)
-    :param lmax: maximum ell for the spectrum, int
-    :param n_iter: number of iterations for harmonic operations, int
+    pixel_maps: array of shape (nstokes, n_pix)
+        input maps
+    lmax: int
+        maximum ell for the spectrum
+    n_iter: int
+        number of iterations for harmonic operations
 
     Returns
     -------
-    :return: c_ells: array of shape (nstokes, lmax+1)
+    c_ells: array of shape (nstokes, lmax+1)
+        power spectra from the input maps
     """
 
     if len(pixel_maps.shape) == 1:
@@ -194,6 +202,8 @@ def get_cell_from_map(pixel_maps, lmax, n_iter=8):
 
 def maps_x_reduced_matrix_generalized_sqrt_sqrt(maps_TQU_input, red_matrix_sqrt, lmin, n_iter=8):
     """
+    NOT USED -- TO BE REMOVED
+
     Return maps convolved with the harmonic covariance matrix given as input
     in the format [lmax+1-lmin, nstokes, nstokes], assuming it's block diagonal
 
@@ -202,15 +212,15 @@ def maps_x_reduced_matrix_generalized_sqrt_sqrt(maps_TQU_input, red_matrix_sqrt,
 
     Parameters
     ----------
-    :param maps_input: input maps of shape (nstokes, n_pix)
-    :param red_matrix_sqrt: input reduced spectra of shape (lmax+1-lmin, nstokes, nstokes)
-    :param nside: nside of the input maps, int
-    :param lmin: minimum ell for the spectrum, int
-    :param n_iter: number of iterations for harmonic operations, int
+    maps_input: input maps of shape (nstokes, n_pix)
+    red_matrix_sqrt: input reduced spectra of shape (lmax+1-lmin, nstokes, nstokes)
+    nside: nside of the input maps, int
+    lmin: minimum ell for the spectrum, int
+    n_iter: number of iterations for harmonic operations, int
 
     Returns
     -------
-    :return: maps_output: input maps convolved with input spectra, dimensions (nstokes, n_pix)
+    maps_output: input maps convolved with input spectra, dimensions (nstokes, n_pix)
     """
     lmax = red_matrix_sqrt.shape[0] - 1 + lmin
     nstokes = red_matrix_sqrt.shape[1]

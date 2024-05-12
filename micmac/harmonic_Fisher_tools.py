@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU General Public License
 # along with MICMAC. If not, see <https://www.gnu.org/licenses/>.
 
+# Original code by Clement Leloup
+
 import healpy as hp
 import numpy as np
 

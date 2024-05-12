@@ -63,23 +63,42 @@ class Sampling_functions(MixingMatrix):
 
         Parameters
         ----------
-        :param nside: nside of the input maps
-        :param lmax: maximum ell to be considered
-        :param nstokes: number of Stokes parameters
-        :param frequency_array: array of frequencies in GHz
-        :param freq_inverse_noise: inverse noise in uK^2, expected to be given with pixel dependency, with dimensions (n_frequencies, n_frequencies, n_pix)
-        :param freq_noise_c_ell: optional, harmonic dependency of the noise, with dimensions (n_frequencies, n_frequencies, lmax+1-lmin)
-        :param pos_special_freqs: position of the special frequencies for dust and synchrotron (0 and -1 by default)
-        :param spv_nodes_b: nodes for the spv function (default None)
-        :param mask: mask to be considered in the Gibbs sampling (default None if no mask) ; It is not reapplied to the input frequency maps
-        :param n_components: number of components to be considered (default 3 for CMB, synchrotron and dust)
-        :param lmin: minimum ell to be considered (default 2)
-        :param n_iter: number of iterations for Healpy spherical harmonic computations (default 8)
-        :param limit_iter_cg: maximum number of iterations for the CGs of the CMB map sampling (default 2000)
-        :param limit_iter_cg_eta: maximum number of iterations for the CG of the eta map sampling (default 200)
-        :param tolerance_CG: CG tolerance (default 10**(-10))
-        :param atol_CG: CG absolute tolerance (default 10**(-8))
-        :param bin_ell_distribution: array of the bounds of the bins if binned Inverse Wishart considered, of size nbins+1 (default None for no binning)
+        nside: int
+            nside of the input frequency maps
+        lmax: int
+            maximum multipole for the spherical harmonics transforms and harmonic domain objects,
+        nstokes: int
+            number of Stokes parameters
+        frequency_array: array[float]
+            array of frequencies, in GHz
+        freq_inverse_noise: array[float]
+            array of inverse noise for each frequency, in uK^-2
+        pos_special_freqs: list[int] (optional)
+            indexes of the special frequencies in the frequency array respectively for synchrotron and dust, default is [0,-1] for first and last frequencies
+        spv_nodes_b: list[dictionaries] (optional)
+            tree for the spatial variability, to generate from a yaml file, default None
+            in principle set up by get_nodes_b
+        freq_noise_c_ell: array[float] of dimensions [frequencies, frequencies, lmax+1-lmin] or [frequencies, frequencies, lmax] (in which case it will be cut to lmax+1-lmin) (optional)
+            optional, noise power spectra for each frequency, in uK^2, dimensions, default None
+        mask: None or array[float] of dimensions [n_pix] (optional)
+            mask to use in the sampling  ; if not given, no mask is used, default None
+            Note: the mask WILL NOT be applied to the input maps, it will be only used for the propagated noise covariance
+        n_components: int (optional)
+            number of components for the mixing matrix, default 3
+        lmin: int (optional)
+            minimum multipole for the spherical harmonics transforms and harmonic domain objects, default 2
+        n_iter: int (optional)
+            number of iterations the spherical harmonics transforms (for map2alm transformations), default 8
+        limit_iter_cg: int (optional)
+            maximum number of iterations for the conjugate gradient for the CMB map sampling, default 200
+        limit_iter_cg_eta: int (optional)
+            maximum number of iterations for the conjugate gradient for eta maps sampling, default 200
+        tolerance_CG: float (optional)
+            tolerance for the conjugate gradient, default 1e-8
+        atol_CG: float (optional)
+            absolute tolerance for the conjugate gradient, default 1e-8
+        bin_ell_distribution: array[int] (optional)
+            array of the bounds of the bins if binned Inverse Wishart considered, of size nbins+1, default None for no binning
         """
 
         # Inheritance from MixingMatrix
@@ -91,9 +110,6 @@ class Sampling_functions(MixingMatrix):
             pos_special_freqs=pos_special_freqs,
             spv_nodes_b=spv_nodes_b,
         )
-
-        # Tests parameters
-        # self.restrict_to_mask = bool(restrict_to_mask)
 
         # Problem parameters
         assert nstokes == 2  # Focus on polarisation for now
@@ -140,7 +156,7 @@ class Sampling_functions(MixingMatrix):
 
     @property
     def n_pix(self):
-        """Number of pixels of 1 map, for a given Stokes parameter"""
+        """Return number of pixels of 1 map, for a given Stokes parameter"""
         return 12 * self.nside**2
 
     @property
@@ -158,11 +174,13 @@ class Sampling_functions(MixingMatrix):
 
         Parameters
         ----------
-        :param binned_spectra: binned power spectra ; must be of dimension [number_bins, nstokes, nstokes]
+        binned_spectra: array[float] of dimensions [number_bins, nstokes, nstokes]
+            binned power spectra
 
         Returns
         -------
-        :return: Projected power spectra, of dimension [lmax+1, nstokes, nstokes]
+        ell_projection: array[float] of dimensions [lmax+1, nstokes, nstokes]
+            dProjected power spectra
         """
         # chx.assert_axis_dimension(binned_spectra, 0, self.number_bins)
 
@@ -187,13 +205,15 @@ class Sampling_functions(MixingMatrix):
         """
         Bin the power spectrum to get the binned power spectrum
 
-            Parameters
-            ----------
-            :param c_ells_to_bin: power spectrum to bin ; must be of dimension [lmax+1, nstokes, nstokes]
+        Parameters
+        ----------
+        c_ells_to_bin: array[float] of dimensions [lmax+1, nstokes, nstokes]
+            power spectrum to bin
 
-            Returns
-            -------
-            :return: Binned power spectrum, of dimension [number_bins, nstokes, nstokes]
+        Returns
+        -------
+        binned_c_ells: array[float] of dimensions [number_bins, nstokes, nstokes]
+            Binned power spectrum
         """
         # chx.assert_axis_dimension(c_ells_to_bin, 0, self.lmax+1 - self.lmin)
 
@@ -216,11 +236,13 @@ class Sampling_functions(MixingMatrix):
 
         Parameters
         ----------
-        :param c_ells_to_reproject: power spectrum to bin and reproject ; must be of dimension [lmax+1, nstokes, nstokes]
+        c_ells_to_reproject: array[float] of dimensions [lmax+1, nstokes, nstokes]
+            power spectrum to bin and reproject
 
         Returns
         -------
-        :return: Binned and reprojected power spectrum, of dimension [lmax+1, nstokes, nstokes]
+        binned_reprojected_c_ells: array[float] of dimensions [lmax+1, nstokes, nstokes]
+            Binned and reprojected power spectrum
         """
 
         def map_bin_and_reproject_red_c_ell(c_ell):
@@ -235,8 +257,16 @@ class Sampling_functions(MixingMatrix):
 
     def get_band_limited_maps(self, input_map):
         """Get band limited maps from input maps between lmin and lmax
-        :param input_map: input maps to be band limited ; dimension [nstokes, n_pix]
-        :return: band limited maps ; dimension [nstokes, n_pix]
+
+        Parameters
+        ----------
+        input_map: array[float] of dimensions [nstokes, n_pix]
+            input maps to be band limited
+
+        Returns
+        -------
+        array[float] of dimensions [nstokes, n_pix]
+            band limited maps
         """
 
         covariance_unity = jnp.zeros((self.lmax + 1 - self.lmin, self.nstokes, self.nstokes))
@@ -245,15 +275,15 @@ class Sampling_functions(MixingMatrix):
             jnp.copy(input_map), covariance_unity, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter
         )
 
-    def get_cond_unobserved_patches(self):
-        """
-        Get boolean condition on the free B_f indices corresponding to patches within the mask
-        """
+    # def get_cond_unobserved_patches(self):
+    #     """
+    #     Get boolean condition on the free B_f indices corresponding to patches within the mask
+    #     """
 
-        templates = self.get_all_templates()
-        # mask_with_m1 = jnp.where(self.mask==0, -1, 1)
-        templates = templates.at[:, :, self.mask == 0].set(-1)
-        return jnp.isin(jnp.arange(self.len_params), jnp.unique(templates))
+    #     templates = self.get_all_templates()
+    #     # mask_with_m1 = jnp.where(self.mask==0, -1, 1)
+    #     templates = templates.at[:,:, self.mask == 0].set(-1)
+    #     return jnp.isin(jnp.arange(self.len_params), jnp.unique(templates))
 
     def get_cond_unobserved_patches_from_indices(self, indices):
         """
@@ -274,7 +304,7 @@ class Sampling_functions(MixingMatrix):
         map_random_y=None,
         suppress_low_modes=True,
     ):
-        """Sampling step 1 : eta maps
+        """Sampling step 1: eta maps
         Solve CG for eta term with formulation:
             eta = \tilde{C}^(1/2) N_c^{-1/2} x + y
 
@@ -284,18 +314,27 @@ class Sampling_functions(MixingMatrix):
 
         Parameters
         ----------
-        :param red_cov_approx_matrix_sqrt : matrix square root of the covariance matrice (\tilde{C} or C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        :param invBtinvNB : matrix (B^t N^{-1} B)^{-1}, dimension [component, component, n_pix]
-        :param BtinvN_sqrt : matrix B^T N^{-1/2}, dimension [component, frequencies, n_pix]
-        :param jax_key_PNRG : random key for JAX PNRG
+        red_cov_approx_matrix_sqrt: array[float] of dimensions [lmax+1-lmin, nstokes, nstokes]
+            matrix square root of the covariance matrice (\tilde{C} or C_approx) in harmonic domain
+        invBtinvNB: array[float] of dimensions [component, component, n_pix]
+            matrix (B^t N^{-1} B)^{-1}
+        BtinvN_sqrt: array[float] of dimensions [component, frequencies, n_pix]
+            matrix B^T N^{-1/2}
+        jax_key_PNRG: array[jnp.uint32]
+            random key for JAX PNRG
 
-        :param map_random_x : set of maps 0 with mean and variance 1, which will be used to compute eta, default None (to have them computed in the routine) ; dimension [nfreq, nstokes, n_pix]
-        :param map_random_y : set of maps 0 with mean and variance 1, which will be used to compute eta, default None (to have them computed in the routine) ; dimension [nstokes, n_pix]
+        map_random_x: array[float] of dimensions [nfreq, nstokes, n_pix] (optional)
+            set of maps 0 with mean and variance 1, which will be used to compute eta, default None (to have them computed in the routine)
+        map_random_y: array[float] of dimensions [nstokes, n_pix] (optional)
+            set of maps 0 with mean and variance 1, which will be used to compute eta, default None (to have them computed in the routine)
 
-        :param suppress_low_modes : if True, suppress low modes in the CG between lmin and lmax, default True
+        suppress_low_modes: bool
+            if True, suppress low modes in the CG between lmin and lmax, default True
+
         Returns
         -------
-        :return: eta maps [nstokes, n_pix]
+        eta_maps: array[float] of dimensions [nstokes, n_pix]
+            eta maps for B_f sampling
         """
 
         # Chex test for arguments
@@ -335,7 +374,7 @@ class Sampling_functions(MixingMatrix):
 
         ## Second right member is  C_approx^(1/2) C_approx^(-1/2) y, so no need to compute it
 
-        # Getting final solution : C_approx^(1/2) ( N_c^{-1/2} x + C_approx^(-1/2) y)
+        # Getting final solution: C_approx^(1/2) ( N_c^{-1/2} x + C_approx^(-1/2) y)
 
         ## First getting the full first member C_approx^(1/2) N_c^{-1/2} x
         full_first_member = maps_x_red_covariance_cell_JAX(
@@ -363,7 +402,7 @@ class Sampling_functions(MixingMatrix):
         initial_guess=jnp.empty(0),
         precond_func=None,
     ):
-        r"""Sampling step 2 : fluctuating term
+        r"""Sampling step 2: fluctuating term
 
         Solve fluctuation term:
             (Id + C^{1/2} N_c^{-1} C^{1/2}) C^{-1/2} \zeta = xi + C^{1/2} N_c^{-1/2} \chi
@@ -379,18 +418,27 @@ class Sampling_functions(MixingMatrix):
 
         Parameters
         ----------
-        :param red_cov_matrix_sqrt: term C^{1/2}, matrix square root of CMB covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        :param invBtinvNB: matrix (B^t N^{-1} B)^{-1}, dimension [component, component, n_pix]
-        :param BtinvN_sqrt: matrix B^T N^{-1/2}, dimension [component, frequencies, n_pix]
-        :param jax_key_PNRG: random key for JAX PNRG
-        :param map_white_noise_xi: set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nstokes, n_pix]
-        :param map_white_noise_chi: set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term ; dimension [nfreq, nstokes, n_pix]
-        :param initial_guess: initial guess for the CG, default jnp.empty(0) (then set to 0) ; dimension [nstokes, n_pix]
-        :param precond_func: function preconditioner for the CG, default None
+        red_cov_matrix_sqrt: array[float] of dimension [lmin:lmax, nstokes, nstokes]
+            term C^{1/2}, matrix square root of CMB covariance matrices in harmonic domain
+        invBtinvNB: array[float] of dimension [component, component, n_pix]
+            matrix (B^t N^{-1} B)^{-1}
+        BtinvN_sqrt: array[float] of dimension [component, frequencies, n_pix]
+            matrix B^T N^{-1/2}
+        jax_key_PNRG: array[jnp.uint32]
+            random key for JAX PNRG
+        map_white_noise_xi: array[float] of dimensions [nstokes, n_pix] (optional)
+            set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term
+        map_white_noise_chi: array[float] of dimensions [nfreq, nstokes, n_pix] (optional)
+            set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term
+        initial_guess: array[float] of dimensions [nstokes, n_pix] (optional)
+            initial guess for the CG, default jnp.empty(0) (then set to 0)
+        precond_func: function (optional)
+            function preconditioner for the CG, default None
 
         Returns
         -------
-        :return: Fluctuation maps [nstokes, n_pix] for s_c sampling
+        fluctuating_map_z: array[float] of dimensions [nstokes, n_pix]
+            Fluctuation maps for s_c sampling
         """
 
         # Chex test for arguments
@@ -429,10 +477,10 @@ class Sampling_functions(MixingMatrix):
 
         # Computation of the right side member of the CG
 
-        # First right member : xi
+        # First right member: xi
         right_member_1 = map_random_realization_xi
 
-        # Second right member :
+        # Second right member:
         ## Computation of C^{1/2} N_c^{-1/2} \chi
         N_c_inv = jnp.copy(invBtinvNB[0, 0])
         N_c_inv = N_c_inv.at[..., self.mask != 0].set(
@@ -456,7 +504,7 @@ class Sampling_functions(MixingMatrix):
 
         # Computation of the left side member of the equation
 
-        # Operator in harmonic domain : C^{1/2}
+        # Operator in harmonic domain: C^{1/2}
         first_part_term_left = lambda x: maps_x_red_covariance_cell_JAX(
             x.reshape((self.nstokes, self.n_pix)),
             red_cov_matrix_sqrt,
@@ -465,7 +513,7 @@ class Sampling_functions(MixingMatrix):
             n_iter=self.n_iter,
         ).ravel()
 
-        ## Operator in pixel domain : (E^t (B^t N^{-1} B) E)^{-1}
+        ## Operator in pixel domain: (E^t (B^t N^{-1} B) E)^{-1}
         def second_part_term_left(x):
             return x * N_c_inv_repeat
 
@@ -516,15 +564,21 @@ class Sampling_functions(MixingMatrix):
 
         Parameters
         ----------
-        :param s_cML: Maximum Likelihood solution of component separation from input frequency maps ; dimensions [nstokes, n_pix]
-        :param red_cov_matrix_sqrt: term C^{1/2}, matrix square root of CMB covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        :param invBtinvNB: matrix (B^t N^{-1} B)^{-1}, dimension [component, component, n_pix]
-        :param initial_guess: initial guess for the CG, default jnp.empty(0) (then set to 0) ; dimension [nstokes, n_pix]
-        :param precond_func: function preconditioner for the CG, default None
+        s_cML: array[float] of dimensions [nstokes, n_pix]
+            Maximum Likelihood solution of component separation from input frequency maps
+        red_cov_matrix_sqrt: array[float] of dimension [lmin:lmax, nstokes, nstokes]
+            term C^{1/2}, matrix square root of CMB covariance matrices in harmonic domain
+        invBtinvNB: array[float] of dimension [component, component, n_pix]
+            matrix (B^t N^{-1} B)^{-1}
+        initial_guess: array[float] of dimensions [nstokes, n_pix] (optional)
+            initial guess for the CG, default jnp.empty(0) (then set to 0)
+        precond_func: function (optional)
+            function preconditioner for the CG, default None
 
         Returns
         -------
-        :return: Wiener filter maps [nstokes, n_pix]
+        array[float] of dimensions [nstokes, n_pix]
+            Wiener filter maps for s_c sampling
         """
 
         # Chex test for arguments
@@ -532,7 +586,7 @@ class Sampling_functions(MixingMatrix):
         chx.assert_shape(s_cML, (self.nstokes, self.n_pix))
         chx.assert_shape(invBtinvNB, (self.n_components, self.n_components, self.n_pix))
 
-        # Computation of the right side member of the CG : C^{1/2} N_c^{-1} s_c,ML
+        # Computation of the right side member of the CG: C^{1/2} N_c^{-1} s_c,ML
         ## First, computation of N_c^{-1} taking into account the mask
         N_c_repeat = jnp.broadcast_to(
             invBtinvNB[0, 0] * jhp.nside2resol(self.nside) ** 2, (self.nstokes, self.n_pix)
@@ -560,11 +614,11 @@ class Sampling_functions(MixingMatrix):
             n_iter=self.n_iter,
         ).ravel()
 
-        ## Second left member pixel operator : (E^t (B^t N^{-1} B)^{-1} E) x
+        ## Second left member pixel operator: (E^t (B^t N^{-1} B)^{-1} E) x
         def second_part_term_left(x):
             return x * N_c_inv_repeat
 
-        # Full operator to inverse : Id + C^{1/2} N_c^{-1} C^{1/2}
+        # Full operator to inverse: Id + C^{1/2} N_c^{-1} C^{1/2}
         func_left_term = lambda x: x.ravel() + first_part_term_left(second_part_term_left(first_part_term_left(x)))
 
         # Initial guess for the CG
@@ -598,25 +652,29 @@ class Sampling_functions(MixingMatrix):
         return wiener_filter_term.reshape((self.nstokes, self.n_pix))
 
     def get_inverse_wishart_sampling_from_c_ells(self, sigma_ell, PRNGKey, old_sample=None, acceptance_posdef=False):
-        """Solve sampling step 3 : inverse Wishart distribution with C
+        """
+        Solve sampling step 3: inverse Wishart distribution with C
 
         sigma_ell is expected to be exactly the parameter of the inverse Wishart (so it should NOT be multiplied by 2*ell+1 if it is thought as a power spectrum)
 
-        Compute a matrix sample following an inverse Wishart distribution. The 3 steps follow Gupta & Nagar (2000) :
+        Compute a matrix sample following an inverse Wishart distribution. The 3 steps follow Gupta & Nagar (2000):
             1. Sample n = 2*ell - p + 2*q_prior independent Gaussian vectors with covariance (sigma_ell)^{-1}
             2. Compute their outer product to form a matrix of dimension n_stokes*n_stokes ; which gives us a sample following the Wishart distribution
-            3. Invert this matrix to obtain the final result : a matrix sample following an inverse Wishart distribution
+            3. Invert this matrix to obtain the final result: a matrix sample following an inverse Wishart distribution
 
         Also assumes the monopole and dipole to be 0
 
         Parameters
         ----------
-        :param sigma_ell: initial power spectrum which will define the parameter matrix of the inverse Wishart distribution ; must be of dimension [n_correlations, lmax+1]
-        :param PRNGKey: random key for JAX PNRG
+        sigma_ell: array[float] of dimensions [n_correlations, lmin:lmax+1]
+            initial power spectrum which will define the parameter matrix of the inverse Wishart distribution
+        PRNGKey: array[jnp.uint32]
+            random key for JAX PNRG
 
         Returns
         -------
-        :return: Matrices following an inverse Wishart distribution, of dimensions [lmin:lmax, nstokes, nstokes]
+        array[float] of dimensions [lmin:lmax+1, nstokes, nstokes]
+            Matrices following an inverse Wishart distribution
         """
 
         chx.assert_axis_dimension(sigma_ell, 1, self.lmax + 1 - self.lmin)
@@ -663,19 +721,19 @@ class Sampling_functions(MixingMatrix):
         return new_sample
 
     def get_conditional_proba_C_from_previous_sample(self, red_sigma_ell, red_cov_matrix_sampled):
-        """Compute log-proba of C parametrized by r_param. The associated log proba is :
-            -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
+        """Compute log-proba of C. The associated log proba is:
+            -1/2 (tr sigma_ell C^-1) - 1/2 log det C
 
         Parameters
         ----------
-        :param r_param: parameter of the covariance C to be sampled
-        :param red_sigma_ell: covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        :param theoretical_red_cov_r1_tensor: tensor mode covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        :param theoretical_red_cov_r0_total: scalar mode covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-
+        red_sigma_ell: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            covariance matrices in harmonic domain
+        red_cov_matrix_sampled: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            previous sampled covariance matrices in harmonic domain
         Returns
         -------
-        :return: log-proba of C parametrized by r_param
+        float
+            log-proba of C parametrized by r_param
         """
         chx.assert_equal_shape((red_sigma_ell, red_cov_matrix_sampled))
 
@@ -687,7 +745,7 @@ class Sampling_functions(MixingMatrix):
         return -(jnp.einsum('lij,lji->l', red_sigma_ell, jnp.linalg.pinv(red_cov_matrix_sampled)).sum() + sum_dets) / 2
 
     def get_inverse_gamma_sampling_from_c_ells(self, sigma_ell, PRNGKey):
-        """Solve sampling step 3 : inverse Gamma distribution with C
+        """Solve sampling step 3: inverse Gamma distribution with C
 
         sigma_ell is expected to be exactly the parameter of the inverse Gamma (so it should NOT be multiplied by 2*ell+1 if it is thought as a power spectrum)
 
@@ -695,12 +753,12 @@ class Sampling_functions(MixingMatrix):
 
         Parameters
         ----------
-        :param sigma_ell: initial power spectrum which will define the parameter matrix of the inverse Gamma distribution ; must be of dimension [n_correlations, lmax+1]
-        :param PRNGKey: random key for JAX PNRG
+        sigma_ell: initial power spectrum which will define the parameter matrix of the inverse Gamma distribution ; must be of dimension [n_correlations, lmax+1]
+        PRNGKey: random key for JAX PNRG
 
         Returns
         -------
-        :return: Matrices following an inverse Gamma distribution, of dimensions [lmin:lmax, nstokes, nstokes]
+        Matrices following an inverse Gamma distribution, of dimensions [lmin:lmax, nstokes, nstokes]
         """
 
         chx.assert_axis_dimension(sigma_ell, 1, self.lmax + 1)
@@ -733,11 +791,11 @@ class Sampling_functions(MixingMatrix):
 
         Parameters
         ----------
-        :param red_c_ells_to_bin: power spectrum to bin ; must be of dimension [lmax+1, nstokes, nstokes]
+        red_c_ells_to_bin: power spectrum to bin ; must be of dimension [lmax+1, nstokes, nstokes]
 
         Returns
         -------
-        :return: Binned power spectrum, of dimension [number_bins, nstokes, nstokes]
+        Binned power spectrum, of dimension [number_bins, nstokes, nstokes]
         """
         chx.assert_axis_dimension(red_c_ells_to_bin, 0, self.lmax + 1 - self.lmin)
 
@@ -766,25 +824,25 @@ class Sampling_functions(MixingMatrix):
     def get_binned_inverse_wishart_sampling_from_c_ells_v2(
         self, sigma_ell, PRNGKey, old_sample=None, acceptance_posdef=False
     ):
-        """Solve sampling step 3 : inverse Wishart distribution with C
+        """Solve sampling step 3: inverse Wishart distribution with C
 
         sigma_ell is expected to be exactly the parameter of the inverse Wishart (so it should NOT be multiplied by 2*ell+1 if it is thought as a power spectrum)
 
-        Compute a matrix sample following an inverse Wishart distribution. The 3 steps follow Gupta & Nagar (2000) :
+        Compute a matrix sample following an inverse Wishart distribution. The 3 steps follow Gupta & Nagar (2000):
             1. Sample n = 2*ell - p + 2*q_prior independent Gaussian vectors with covariance (sigma_ell)^{-1}
             2. Compute their outer product to form a matrix of dimension n_stokes*n_stokes ; which gives us a sample following the Wishart distribution
-            3. Invert this matrix to obtain the final result : a matrix sample following an inverse Wishart distribution
+            3. Invert this matrix to obtain the final result: a matrix sample following an inverse Wishart distribution
 
         Also assumes the monopole and dipole to be 0
 
         Parameters
         ----------
-        :param sigma_ell: initial power spectrum which will define the parameter matrix of the inverse Wishart distribution ; must be of dimension [n_correlations, lmax+1]
-        :param PRNGKey: random key for JAX PNRG
+        sigma_ell: initial power spectrum which will define the parameter matrix of the inverse Wishart distribution ; must be of dimension [n_correlations, lmax+1]
+        PRNGKey: random key for JAX PNRG
 
         Returns
         -------
-        :return: Matrices following an inverse Wishart distribution, of dimensions [lmin:lmax, nstokes, nstokes]
+        Matrices following an inverse Wishart distribution, of dimensions [lmin:lmax, nstokes, nstokes]
         """
 
         # chx.assert_axis_dimension(sigma_ell, 1, self.lmax+1)
@@ -865,11 +923,11 @@ class Sampling_functions(MixingMatrix):
 
         Parameters
         ----------
-        :param red_c_ells_to_bin: power spectrum to bin ; must be of dimension [lmax+1, nstokes, nstokes]
+        red_c_ells_to_bin: power spectrum to bin ; must be of dimension [lmax+1, nstokes, nstokes]
 
         Returns
         -------
-        :return: Binned power spectrum, of dimension [number_bins, nstokes, nstokes]
+        Binned power spectrum, of dimension [number_bins, nstokes, nstokes]
         """
         chx.assert_axis_dimension(red_c_ells_to_bin, 0, self.lmax + 1 - self.lmin)
 
@@ -898,11 +956,11 @@ class Sampling_functions(MixingMatrix):
 
         Parameters
         ----------
-        :param red_c_ells_to_bin: power spectrum to bin ; must be of dimension [lmax+1, nstokes, nstokes]
+        red_c_ells_to_bin: power spectrum to bin ; must be of dimension [lmax+1, nstokes, nstokes]
 
         Returns
         -------
-        :return: Binned power spectrum, of dimension [number_bins, nstokes, nstokes]
+        Binned power spectrum, of dimension [number_bins, nstokes, nstokes]
         """
         chx.assert_axis_dimension(red_c_ells_to_bin, 0, self.lmax + 1 - self.lmin)
 
@@ -930,25 +988,25 @@ class Sampling_functions(MixingMatrix):
     def get_binned_inverse_wishart_sampling_from_c_ells_v3(
         self, sigma_ell, PRNGKey, old_sample=None, acceptance_posdef=False
     ):
-        """Solve sampling step 3 : inverse Wishart distribution with C
+        """Solve sampling step 3: inverse Wishart distribution with C
 
         sigma_ell is expected to be exactly the parameter of the inverse Wishart (so it should NOT be multiplied by 2*ell+1 if it is thought as a power spectrum)
 
-        Compute a matrix sample following an inverse Wishart distribution. The 3 steps follow Gupta & Nagar (2000) :
+        Compute a matrix sample following an inverse Wishart distribution. The 3 steps follow Gupta & Nagar (2000):
             1. Sample n = 2*ell - p + 2*q_prior independent Gaussian vectors with covariance (sigma_ell)^{-1}
             2. Compute their outer product to form a matrix of dimension n_stokes*n_stokes ; which gives us a sample following the Wishart distribution
-            3. Invert this matrix to obtain the final result : a matrix sample following an inverse Wishart distribution
+            3. Invert this matrix to obtain the final result: a matrix sample following an inverse Wishart distribution
 
         Also assumes the monopole and dipole to be 0
 
         Parameters
         ----------
-        :param sigma_ell: initial power spectrum which will define the parameter matrix of the inverse Wishart distribution ; must be of dimension [n_correlations, lmax+1]
-        :param PRNGKey: random key for JAX PNRG
+        sigma_ell: initial power spectrum which will define the parameter matrix of the inverse Wishart distribution ; must be of dimension [n_correlations, lmax+1]
+        PRNGKey: random key for JAX PNRG
 
         Returns
         -------
-        :return: Matrices following an inverse Wishart distribution, of dimensions [lmin:lmax, nstokes, nstokes]
+        Matrices following an inverse Wishart distribution, of dimensions [lmin:lmax, nstokes, nstokes]
         """
 
         # chx.assert_axis_dimension(sigma_ell, 1, self.lmax+1)
@@ -1040,22 +1098,28 @@ class Sampling_functions(MixingMatrix):
     def get_conditional_proba_C_from_r(
         self, r_param, red_sigma_ell, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total
     ):
-        """Compute log-proba of C parametrized by r_param.
-        The parametrisation is given by : C(r) = r * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
+        """
+        Compute log-proba of C parametrized by r_param.
+        The parametrisation is given by: C(r) = r * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
 
-        The associated log proba is :
+        The associated log proba is:
             -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
 
         Parameters
         ----------
-        :param r_param: parameter of the covariance C to be sampled, float
-        :param red_sigma_ell: covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        :param theoretical_red_cov_r1_tensor: tensor mode covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        :param theoretical_red_cov_r0_total: scalar mode covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+        r_param: float
+            parameter of the covariance C to be sampled
+        red_sigma_ell: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            covariance matrices in harmonic domain
+        theoretical_red_cov_r1_tensor: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            tensor mode covariance matrices in harmonic domain
+        theoretical_red_cov_r0_total: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            scalar mode covariance matrices in harmonic domain
 
         Returns
         -------
-        :return: log-proba of C parametrized by r_param
+        float
+            log-proba of C parametrized by r_param
         """
 
         chx.assert_shape(theoretical_red_cov_r1_tensor, (self.lmax + 1 - self.lmin, self.nstokes, self.nstokes))
@@ -1079,22 +1143,28 @@ class Sampling_functions(MixingMatrix):
     def get_conditional_proba_C_from_r_wBB(
         self, r_param, red_sigma_ell, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total
     ):
-        """Compute log-proba of C parametrized by r_param.
-        The parametrisation is given by : C(r) = r * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
+        """
+        Compute log-proba of C parametrized by r_param only from the BB power spectrum.
+        The parametrisation is given by: C(r) = r * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
 
-        The associated log proba is :
+        The associated log proba is:
             -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
 
         Parameters
         ----------
-        :param r_param: parameter of the covariance C to be sampled, float
-        :param red_sigma_ell: covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        :param theoretical_red_cov_r1_tensor: tensor mode covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        :param theoretical_red_cov_r0_total: scalar mode covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+        r_param: float
+            parameter of the covariance C to be sampled
+        red_sigma_ell: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            covariance matrices in harmonic domain
+        theoretical_red_cov_r1_tensor: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            tensor mode covariance matrices in harmonic domain
+        theoretical_red_cov_r0_total: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            scalar mode covariance matrices in harmonic domain
 
         Returns
         -------
-        :return: log-proba of C parametrized by r_param
+        float
+            log-proba of C parametrized by r_param
         """
 
         chx.assert_shape(theoretical_red_cov_r1_tensor, (self.lmax + 1 - self.lmin, self.nstokes, self.nstokes))
@@ -1116,22 +1186,28 @@ class Sampling_functions(MixingMatrix):
     def get_binned_conditional_proba_C_from_r_wBB(
         self, r_param, red_sigma_ell, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total
     ):
-        """Compute log-proba of C parametrized by r_param.
-        The parametrisation is given by : C(r) = r * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
+        """
+        Compute log-proba of C parametrized by r_param only from the BB power spectrum with binning.
+        The parametrisation is given by: C(r) = r * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
 
-        The associated log proba is :
+        The associated log proba is:
             -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
 
         Parameters
         ----------
-        :param r_param: parameter of the covariance C to be sampled, float
-        :param red_sigma_ell: covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        :param theoretical_red_cov_r1_tensor: tensor mode covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        :param theoretical_red_cov_r0_total: scalar mode covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+        r_param: float
+            parameter of the covariance C to be sampled
+        red_sigma_ell: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            covariance matrices in harmonic domain
+        theoretical_red_cov_r1_tensor: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            tensor mode covariance matrices in harmonic domain
+        theoretical_red_cov_r0_total: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            scalar mode covariance matrices in harmonic domain
 
         Returns
         -------
-        :return: log-proba of C parametrized by r_param
+        float
+            log-proba of C parametrized by r_param
         """
 
         chx.assert_shape(theoretical_red_cov_r1_tensor, (self.lmax + 1 - self.lmin,))
@@ -1164,7 +1240,9 @@ class Sampling_functions(MixingMatrix):
         theoretical_red_cov_r1_tensor,
         theoretical_red_cov_r0_total,
     ):
-        """ """
+        """
+        WARNING: Exploratory, to test further
+        """
 
         new_red_cov_matrix_sqrt = get_sqrt_reduced_matrix_from_matrix_jax(new_red_cov_matrix_sampled)
         old_red_cov_matrix_msqrt = jnp.linalg.pinv(get_sqrt_reduced_matrix_from_matrix_jax(old_red_cov_matrix_sampled))
@@ -1196,22 +1274,8 @@ class Sampling_functions(MixingMatrix):
         theoretical_red_cov_r1_tensor,
         theoretical_red_cov_r0_total,
     ):
-        """Compute log-proba of C parametrized by r_param.
-        The parametrisation is given by : C(r) = r * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
-
-        The associated log proba is :
-            -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
-
-        Parameters
-        ----------
-        :param r_param: parameter of the covariance C to be sampled, float
-        :param red_sigma_ell: covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        :param theoretical_red_cov_r1_tensor: tensor mode covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        :param theoretical_red_cov_r0_total: scalar mode covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-
-        Returns
-        -------
-        :return: log-proba of C parametrized by r_param
+        """
+        WARNING: Exploratory, to test further
         """
 
         chx.assert_shape(theoretical_red_cov_r1_tensor, (self.lmax + 1 - self.lmin, self.nstokes, self.nstokes))
@@ -1232,9 +1296,10 @@ class Sampling_functions(MixingMatrix):
         )
 
     def get_conditional_proba_spectral_likelihood_JAX(self, complete_mixing_matrix, full_data_without_CMB):
-        """Get conditional probability of spectral likelihood from the full mixing matrix
+        """
+        Get conditional probability of spectral likelihood from the full mixing matrix
 
-        The associated conditional probability is given by :
+        The associated conditional probability is given by:
         - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
 
         with d = full_data_without_CMB, B_c = complete_mixing_matrix, B_f = complete_mixing_matrix[:,1:,:]
@@ -1242,15 +1307,18 @@ class Sampling_functions(MixingMatrix):
 
         Parameters
         ----------
-        :param complete_mixing_matrix: mixing matrix of dimension [component, frequencies]
-        :param full_data_without_CMB: data without from which the CMB (sample) was substracted, of dimension [frequencies, n_pix] ; assumed to be band-limited
+        complete_mixing_matrix: array[float] of dimensions [component, frequencies]
+            complete mixing matrix
+        full_data_without_CMB: array[float] of dimensions [frequencies, n_pix]
+            data without from which the CMB (sample) was substracted
 
         Returns
         -------
-        :return: computation of spectral likelihood
+        array[float] of dimensions [n_pix]
+            computation of spectral likelihood
         """
 
-        # Building the spectral_likelihood : - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
+        # Building the spectral_likelihood: - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
 
         chx.assert_shape(complete_mixing_matrix, (self.n_frequencies, self.n_components, self.n_pix))
         chx.assert_shape(full_data_without_CMB, (self.n_frequencies, self.nstokes, self.n_pix))
@@ -1268,16 +1336,17 @@ class Sampling_functions(MixingMatrix):
         full_data_without_CMB_with_noise = jnp.einsum('cfp,fsp->csp', BtinvN_fg, full_data_without_CMB)
         chx.assert_shape(full_data_without_CMB_with_noise, (self.n_components - 1, self.nstokes, self.n_pix))
 
-        ## Computation of the spectral likelihood : - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
+        ## Computation of the spectral likelihood: - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
         first_term_complete = jnp.einsum(
             'csp,cmp,msp', full_data_without_CMB_with_noise, invBtinvNB_fg, full_data_without_CMB_with_noise
         )
         return -(-first_term_complete + 0) / 2.0
 
     def get_conditional_proba_spectral_likelihood_JAX_pixel(self, complete_mixing_matrix, full_data_without_CMB):
-        """Get conditional probability of spectral likelihood from the full mixing matrix
+        """
+        Get conditional probability of spectral likelihood from the full mixing matrix
 
-        The associated conditional probability is given by :
+        The associated conditional probability is given by:
         - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
 
         with d = full_data_without_CMB, B_c = complete_mixing_matrix, B_f = complete_mixing_matrix[:,1:,:]
@@ -1285,15 +1354,18 @@ class Sampling_functions(MixingMatrix):
 
         Parameters
         ----------
-        :param complete_mixing_matrix: mixing matrix of dimension [component, frequencies]
-        :param full_data_without_CMB: data without from which the CMB (sample) was substracted, of dimension [frequencies, n_pix] ; assumed to be band-limited
+        complete_mixing_matrix: array[float] of dimensions [component, frequencies]
+            complete mixing matrix
+        full_data_without_CMB: array[float] of dimensions [frequencies, n_pix]
+            data without from which the CMB (sample) was substracted
 
         Returns
         -------
-        :return: computation of spectral likelihood per pixel
+        array[float] of dimensions [n_pix]
+            computation of spectral likelihood per pixel
         """
 
-        # Building the spectral_likelihood : - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
+        # Building the spectral_likelihood: - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
 
         chx.assert_shape(complete_mixing_matrix, (self.n_frequencies, self.n_components, self.n_pix))
         chx.assert_shape(full_data_without_CMB, (self.n_frequencies, self.nstokes, self.n_pix))
@@ -1311,7 +1383,7 @@ class Sampling_functions(MixingMatrix):
         full_data_without_CMB_with_noise = jnp.einsum('cfp,fsp->csp', BtinvN_fg, full_data_without_CMB)
         chx.assert_shape(full_data_without_CMB_with_noise, (self.n_components - 1, self.nstokes, self.n_pix))
 
-        ## Computation of the spectral likelihood : - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
+        ## Computation of the spectral likelihood: - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
         first_term_complete = jnp.einsum(
             'csp,cmp,msp->p', full_data_without_CMB_with_noise, invBtinvNB_fg, full_data_without_CMB_with_noise
         )
@@ -1327,7 +1399,8 @@ class Sampling_functions(MixingMatrix):
         precond_func=None,
         full_sky_correction=False,
     ):
-        """Get conditional probability of correction term in the likelihood from the full mixing matrix
+        """
+        Get conditional probability of correction term in the likelihood from the full mixing matrix
 
         Noting C_approx = \tilde{C}, the associated conditional probability is given by:
             - (eta ^t ( Id + C_approx^{1/2} N_c^{-1} C_approx^{1/2} )^{-1} eta
@@ -1336,19 +1409,25 @@ class Sampling_functions(MixingMatrix):
 
         Parameters
         ----------
-        :param invBtinvNB_: pixel covariance matrix (B^t N^{-1} B)^{-1}, of dimension [component, component, n_pix]
-        :param component_eta_maps: set of eta maps of dimension [component, n_pix]
-        :param red_cov_approx_matrix_sqrt: square root of the approximate covariance matrix, of dimension [component, component, n_pix]
-        :param first_guess: initial guess for the CG algorithm, of dimension [component, n_pix]
-        :param return_inverse: boolean to return the inverse term or not (default is False)
-        :param precond_func: preconditioning function to be used in the CG algorithm
+        noise_CMB_component_: array[float] of dimensions [n_pix]
+            pixel covariance matrix (B^t N^{-1} B)^{-1}
+        component_eta_maps: array[float] of dimensions [nstokes, n_pix]
+            set of eta maps
+        red_cov_approx_matrix_sqrt: array[float] of dimensions [component, component, n_pix]
+            square root of the approximate covariance matrix
+        first_guess: array[float] of dimensions [component, n_pix] (optional)
+            initial guess for the CG algorithm
+        return_inverse: bool (optional)
+            boolean to return the inverse term or not (default is False)
+        precond_func: function or None (optional)
+            preconditioning function to be used in the CG algorithm
 
         Returns
         -------
-        :return: computation of log-proba correction term to the likelihood
+        computation of log-proba correction term to the likelihood
         """
 
-        # Building the correction term to the likelihood : - (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} \eta
+        # Building the correction term to the likelihood: - (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} \eta
 
         ## Preparing the mixing matrix and C_approx^{-1/2}
         N_c = (
@@ -1434,7 +1513,7 @@ class Sampling_functions(MixingMatrix):
         component_eta_maps,
         red_cov_approx_matrix_sqrt,
         inverse_term_x_Capprox_root=None,
-        full_sky_correction=False,
+        full_sky_correction=True,
     ):
         """Get conditional probability of correction term in the likelihood from the full mixing matrix,
         assuming the difference between the old and new mixing matrix is small
@@ -1460,16 +1539,23 @@ class Sampling_functions(MixingMatrix):
 
         Parameters
         ----------
-        :param old_params_mixing_matrix: B_{old} to generate N_{c,old}, old mixing matrix of dimension [component, frequencies]
-        :param new_params_mixing_matrix: B_{new} to generate N_{c,new}, new mixing matrix of dimension [component, frequencies]
-        :param inverse_term: previous inverse term computed with N_{c,old}, of dimension [component, n_pix]
-        :param component_eta_maps: set of eta maps of dimension [component, n_pix]
-        :param red_cov_approx_matrix: covariance matrice approx (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        :param inverse_term_x_Capprox_root: optional, C_approx^{1/2} A^{-1} eta, of dimension [component, n_pix] (otherwise it will be recomputed here)
+        old_params_mixing_matrix: array[float] of dimensions [component, frequencies]
+            old mixing matrix B_{old} to generate N_{c,old}
+        new_params_mixing_matrix: array[float] of dimensions [component, frequencies]
+            new mixing matrix B_{new} to generate N_{c,new}
+        inverse_term: array[float] of dimensions [component, n_pix]
+            previous inverse term computed with N_{c,old}
+        component_eta_maps: array[float] of dimensions [nstokes, n_pix]
+            set of eta maps
+        red_cov_approx_matrix: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            matrix square root of the covariance of the covariance matrice approx (C_approx) in harmonic domain
+        inverse_term_x_Capprox_root: array[float] of dimensions [component, n_pix] (optional)
+            precomputed product C_approx^{1/2} A^{-1} eta, if not given it will be recomputed here
 
         Returns
         -------
-        :return: computation of the log-proba of the correction term to the likelihood
+        float
+            computation of the log-proba of the correction term to the likelihood
         """
 
         ## Retrieving the mixing matrix B_{old} from the old set of parameters
@@ -1542,8 +1628,8 @@ class Sampling_functions(MixingMatrix):
 
         ## Assembling everything
         new_log_proba = first_order_term - perturbation_term
-        # print("First order :", first_order_term)
-        # print("Perturbation :", -perturbation_term)
+        # print("First order:", first_order_term)
+        # print("Perturbation:", -perturbation_term)
 
         return (
             -(-0 + new_log_proba) / 2.0 * jhp.nside2resol(self.nside) ** 2
@@ -1557,9 +1643,10 @@ class Sampling_functions(MixingMatrix):
         component_eta_maps,
         red_cov_approx_matrix_sqrt,
         inverse_term_x_Capprox_root=None,
-        full_sky_correction=False,
+        full_sky_correction=True,
     ):
-        """Get conditional probability of correction term in the likelihood from the full mixing matrix,
+        """
+        Get conditional probability of correction term in the likelihood from the full mixing matrix,
         assuming the difference between the old and new mixing matrix is small
 
         With notation C_approx instead of \tilde{C}, the associated conditional probability is given by:
@@ -1583,16 +1670,23 @@ class Sampling_functions(MixingMatrix):
 
         Parameters
         ----------
-        :param old_params_mixing_matrix: B_{old} to generate N_{c,old}, old mixing matrix of dimension [component, frequencies]
-        :param new_params_mixing_matrix: B_{new} to generate N_{c,new}, new mixing matrix of dimension [component, frequencies]
-        :param inverse_term: previous inverse term computed with N_{c,old}, of dimension [component, n_pix]
-        :param component_eta_maps: set of eta maps of dimension [component, n_pix]
-        :param red_cov_approx_matrix: covariance matrice approx (C_approx) in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        :param inverse_term_x_Capprox_root: optional, C_approx^{1/2} A^{-1} eta, of dimension [component, n_pix] (otherwise it will be recomputed here)
+        old_params_mixing_matrix: array[float] of dimensions [component, frequencies]
+            old mixing matrix B_{old} to generate N_{c,old}
+        new_params_mixing_matrix: array[float] of dimensions [component, frequencies]
+            new mixing matrix B_{new} to generate N_{c,new}
+        inverse_term: array[float] of dimensions [component, n_pix]
+            previous inverse term computed with N_{c,old}
+        component_eta_maps: array[float] of dimensions [nstokes, n_pix]
+            set of eta maps
+        red_cov_approx_matrix: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            matrix square root of the covariance of the covariance matrice approx (C_approx) in harmonic domain
+        inverse_term_x_Capprox_root: array[float] of dimensions [component, n_pix] (optional)
+            precomputed product C_approx^{1/2} A^{-1} eta, if not given it will be recomputed here
 
         Returns
         -------
-        :return: computation of the log-proba of the correction term to the likelihood per pixel
+        float
+            computation of the log-proba of the correction term to the likelihood
         """
 
         ## Retrieving the mixing matrix B_{old} from the old set of parameters
@@ -1664,8 +1758,8 @@ class Sampling_functions(MixingMatrix):
 
         ## Assembling everything
         new_log_proba = first_order_term - perturbation_term
-        # print("First order :", first_order_term)
-        # print("Perturbation :", -perturbation_term)
+        # print("First order:", first_order_term)
+        # print("Perturbation:", -perturbation_term)
 
         return (
             -(-0 + new_log_proba) / 2.0 * jhp.nside2resol(self.nside) ** 2
@@ -1680,26 +1774,36 @@ class Sampling_functions(MixingMatrix):
         first_guess=None,
         biased_bool=False,
         precond_func=None,
-        full_sky_correction=False,
+        full_sky_correction=True,
     ):
         """Get conditional probability of the conditional probability associated with the B_f parameters
 
-        With notation C_approx instead of \tilde{C}, the associated conditional probability is given by :
+        With notation C_approx instead of \tilde{C}, the associated conditional probability is given by:
             - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c) + \\eta^t ( Id + C_approx^{1/2} N_c^{-1} C_approx^{1/2} )^{-1} \\eta
 
         Parameters
         ----------
-        :param new_params_mixing_matrix: new B_f parameters of the mixing matrix to compute the log-proba, dimensions [nfreq-len(pos_special_frequencies), ncomp-1]
-        :param full_data_without_CMB: data without from which the CMB (sample) was substracted, of dimension [frequencies, n_pix]
-        :param red_cov_approx_matrix_sqrt: matrix square root of the covariance of C_approx, of dimension [lmin:lmax, nstokes, nstokes]
-        :param component_eta_maps: set of eta maps of dimension [component, n_pix]
-        :param first_guess: initial guess for the CG
-        :param biased_bool: boolean to indicate if the log-proba is biased, so computed without the correction, or not
-        :param precond_func: preconditioning function to be used in the CG algorithm
+        new_params_mixing_matrix: array[float] of dimensions [nfreq-len(pos_special_frequencies), ncomp-1]
+            new B_f parameters of the mixing matrix to compute the log-proba
+        full_data_without_CMB: array[float] of dimensions [frequencies, n_pix]
+            data without from which the CMB (sample) was substracted, of dimension
+        red_cov_approx_matrix: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            matrix square root of the covariance of the covariance matrice approx (C_approx) in harmonic domain
+        component_eta_maps: array[float] of dimensions [nstokes, n_pix]
+            set of eta maps
+        first_guess: array[float] of dimensions [component, n_pix] (optional)
+            initial guess for the CG, default is None to use maps of 0
+        biased_bool: bool (optional)
+            indicate if the log-proba is biased, so computed without the correction, or not
+        precond_func: function or None (optional)
+            preconditioning function to be used in the CG algorithm
 
         Returns
         -------
-        :return: computation of the conditional probability of the mixing matrix
+        log_proba: float
+            computation of the conditional probability of the mixing matrix
+        inverse_term: array[float] of dimensions [component, n_pix]
+            inverse term computed with N_{c,new} to be used in the CG algorithm
         """
 
         ## Updating parameters of the mixing matrix
@@ -1707,7 +1811,7 @@ class Sampling_functions(MixingMatrix):
         # new_mixing_matrix = self.get_B(jax_use=True) # Retrieving the new mixing matrix
         new_mixing_matrix = self.get_B_from_params(new_params_mixing_matrix, jax_use=True)
 
-        # Compute spectral likelihood : (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
+        # Compute spectral likelihood: (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
         log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(
             new_mixing_matrix, full_data_without_CMB
         )
@@ -1717,7 +1821,7 @@ class Sampling_functions(MixingMatrix):
             log_proba_perturbation_likelihood = 0
             inverse_term = 0
         else:
-            # Compute correction term to the likelihood : (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta)
+            # Compute correction term to the likelihood: (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta)
             noise_CMB_component = get_inv_BtinvNB(self.freq_inverse_noise, new_mixing_matrix, jax_use=True)[
                 0, 0, ...
             ]  # Preparing N_c
@@ -1749,23 +1853,32 @@ class Sampling_functions(MixingMatrix):
 
         Note that the difference between the old and new mixing matrix is assumed to be small
 
-        With notation C_approx instead of \tilde{C}, the associated conditional probability is given by :
+        With notation C_approx instead of \tilde{C}, the associated conditional probability is given by:
             - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c) + eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta
 
         Parameters
         ----------
-        :param old_params_mixing_matrix: B_{old} to generate N_{c,old}, old mixing matrix of dimension [component, frequencies]
-        :param new_params_mixing_matrix: B_{new} to generate N_{c,new}, new mixing matrix of dimension [component, frequencies]
-        :param full_data_without_CMB: data without from which the CMB (sample) maps was substracted, of dimension [frequencies, n_pix]
-        :param red_cov_approx_matrix_sqrt: matrix square root of the covariance of C_approx, of dimension [lmin:lmax, nstokes, nstokes]
-        :param component_eta_maps: set of eta maps of dimension [component, n_pix]
-        :param first_guess: previous inverse term computed with N_{c,old}, of dimension [component, n_pix]
-        :param previous_inverse_x_Capprox_root: optional, C_approx^{1/2} A^{-1} eta, of dimension [component, n_pix] (otherwise it will be recomputed here)
-        :param biased_bool: boolean to indicate if the log-proba is biased, so computed without the correction, or not
+        old_params_mixing_matrix: array[float] of dimensions [component, frequencies]
+            old mixing matrix B_{old} to generate N_{c,old}
+        new_params_mixing_matrix: array[float] of dimensions [component, frequencies]
+            new mixing matrix B_{new} to generate N_{c,new}
+        full_data_without_CMB: array[float] of dimensions [frequencies, n_pix]
+            data without from which the CMB (sample) was substracted, of dimension
+        red_cov_approx_matrix: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            matrix square root of the covariance of the covariance matrice approx (C_approx) in harmonic domain
+        component_eta_maps: array[float] of dimensions [nstokes, n_pix]
+            set of eta maps
+        first_guess: array[float] of dimensions [component, n_pix] (optional)
+            previous inverse term computed with N_{c,old}, default is None to use maps of 0
+        previous_inverse_x_Capprox_root: array[float] of dimensions [component, n_pix] (optional)
+            C_approx^{1/2} A^{-1} eta, default None to have it recomputed
+        biased_bool: bool (optional)
+            indicate if the log-proba is biased, so computed without the correction, or not
 
         Returns
         -------
-        :return: computation of the conditional probability of the mixing matrix
+        float
+            computation of the conditional probability of the mixing matrix
         """
 
         ## Updating parameters of the mixing matrix
@@ -1773,7 +1886,7 @@ class Sampling_functions(MixingMatrix):
         # new_mixing_matrix = self.get_B(jax_use=True)
         new_mixing_matrix = self.get_B_from_params(new_params_mixing_matrix, jax_use=True)
 
-        # Compute spectral likelihood : (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
+        # Compute spectral likelihood: (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
         log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX(
             new_mixing_matrix, jnp.array(full_data_without_CMB)
         )
@@ -1782,7 +1895,7 @@ class Sampling_functions(MixingMatrix):
             # Computation chosen to be without the correction term
             log_proba_perturbation_likelihood = 0
         else:
-            # Compute correction term to the likelihood : (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta)
+            # Compute correction term to the likelihood: (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta)
             log_proba_perturbation_likelihood = self.get_conditional_proba_correction_likelihood_JAX_v2db(
                 old_params_mixing_matrix,
                 new_params_mixing_matrix,
@@ -1812,24 +1925,34 @@ class Sampling_functions(MixingMatrix):
 
         Note that the difference between the old and new mixing matrix is assumed to be small
 
-        With notation C_approx instead of \tilde{C}, the associated conditional probability is given by :
+        With notation C_approx instead of \tilde{C}, the associated conditional probability is given by:
             - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c) + eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta
 
         Parameters
         ----------
-        :param old_params_mixing_matrix: B_{old} to generate N_{c,old}, old mixing matrix of dimension [component, frequencies]
-        :param new_params_mixing_matrix: B_{new} to generate N_{c,new}, new mixing matrix of dimension [component, frequencies]
-        :param full_data_without_CMB: data without from which the CMB (sample) maps was substracted, of dimension [frequencies, n_pix]
-        :param red_cov_approx_matrix_sqrt: matrix square root of the covariance of C_approx, of dimension [lmin:lmax, nstokes, nstokes]
-        :param nside_patch: nside of the parameter patch to retrieve in params
-        :param component_eta_maps: set of eta maps of dimension [component, n_pix]
-        :param first_guess: previous inverse term computed with N_{c,old}, of dimension [component, n_pix]
-        :param previous_inverse_x_Capprox_root: optional, C_approx^{1/2} A^{-1} eta, of dimension [component, n_pix] (otherwise it will be recomputed here)
-        :param biased_bool: boolean to indicate if the log-proba is biased, so computed without the correction, or not
+        old_params_mixing_matrix: array[float] of dimensions [component, frequencies]
+            old mixing matrix B_{old} to generate N_{c,old}
+        new_params_mixing_matrix: array[float] of dimensions [component, frequencies]
+            new mixing matrix B_{new} to generate N_{c,new}
+        full_data_without_CMB: array[float] of dimensions [frequencies, n_pix]
+            data without from which the CMB (sample) was substracted, of dimension
+        red_cov_approx_matrix: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            matrix square root of the covariance of the covariance matrice approx (C_approx) in harmonic domain
+        nside_patch: int
+            nside of the parameter patch to retrieve in params
+        component_eta_maps: array[float] of dimensions [nstokes, n_pix]
+            set of eta maps
+        first_guess: array[float] of dimensions [component, n_pix] (optional)
+            previous inverse term computed with N_{c,old}, default is None to use maps of 0
+        previous_inverse_x_Capprox_root: array[float] of dimensions [component, n_pix] (optional)
+            C_approx^{1/2} A^{-1} eta, default None to have it recomputed
+        biased_bool: bool (optional)
+            indicate if the log-proba is biased, so computed without the correction, or not
 
         Returns
         -------
-        :return: computation of the conditional probability of the mixing matrix
+        array[float] of dimensions [max_length_patch]
+            computation of the conditional probability of the mixing matrix for each patch
         """
 
         ## Updating parameters of the mixing matrix
@@ -1839,7 +1962,7 @@ class Sampling_functions(MixingMatrix):
 
         new_mixing_matrix, template = self.get_patch_B_from_params(nside_patch, new_params_mixing_matrix, jax_use=True)
 
-        # Compute spectral likelihood : (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
+        # Compute spectral likelihood: (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
         log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_pixel(
             new_mixing_matrix, jnp.array(full_data_without_CMB)
         )
@@ -1848,7 +1971,7 @@ class Sampling_functions(MixingMatrix):
             # Computation chosen to be without the correction term
             log_proba_perturbation_likelihood = 0
         else:
-            # Compute correction term to the likelihood : (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta)
+            # Compute correction term to the likelihood: (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta)
             log_proba_perturbation_likelihood = self.get_conditional_proba_correction_likelihood_JAX_pixel(
                 old_params_mixing_matrix,
                 new_params_mixing_matrix,
@@ -1894,16 +2017,21 @@ class Sampling_functions(MixingMatrix):
 
         Parameters
         ----------
-        :param sample_B_f_r: sample of the mixing matrix and r parameter, of dimension [nfreq-len(pos_special_frequencies)*(ncomp-1) + 1]
-        :param noise_weighted_alm_data: noise weighted alms of the data, do N^{-1} d, given in harmonic domain, of dimension [nfreq, dim(alms)]
-        :param theoretical_red_cov_r1_tensor: tensor mode covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        :param theoretical_red_cov_r0_total: scalar mode covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
-        :param red_cov_approx_matrix: approximate covariance matrices in harmonic domain, dimension [lmin:lmax, nstokes, nstokes]
+        sample_B_f_r: array[float] of dimensions [nfreq-len(pos_special_frequencies)*(ncomp-1) + 1]
+            sample of the mixing matrix and r parameter
+        noise_weighted_alm_data: array[float] of dimensions [nfreq, nstokes]
+            noise weighted alms of the data, do N^{-1} d, given in harmonic domain
+        theoretical_red_cov_r1_tensor: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            tensor mode covariance matrices in harmonic domain
+        theoretical_red_cov_r0_total: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            scalar mode covariance matrices in harmonic domain
+        red_cov_approx_matrix: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            approximate covariance matrices in harmonic domain
 
         Returns
         -------
-        :return: log-proba computation of the marginal probability of the full likelihood over s_c
-
+        float
+            log-proba computation of the marginal probability of the full likelihood over s_c
         """
 
         ## Checking the dimensions of the inputs
@@ -1946,7 +2074,7 @@ class Sampling_functions(MixingMatrix):
             noise_weighted_alm_data, central_term_1, lmin=self.lmin
         )
 
-        ## Finally building the full first term : -(d N^{-1})^t B (B^t N^{-1} B)^{-1} B^t N^{-1} d
+        ## Finally building the full first term: -(d N^{-1})^t B (B^t N^{-1} B)^{-1} B^t N^{-1} d
         first_term_complete = -alm_dot_product_JAX(noise_weighted_alm_data, frequency_alm_central_term_1, self.lmax)
 
         # Computation of the second term s_{c,ML}^t (C^{-1} + N_c^{-1}) s_{c,ML}
@@ -1988,15 +2116,21 @@ def single_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_size, log_pr
 
     Parameters
     ----------
-    :param random_PRNGKey: JAX random key to be splitted to generate the proposal and uniform distribution sample
-    :param old_sample: old sample of the parameter
-    :param step_size: standard deviation for the proposal distribution
-    :param log_proba: log-probability function of the model
-    :param model_kwargs: additional arguments for the log-probability function
+    random_PRNGKey: array[jnp.uint32] of dimensions [2]
+        JAX random key to be splitted to generate the proposal and uniform distribution sample
+    old_sample: array
+        old sample of the parameter
+    step_size: array[float]
+        standard deviation for the proposal distribution
+    log_proba: array[float]
+        log-probability function of the model
+    model_kwargs: dictionary
+        additional arguments for the log-probability function
 
     Returns
     -------
-    :return: new sample of the parameter
+    array
+        new sample of the parameter
     """
     # Splitting the random key
     rng_key, key_proposal, key_accept = random.split(random_PRNGKey, 3)
@@ -2024,16 +2158,21 @@ def bounded_single_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_size
 
     Parameters
     ----------
-    :param random_PRNGKey: JAX random key to be splitted to generate the proposal and uniform distribution sample
-    :param old_sample: old sample of the parameter
-    :param step_size: standard deviation for the proposal distribution
-    :param log_proba: log-probability function of the model
-    :param model_kwargs: additional arguments for the log-probability function
-
+    random_PRNGKey: array[jnp.uint32] of dimensions [2]
+        JAX random key to be splitted to generate the proposal and uniform distribution sample
+    old_sample: array
+        old sample of the parameter
+    step_size: array[float]
+        standard deviation for the proposal distribution
+    log_proba: array[float]
+        log-probability function of the model
+    model_kwargs: dictionary
+        additional arguments for the log-probability function
 
     Returns
     -------
-    :return: new sample of the parameter
+    array
+        new sample of the parameter
     """
     # Splitting the random key
     rng_key, key_proposal, key_accept = random.split(random_PRNGKey, 3)
@@ -2063,15 +2202,21 @@ def multivariate_Metropolis_Hasting_step(random_PRNGKey, old_sample, covariance_
 
     Parameters
     ----------
-    :param random_PRNGKey: JAX random key to be splitted to generate the proposal and uniform distribution sample
-    :param old_sample: old sample of the parameter
-    :param covariance_matrix: covariance matrix for the proposal distribution
-    :param log_proba: log-probability function of the model
-    :param model_kwargs: additional arguments for the log-probability function
+    random_PRNGKey: array[jnp.uint32] of dimensions [2]
+        JAX random key to be splitted to generate the proposal and uniform distribution sample
+    old_sample: array
+        old sample of the parameter
+    covariance_matrix: array[float]
+        covariance matrix for the proposal distribution
+    log_proba: array[float]
+        log-probability function of the model
+    model_kwargs: dictionary
+        additional arguments for the log-probability function
 
     Returns
     -------
-    :return: new sample of the parameter
+    array
+        new sample of the parameter
     """
     # Splitting the random key
     rng_key, key_proposal, key_accept = random.split(random_PRNGKey, 3)
@@ -2099,14 +2244,19 @@ def multivariate_Metropolis_Hasting_step_numpyro(state, covariance_matrix, log_p
 
     Parameters
     ----------
-    :param state: Numpyro state
-    :param covariance_matrix: covariance matrix for the proposal distribution
-    :param log_proba: log-probability function of the model
-    :param model_kwargs: additional arguments for the log-probability function
+    state: MHState
+        Numpyro state
+    covariance_matrix: array[float]
+        covariance matrix for the proposal distribution
+    log_proba: array[float]
+        log-probability function of the model
+    model_kwargs: dictionary
+        additional arguments for the log-probability function
 
     Returns
     -------
-    :return: new sample of the parameter
+    array
+        new sample of the parameter
     """
     # Retrieving the old sample and the random key from the Numpyro state
     old_sample, random_PRNGKey = state
@@ -2136,15 +2286,21 @@ def multivariate_Metropolis_Hasting_step_numpyro_bounded(state, covariance_matri
 
     Parameters
     ----------
-    :param state: Numpyro state
-    :param covariance_matrix: covariance matrix for the proposal distribution
-    :param log_proba: log-probability function of the model
-    :param model_kwargs: additional arguments for the log-probability function
-    :param boundary: boundary for the parameters
+    state: MHState
+        Numpyro state
+    covariance_matrix: array[float]
+        covariance matrix for the proposal distribution
+    log_proba: array[float]
+        log-probability function of the model
+    model_kwargs: dictionary
+        additional arguments for the log-probability function
+    boundary: array[float] of the same shape as the parameters
+        boundary for the parameters
 
     Returns
     -------
-    :return: new sample of the parameter
+    array
+        new sample of the parameter
     """
     # Retrieving the old sample and the random key from the Numpyro state
     old_sample, random_PRNGKey = state
@@ -2181,16 +2337,23 @@ def separate_single_MH_step_index_v2b(random_PRNGKey, old_sample, step_size, log
 
     Parameters
     ----------
-    :param random_PRNGKey: random key for the proposal and uniform distribution sample
-    :param old_sample: old sample of the Metropolis-Hasting step
-    :param step_size: standard deviation for the proposal distribution
-    :param log_proba: log-probability function of the model
-    :param indexes_Bf: indexes of the parameter to be updated
-    :param model_kwargs: additional arguments for the log-probability function
+    random_PRNGKey: array[jnp.uint32] of dimensions [2]
+        JAX random key to be splitted to generate the proposal and uniform distribution sample
+    old_sample: array
+        old sample of the parameter
+    step_size: array[float]
+        standard deviation for the proposal distribution
+    log_proba: array[float]
+        log-probability function of the model
+    indexes_Bf: array[int]
+        indexes of the parameters to be sampled
+    model_kwargs: dictionary
+        additional arguments for the log-probability function
 
     Returns
     -------
-    :return: new sample of the parameter
+    array
+        new sample of the parameter
     """
 
     def map_func(carry, index_Bf):
@@ -2200,12 +2363,17 @@ def separate_single_MH_step_index_v2b(random_PRNGKey, old_sample, step_size, log
 
         Parameters
         ----------
-        :param carry: carry of the JAX scan function ; dictionnary with ['PRNGKey', 'sample', 'log_proba']
-        :param index_Bf: index of the parameter to be updated
+        carry: dictionary
+            carry of the JAX scan function ; dictionnary with ['PRNGKey', 'sample', 'log_proba']
+        index_Bf: int
+            index of the parameter to be updated
 
         Returns
         -------
-        :return: new carry and new sample of the parameter
+        dictionary
+            new carry and new sample of the parameter
+        array
+            new parameter sampled
         """
 
         # Splitting the random key
@@ -2282,20 +2450,33 @@ def separate_single_MH_step_index_v3(
 
     Parameters
     ----------
-    :param random_PRNGKey: random key for the random number generator ; note it will be split for each sample indexed by indexes B_f
-    :param old_sample: old sample to be updated
-    :param step_size: step size for all B_f
-    :param log_proba: log probability function as log(p(x) (and not -log(p(x)) as in the previous version)
-    :param indexes_Bf: indexes of the parameters to be updated
-    :param indexes_patches_Bf: indexes of the first patch of each parameter to be updated
-    :param size_patches: size of all patches
-    :param max_len_patches_Bf: maximum length of the patches
-    :param len_indexes_Bf: maximum index of all possible B_f (not only the free ones)
-    :param model_kwargs: additional arguments for the log_proba function
+    random_PRNGKey: array[jnp.uint32] of dimensions [2]
+        JAX random key to be splitted to generate the proposal and uniform distribution sample
+    old_sample: array
+        old sample of the parameter
+    step_size: array[float]
+        standard deviation for the proposal distribution
+    log_proba: array[float]
+        log-probability function of the model
+    indexes_Bf: array[int]
+        indexes of the parameters to be sampled
+    indexes_patches_Bf: array[int]
+        indexes of the first patch of each parameter to be updated
+    size_patches: array[int]
+        size of all patches
+    max_len_patches_Bf: int
+        maximum length of the patches
+    len_indexes_Bf: int
+        maximum index of all possible B_f (not only the free ones)
+    model_kwargs: dictionary
+        additional arguments for the log-probability function
 
     Returns
     -------
-    :return: latest_PRNGKey, new_sample
+    latest_PRNGKey: array[jnp.uint32] of dimensions [2]
+        latest random key
+    new_sample: array
+        new sample of the parameter
     """
 
     def map_func(carry, counter_i):
@@ -2361,22 +2542,33 @@ def separate_single_MH_step_index_v4_pixel(
 
     Assumes all patches have the same disposition on the sky
 
-    Parameters
-    ----------
-    :param random_PRNGKey: random key for the random number generator ; note it will be split for each sample indexed by indexes B_f
-    :param old_sample: old sample to be updated
-    :param step_size: step size for all B_f
-    :param log_proba: log probability function as log(p(x) (and not -log(p(x)) as in the previous version)
-    :param indexes_Bf: indexes of the parameters to be updated
-    :param indexes_patches_Bf: indexes of the first patch of each parameter to be updated
-    :param size_patches: size of all patches
-    :param max_len_patches_Bf: maximum length of the patches
-    :param len_indexes_Bf: maximum index of all possible B_f (not only the free ones)
-    :param model_kwargs: additional arguments for the log_proba function
+    random_PRNGKey: array[jnp.uint32] of dimensions [2]
+        JAX random key to be splitted to generate the proposal and uniform distribution sample
+    old_sample: array
+        old sample of the parameter
+    step_size: array[float]
+        standard deviation for the proposal distribution
+    log_proba: array[float]
+        log-probability function of the model
+    indexes_Bf: array[int]
+        indexes of the parameters to be sampled
+    indexes_patches_Bf: array[int]
+        indexes of the first patch of each parameter to be updated
+    size_patches: array[int]
+        size of all patches
+    max_len_patches_Bf: int
+        maximum length of the patches
+    len_indexes_Bf: int
+        maximum index of all possible B_f (not only the free ones)
+    model_kwargs: dictionary
+        additional arguments for the log-probability function
 
     Returns
     -------
-    :return: latest_PRNGKey, new_sample
+    latest_PRNGKey: array[jnp.uint32] of dimensions [2]
+        latest random key
+    new_sample: array
+        new sample of the parameter
     """
 
     def map_func(carry, counter_i):
@@ -2446,20 +2638,34 @@ def separate_single_MH_step_index_v4b_pixel(
 
     Parameters
     ----------
-    :param random_PRNGKey: random key for the random number generator ; note it will be split for each sample indexed by indexes B_f
-    :param old_sample: old sample to be updated
-    :param step_size: step size for all B_f
-    :param log_proba: log probability function as log(p(x) (and not -log(p(x)) as in the previous version)
-    :param indexes_Bf: indexes of the parameters to be updated
-    :param indexes_patches_Bf: indexes of the first patch of each parameter to be updated
-    :param size_patches: size of all patches
-    :param max_len_patches_Bf: maximum length of the patches
-    :param len_indexes_Bf: maximum index of all possible B_f (not only the free ones)
-    :param model_kwargs: additional arguments for the log_proba function
+    random_PRNGKey: array[jnp.uint32] of dimensions [2]
+        JAX random key to be splitted to generate the proposal and uniform distribution sample
+    old_sample: array
+        old sample of the parameter
+    step_size: array[float]
+        standard deviation for the proposal distribution
+    log_proba: array[float]
+        log-probability function of the model
+    indexes_Bf: array[int]
+        indexes of the parameters to be sampled
+    indexes_patches_Bf: array[int]
+        indexes of the first patch of each parameter to be updated
+    size_patches: array[int]
+        size of all patches
+    max_len_patches_Bf: int
+        maximum length of the patches
+    len_indexes_Bf: int
+        maximum index of all possible B_f (not only the free ones)
+    model_kwargs: dictionary
+        additional arguments for the log-probability function
 
     Returns
     -------
-    :return: latest_PRNGKey, new_sample
+    latest_PRNGKey: array[jnp.uint32] of dimensions [2]
+        latest random key
+    new_sample: array
+        new sample of the parameter
+
     """
 
     def map_func(carry, counter_i):
@@ -2526,6 +2732,36 @@ def separate_single_MH_step_index_v4b_pixel(
 def separate_single_MH_step_index_accelerated(
     random_PRNGKey, old_sample, step_size, log_proba, indexes_Bf, first_guess, **model_kwargs
 ):
+    """
+    Perform Metroplis-Hasting step for a given set of indexes given by indexes_patches_Bf
+
+    Parameters
+    ----------
+    random_PRNGKey: array[jnp.uint32] of dimensions [2]
+        JAX random key to be splitted to generate the proposal and uniform distribution sample
+    old_sample: array
+        old sample of the parameter
+    step_size: array[float]
+        standard deviation for the proposal distribution
+    log_proba: array[float]
+        log-probability function of the model
+    indexes_Bf: array[int]
+        indexes of the parameters to be sampled
+    first_guess: array[float]
+        first guess for the inverse term
+    model_kwargs: dictionary
+        additional arguments for the log-probability function
+
+    Returns
+    -------
+    latest_PRNGKey: array[jnp.uint32] of dimensions [2]
+        latest random key
+    new_sample: array
+        new sample of the parameter
+    new_inverse_term: array[float]
+        array to speed-up computations
+    """
+
     def map_func(carry, index_Bf):
         rng_key, key_proposal, key_accept = random.split(carry[0], 3)
 

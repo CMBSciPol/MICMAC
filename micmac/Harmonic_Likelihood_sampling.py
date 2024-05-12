@@ -79,27 +79,61 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
 
         Parameters
         ----------
-        nside : nside of the input frequency maps, int
-        lmax : maximum multipole for the spherical harmonics transforms and harmonic domain objects, int
-        nstokes : number of Stokes parameters, int
-        frequency_array : array of frequencies, in GHz
-        freq_noise_c_ell :noise power spectra for each frequency, in uK^2, dimensions [frequencies, frequencies, lmax+1-lmin] or [frequencies, frequencies, lmax] (in which case it will be cut to [lmin:lmax+1])
-        pos_special_freqs : indexes of the special frequencies in the frequency array respectively for synchrotron and dust, default is [0,-1] for first and last frequencies
-        n_components : number of components for the mixing matrix, int
-        lmin : minimum multipole for the spherical harmonics transforms and harmonic domain objects, int
-        n_iter : number of iterations the spherical harmonics transforms (for map2alm transformations), int
-        mask : optional, mask to use in the sampling, dimensions [nstokes, n_pix] ; if not given, no mask is used
-        spv_nodes_b : tree for the spatial variability, to generate from a yaml file, list of dictionaries
-        biased_version : if True, use the biased version of the likelihood, so no computation of the correction term, bool
-        r_true : true value of r (only used to compute input CMB maps, not actually used in the sampling), float
-        step_size_r : step size for the Metropolis-Hastings sampling of r, float
-        covariance_B_f : covariance for the Metropolis-Hastings sampling of B_f, given by a matrix of dimensions [(n_frequencies-len(pos_special_freqs))*(n_components-1), (n_frequencies-len(pos_special_freqs))*(n_components-1)] ; will be repeated if multiresoltion case
-        number_iterations_sampling : maximum number of iterations for the sampling, int
-        number_iterations_done : number of iterations already accomplished, in case the chain is resuming from a previous run, int
-        seed : seed for the JAX PRNG random number generator to start the chain, int
-        disable_chex : disable chex tests (to improve speed), bool
-        instrument_name : optional, name of the instrument, str
+        nside: int
+            nside of the input frequency maps
+        lmax: int
+            maximum multipole for the spherical harmonics transforms and harmonic domain objects,
+        nstokes: int
+            number of Stokes parameters
+        frequency_array: array[float]
+            array of frequencies, in GHz
+        freq_noise_c_ell: array[float] of dimensions [frequencies, frequencies, lmax+1-lmin] or [frequencies, frequencies, lmax] (in which case it will be cut to lmax+1-lmin)
+            optional, noise power spectra for each frequency, in uK^2, dimensions
+        pos_special_freqs: list[int] (optional)
+            indexes of the special frequencies in the frequency array respectively for synchrotron and dust, default is [0,-1] for first and last frequencies
+        n_components: int (optional)
+            number of components for the mixing matrix, default 3
+        lmin: int (optional)
+            minimum multipole for the spherical harmonics transforms and harmonic domain objects, default 2
+        n_iter: int (optional)
+            number of iterations the spherical harmonics transforms (for map2alm transformations), default 8
+        mask: None or array[float] of dimensions [n_pix] (optional)
+            mask to use in the sampling  ; if not given, no mask is used, default None
+            Note: the mask WILL NOT be applied to the input maps, it will be only used for the propagated noise covariance
+            WARNING: Masked input are not currently supported, expect E-to-B leakage
 
+        spv_nodes_b: list[dictionaries] (optional)
+            tree for the spatial variability, to generate from a yaml file, default []
+            in principle set up by get_nodes_b
+            WARNING: The spatial variability is not currently supported, but will be passed to MICMAC_Sampler obj when using create_Harmonic_MICMAC_sampler_from_MICMAC_sampler_obj
+
+        biased_version: bool (optional)
+            use the biased version of the likelihood, so no computation of the correction term, default False
+        r_true: float (optional)
+            true value of r (only used to compute input CMB maps, not actually used in the sampling), default 0
+
+        boundary_B_f: None or array[float] (optional)
+            minimum and maximum B_f values accepted for B_f sample, set to [-inf,inf] for each B_f parameter if None, default None
+        boundary_r: None or array[float] (optional)
+            minimum and maximum r values accepted for r sample, set to [-inf,inf] if None, default None
+
+        step_size_r: float (optional)
+            step size for the Metropolis-Hastings sampling of r, default 1e-4
+        covariance_B_f: None or array[float] of dimensions [(n_frequencies-len(pos_special_freqs))*(n_components-1), (n_frequencies-len(pos_special_freqs))*(n_components-1)] (optional)
+            covariance for the Metropolis-Hastings sampling of B_f ; will be repeated if multiresoltion case, default None
+        number_iterations_sampling: int (optional)
+            maximum number of iterations for the sampling, default 100
+        number_iterations_done: int (optional)
+            number of iterations already accomplished, in case the chain is resuming from a previous run, usually set by exterior routines, default 0
+
+        seed: int or array[jnp.uint32] (optional)
+            seed for the JAX PRNG random number generator to start the chain or array of a previously computed seed, default 0
+        disable_chex: bool
+            disable chex tests (to improve speed)
+
+        instrument_name: str (optional)
+            name of the instrument as expected by cmbdb or given as 'customized_instrument' if redefined by user, default 'SO_SAT'
+            see https://github.com/dpole/cmbdb/blob/master/cmbdb/experiments.yaml
         """
 
         # Initialising the parent class
@@ -215,16 +249,23 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
 
         Parameters
         ----------
-        freq_maps_fgs : input frequency foregrounds maps, dimensions [n_frequencies,nstokes,n_pix]
-        return_only_freq_maps : optional, return only the full frequency maps, bool
-        return_only_maps : optional, return only the full frequency and CMB maps alone, bool
+        freq_maps_fgs: array[float] of dimensions [n_frequencies,nstokes,n_pix]
+            input frequency foregrounds maps
+        return_only_freq_maps: bool (optional)
+            return only the full frequency maps, bool
+        return_only_maps: bool (optional)
+            return only the full frequency and CMB maps alone, bool
 
         Returns
         -------
-        input_freq_maps : input frequency maps, dimensions [n_frequencies,nstokes,n_pix]
-        input_cmb_maps : input CMB maps, dimensions [nstokes,n_pix]
-        theoretical_red_cov_r0_total : theoretical reduced covariance matrix for the CMB scalar modes
-        theoretical_red_cov_r1_tensor : theoretical reduced covariance matrix for the CMB tensor modes
+        input_freq_maps: array[float] of dimensions [n_frequencies,nstokes,n_pix]
+            input frequency maps
+        input_cmb_maps: array[float] of dimensions [nstokes,n_pix]
+            input CMB maps
+        theoretical_red_cov_r0_total: array[float] of dimensions [lmax+1-lmin,nstokes,nstokes]
+            theoretical reduced covariance matrix for the CMB scalar modes
+        theoretical_red_cov_r1_tensor: array[float] of dimensions [lmax+1-lmin,nstokes,nstokes]
+            theoretical reduced covariance matrix for the CMB tensor modes
         """
         indices_polar = np.array([1, 2, 4])
 
@@ -253,7 +294,19 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
 
     def update_variable(self, all_samples, new_samples_to_add):
         """
-        Update the samples with new samples to add
+        Update the samples with new samples to add by stacking them
+
+        Parameters
+        ----------
+        all_samples: array[float] of dimensions [n_samples,n_pix]
+            previous samples to update
+        new_samples_to_add: array[float] of dimensions [n_samples,n_pix]
+            new samples to add
+
+        Returns
+        -------
+        all_samples: array[float] of dimensions [n_samples+n_samples,n_pix]
+            updated samples
         """
         if jnp.size(all_samples) == 0:
             return new_samples_to_add
@@ -265,6 +318,11 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
     def update_samples_MH(self, all_samples):
         """
         Update the samples with new samples to add for r and B_f
+
+        Parameters
+        ----------
+        all_samples: dictionary
+            dictionary of all the samples to update
         """
         # Update the samples of r
         self.all_samples_r = self.update_variable(self.all_samples_r, all_samples[..., -1])
@@ -279,11 +337,14 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
 
         Parameters
         ----------
-        input_freq_maps : input frequency maps, dimensions [n_frequencies,nstokes,n_pix]
+        input_freq_maps : array[float] of dimensions [n_frequencies,nstokes,n_pix]
+            input frequency maps
 
         Returns
         -------
-        freq_alms_input_maps : alms from the input frequency maps, dimensions [n_frequencies,nstokes,3,(lmax+1)*(lmax+2)//2]
+        freq_alms_input_maps : array[float] of dimensions [n_frequencies,nstokes,(lmax+1)*(lmax+2)//2]
+            alms from the input frequency maps
+            the (lmax+1)*(lmax+2)//2 dimension is the flattened number of lm coefficients stored according to the Healpy convention
         """
 
         assert input_freq_maps.shape == (self.n_frequencies, self.nstokes, self.n_pix)
@@ -333,18 +394,27 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
 
         Parameters
         ----------
-        input_freq_maps : input frequency maps, dimensions [frequencies, nstokes, n_pix]
-        c_ell_approx : approximate CMB power spectra for the correction term, dimensions [number_correlations, lmax+1]
-        init_params_mixing_matrix : initial parameters for the mixing matrix, dimensions [n_frequencies-len(pos_special_freqs), n_correlations-1]
-        theoretical_r0_total : theoretical covariance matrix for the CMB scalar modes, dimensions [lmax+1-lmin, number_correlations, number_correlations]
-        theoretical_r1_tensor : theoretical covariance matrix for the CMB tensor modes, dimensions [lmax+1-lmin, number_correlations, number_correlations]
-        initial_guess_r : initial guess for r, float
-        method_used : method used for the minimization, str
-        options_minimizer : options for the minimizer, dict
+        input_freq_maps : array[float] of dimensions [n_frequencies,nstokes,n_pix]
+            input frequency maps
+        c_ell_approx : array[float] of dimensions [number_correlations, lmax+1]
+            approximate CMB power spectra for the correction term
+        init_params_mixing_matrix : array[float] of dimensions [n_frequencies-len(pos_special_freqs), n_correlations-1]
+            initial parameters for the mixing matrix
+        theoretical_r0_total : array[float] of dimensions [lmax+1-lmin, number_correlations, number_correlations]
+            theoretical covariance matrix for the CMB scalar modes
+        theoretical_r1_tensor : array[float] of dimensions [lmax+1-lmin, number_correlations, number_correlations]
+            theoretical covariance matrix for the CMB tensor modes
+        initial_guess_r : float (optional)
+            initial guess for r, default 0
+        method_used : str (optional)
+            method used for the minimization, default 'ScipyMinimize'
+        options_minimizer : dict (optional)
+            additional options dictionary for the minimizer
 
         Returns
         -------
-        params : best parameters found, dimensions [n_frequencies-len(pos_special_freqs)*(n_correlations-1) + 1]
+        params : array[float] of dimensions [n_frequencies-len(pos_special_freqs)*(n_correlations-1) + 1]
+            best parameters found
         """
 
         # Disabling all chex checks to speed up the code
@@ -449,13 +519,22 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
 
         Parameters
         ----------
-        input_freq_maps : input frequency maps, dimensions [frequencies, nstokes, n_pix]
-        c_ell_approx : approximate CMB power spectra for the correction term, dimensions [number_correlations, lmax+1]
-        init_params_mixing_matrix : initial parameters for the mixing matrix, dimensions [n_frequencies-len(pos_special_freqs), n_correlations-1]
-        theoretical_r0_total : theoretical covariance matrix for the CMB scalar modes, dimensions [lmax+1-lmin, number_correlations, number_correlations]
-        theoretical_r1_tensor : theoretical covariance matrix for the CMB tensor modes, dimensions [lmax+1-lmin, number_correlations, number_correlations]
-        initial_guess_r : initial guess for r, float
-        print_bool : optional, for test prints, bool
+        input_freq_maps : array[float] of dimensions [n_frequencies,nstokes,n_pix]
+            input frequency maps
+        c_ell_approx : array[float] of dimensions [number_correlations, lmax+1]
+            approximate CMB power spectra for the correction term
+        init_params_mixing_matrix : array[float] of dimensions [n_frequencies-len(pos_special_freqs), n_correlations-1]
+            initial parameters for the mixing matrix
+        theoretical_r0_total : array[float] of dimensions [lmax+1-lmin, number_correlations, number_correlations]
+            theoretical covariance matrix for the CMB scalar modes
+        theoretical_r1_tensor : array[float] of dimensions [lmax+1-lmin, number_correlations, number_correlations]
+            theoretical covariance matrix for the CMB tensor modes
+        initial_guess_r : float (optional)
+            initial guess for r, default 0
+        covariance_B_f_r : None or array[float] of dimensions [(n_frequencies-len(pos_special_freqs))*(n_correlations-1) + 1, (n_frequencies-len(pos_special_freqs))*(n_correlations-1) + 1] (optional)
+            covariance for the Metropolis-Hastings sampling of B_f and r, default None
+        print_bool: bool (optional)
+            option for test prints, default True
         """
 
         # Disabling all chex checks to speed up the code
@@ -622,6 +701,11 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
     def compute_covariance_from_samples(self):
         """
         Compute the covariance matrix from the sample chains of B_f and r
+
+        Returns
+        -------
+        covariance_B_f_r : array[float]
+            covariance matrix of the samples of B_f and r
         """
         if self.number_iterations_done == 0:
             raise ValueError(
@@ -642,7 +726,19 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
 
 def create_Harmonic_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv):
     """
-    Create a Harmonic_MICMAC_Sampler object from the path of a toml file
+    Create a Harmonic_MICMAC_Sampler object from the path of a toml file and the yaml file for spatial variability
+
+    Parameters
+    ----------
+    path_toml_file : str
+        path to the toml file for the main options of Harmonic_MICMAC_Sampler
+    path_file_spv : str
+        path to the yaml file for the spatial variability options
+
+    Returns
+    -------
+    Harmonic_MICMAC_Sampler_obj : Harmonic_MICMAC_Sampler
+        Harmonic_MICMAC_Sampler object
     """
     with open(path_toml_file) as f:
         dictionary_parameters = toml.load(f)

@@ -14,14 +14,27 @@
 # You should have received a copy of the GNU General Public License
 # along with MICMAC. If not, see <https://www.gnu.org/licenses/>.
 
-import camb
 import numpy as np
 
 
 def get_instr(freqs, depth_p):
     """
     Return the instrument dictionnary
+
+    Parameters
+    ----------
+    freqs: array[float] or float
+        frequency of the instrument
+    depth_p: array[float] or float, of the same dimension as freqs
+        depth of the instrument
+
+    Returns
+    -------
+    instrument: dict
+        instrument dictionnary with keys 'frequency', 'depth_p', 'depth_i'
     """
+    assert len(freqs) == len(depth_p)
+
     instrument_dict = {}
     instrument_dict['frequency'] = np.array(freqs)
     instrument_dict['depth_p'] = np.array(depth_p, dtype=float)
@@ -50,8 +63,51 @@ def generate_power_spectra_CAMB(
     typeless_bool=False,
 ):
     """
+    Generate power spectra from CAMB
     Return [Cl^TT, Cl^EE, Cl^BB, Cl^TE]
+
+    Parameters
+    ----------
+    Nside: int
+        Nside of the maps
+    r: float
+        tensor to scalar ratio
+    Alens: float
+        lensing amplitude
+    H0: float
+        Hubble constant
+    ombh2: float
+        baryon density
+    omch2: float
+        cold dark matter density
+    mnu: float
+        sum of neutrino masses
+    omk: float
+        curvature density
+    tau: float
+        optical depth
+    ns: float
+        scalar spectral index
+    As: float
+        amplitude of the primordial power spectrum
+    lens_potential_accuracy: int
+        lensing potential accuracy
+    nt: float
+        tensor spectral index
+    ntrun: float
+        tensor running index
+    type_power: str
+        type of power spectra to return
+    typeless_bool: bool
+        return the full power spectra if True, otherwise only the power spectrum of type type_power
+
+    Returns
+    -------
+    powers: dictionary or array[float]
+        dictionary of power spectra if typeless_bool is True, otherwise power spectra of type type_power
     """
+    import camb
+
     lmax = 2 * Nside
     # pars = camb.CAMBparams(max_l_tensor=lmax, parameterization='tensor_param_indeptilt')
     pars = camb.CAMBparams(max_l_tensor=lmax)
@@ -76,6 +132,23 @@ def generate_power_spectra_CAMB(
 
 
 def loading_params(directory_save_file, file_ver, MICMAC_sampler_obj):
+    """
+    Load all parameters from the saved files
+
+    Parameters
+    ----------
+    directory_save_file: str
+        directory where the files are saved
+    file_ver: str
+        run version of the file
+    MICMAC_sampler_obj: object
+        MICMAC sampler object, to check which parameters were saved
+
+    Returns
+    -------
+    dict_all_params: dict
+        dictionary of all parameters loaded from the files
+    """
     dict_all_params = dict()
     # Loading all files
     initial_freq_maps_path = directory_save_file + file_ver + '_initial_data.npy'

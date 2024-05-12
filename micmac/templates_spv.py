@@ -29,8 +29,20 @@ from anytree import Node, RenderTree
 
 #### Lower level functions
 def read_spv_config(yaml_file_path):
-    """Reads yaml file with info of spv configuration
-    and creates a dictionary from there"""
+    """
+    Reads yaml file with info of spv configuration
+    and creates a dictionary from there
+
+    Parameters
+    ----------
+    yaml_file_path: str
+        path to the yaml file
+
+    Returns
+    -------
+    dict_params_spv: dict
+        dictionary with spv configuration contained in the yaml file
+    """
     with open(yaml_file_path) as file:
         print(file)
         dict_params_spv = yaml.safe_load(file)
@@ -39,7 +51,16 @@ def read_spv_config(yaml_file_path):
 
 
 def build_tree_from_dict(node_dict, parent=None):
-    """Recursive function to build a tree form a dict"""
+    """
+    Recursive function to build a tree form a dict
+
+    Parameters
+    ----------
+    node_dict: dict
+        dictionary with the node names and values
+    parent: anytree.Node
+        parent node
+    """
     for key, value in node_dict.items():
         if isinstance(value, dict):
             node = Node(key, parent=parent)
@@ -51,6 +72,19 @@ def build_tree_from_dict(node_dict, parent=None):
 
 
 def count_betas_in_tree(node):
+    """
+    Count the number of nodes corresponding to free B_f parameters per frequency per component and per patch
+
+    Parameters
+    ----------
+    node: anytree.Node
+        node of the tree
+
+    Returns
+    -------
+    count: int
+        number of nodes corresponding to free B_f parameters for the given node
+    """
     count = 0
     if node.name.startswith('b'):
         count += 1
@@ -61,7 +95,21 @@ def count_betas_in_tree(node):
 
 
 def select_child_with_name(parent_node, child_name):
-    """Return child with a given name"""
+    """
+    Return child with a given name
+
+    Parameters
+    ----------
+    parent_node: anytree.Node
+        parent node
+    child_name: str
+        name of the child to select
+
+    Returns
+    -------
+    child: anytree.Node
+        child with the given name
+    """
     for child in parent_node.children:
         if child.name == child_name:
             return child
@@ -70,9 +118,16 @@ def select_child_with_name(parent_node, child_name):
 
 
 def fill_betas(node):
-    """Check if all the b params have values,
+    """
+    Check if all the b params have values,
     if not give them their ancestors default value
-    (it fills all the Nones of the tree)"""
+    (it fills all the Nones of the tree)
+
+    Parameters
+    ----------
+    node: anytree.Node
+        node of the tree
+    """
     if node.name == 'default' and node.value != 0 and node.value == None:
         updated_value = False
         while not updated_value:
@@ -90,7 +145,9 @@ def fill_betas(node):
 
 
 def print_node_with_value(node):
-    """Custom function to print node names and values if present"""
+    """
+    Custom function to print node names and values if present
+    """
     if hasattr(node, 'value'):
         print('{}{}'.format(node.depth * '  ', node.name), end=':')
         print(' %s' % node.value)
@@ -101,7 +158,27 @@ def print_node_with_value(node):
 
 
 def create_template_map(spv_nside, nside, use_jax=False, print_bool=False):
-    """Create one spv template map"""
+    """
+    Create one spv template map
+    TODO: Currently with pure_callback, to be improved later for full jax implementation
+    TODO: Implement the adaptive multiresolution case for any patch tempalte (not only Healpix pixelization)
+
+    Parameters
+    ----------
+    spv_nside: int
+        nside of the spv template map
+    nside: int
+        nside of the output map
+    use_jax: bool
+        whether to use jax or not
+    print_bool: bool
+        whether to print the nside for which the template is created
+
+    Returns
+    -------
+    spv_template: array[float]
+        spv template map
+    """
     if print_bool:
         print('>>> Creating new template for: ', spv_nside)
     if use_jax:
@@ -145,8 +222,22 @@ def create_template_map(spv_nside, nside, use_jax=False, print_bool=False):
 
 
 def build_empty_tree_spv(n_fgs_comp, n_betas):
-    """Create empty tree for spv config,
-    with 0 in node nside_spv (corresponding to basic comp sep)"""
+    """
+    Create empty tree for spv config,
+    with 0 in node nside_spv (corresponding to basic comp sep)
+
+    Parameters
+    ----------
+    n_fgs_comp: int
+        number of foreground components
+    n_betas: int
+        number of betas (free parameters)
+
+    Returns
+    -------
+    root: anytree.Node
+        root node of the tree
+    """
     root = Node('root')
     nside_spv = Node('nside_spv', parent=root)
     default_nside_spv = Node('default', parent=nside_spv)
@@ -165,7 +256,25 @@ def build_empty_tree_spv(n_fgs_comp, n_betas):
 
 #### Higher level functions
 def tree_spv_config(yaml_file_path, n_betas, n_fgs_comp, print_tree=False):
-    """From spv param file to tree of spv config"""
+    """
+    From spv param file to tree of spv config
+
+    Parameters
+    ----------
+    yaml_file_path: str
+        path to the yaml file with spv params
+    n_betas: int
+        number of betas (free parameters)
+    n_fgs_comp: int
+        number of foreground components
+    print_tree: bool
+        whether to print the tree structure or not
+
+    Returns
+    -------
+    root: anytree.Node
+        root node of the tree of spv config
+    """
     if yaml_file_path != '':
         # Read in dict spv params from .yaml file
         dict_params_spv = read_spv_config(yaml_file_path)
@@ -203,7 +312,19 @@ def tree_spv_config(yaml_file_path, n_betas, n_fgs_comp, print_tree=False):
 
 
 def get_nodes_b(root_tree):
-    """Returns a list of nodes b from the tree of spv config"""
+    """
+    Returns a list of nodes b from the tree of spv config
+
+    Parameters
+    ----------
+    root_tree: anytree.Node
+        root node of the tree of spv config
+
+    Returns
+    -------
+    nodes: list
+        list of nodes b
+    """
     nodes = []
     for _, _, node in RenderTree(root_tree):
         if node.name.startswith('b'):
@@ -212,7 +333,22 @@ def get_nodes_b(root_tree):
 
 
 def get_n_patches_b(node_b, jax_use=False):
-    """Returns the number of patches for a given node b"""
+    """
+    Returns the number of patches for a given node b
+    TODO: generalize to arbitrary patches distribution
+
+    Parameters
+    ----------
+    node_b: anytree.Node
+        node b
+    jax_use: bool
+        whether to use jax or not
+
+    Returns
+    -------
+    n_patches_b: int
+        number of patches for the given node b
+    """
     # TODO: genralize to pathces w kmeans
     if jax_use:
         # node_b expected to be list of default values of nodes n
@@ -233,13 +369,52 @@ def get_n_patches_b(node_b, jax_use=False):
 
 
 def get_values_b(nodes_b, n_frequencies, n_components):
-    """get default values of b"""
+    """
+    Get default values of b
+
+    Parameters
+    ----------
+    nodes_b: list
+        list of nodes b
+    n_frequencies: int
+        number of frequencies
+    n_components: int
+        number of components
+
+    Returns
+    -------
+    values_b: array[float]
+        array of values of b
+    """
     return np.array([nodes_b[i].children[0].value for i in range(n_frequencies * n_components)])
 
 
 def create_one_template_from_bdefaultvalue(
     nside_b, nside, all_nsides=None, spv_templates=None, use_jax=False, print_bool=False
 ):
+    """
+    Create one spv (spatial variability) template map from the default value of b
+
+    Parameters
+    ----------
+    nside_b: int
+        nside of the spv template map
+    nside: int
+        nside of the output map
+    all_nsides: list
+        list of all nsides
+    spv_templates: list
+        list of all spv templates
+    use_jax: bool
+        whether to use jax or not
+    print_bool: bool
+        whether to print the nside for which the template is created
+
+    Returns
+    -------
+    spv_template_b: array[float]
+        spv template map
+    """
     if all_nsides is not None:
         idx = all_nsides.index(nside_b)
         spv_template_b = spv_templates[idx]
@@ -252,6 +427,27 @@ def create_one_template_from_bdefaultvalue(
 
 
 def create_one_template(node, all_nsides, spv_templates, nside, print_bool=False):
+    """
+    Create one spv template map from the tree of spv config
+
+    Parameters
+    ----------
+    node: anytree.Node
+        node of the tree of spv config
+    all_nsides: list
+        list of all nsides
+    spv_templates: list
+        list of all spv templates
+    nside: int
+        nside of the output map
+    print_bool: bool
+        whether to print the nside for which the template is created
+
+    Returns
+    -------
+    spv_template_b: array[float]
+        spv template map
+    """
     nside_b = node.children[0].value
     spv_template_b = create_one_template_from_bdefaultvalue(
         nside_b, all_nsides=all_nsides, spv_templates=spv_templates, nside=nside, print_bool=print_bool
@@ -263,7 +459,10 @@ def create_one_template(node, all_nsides, spv_templates, nside, print_bool=False
 ### Old functions
 ### Correct but creating all the templates at once
 def create_templates_spv_old(node, nside_out, all_nsides=None, spv_templates=None, print_bool=False):
-    """Create templates of spatial variability for all betas
+    """
+    Old function, not currently used although correct
+
+    Create templates of spatial variability for all betas
     (it creates all the templates at once and keep them in a list)"""
     # loop over betas and create template maps for spv
     if node.name.startswith('b'):
