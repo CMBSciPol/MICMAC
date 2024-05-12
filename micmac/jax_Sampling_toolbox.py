@@ -330,7 +330,7 @@ class Sampling_functions(MixingMatrix):
         map_random_y: array[float] of dimensions [nstokes, n_pix] (optional)
             set of maps 0 with mean and variance 1, which will be used to compute eta, default None (to have them computed in the routine)
 
-        suppress_low_modes: bool
+        suppress_low_modes: bool (optional)
             if True, suppress low modes in the CG between lmin and lmax, default True
 
         Returns
@@ -361,7 +361,7 @@ class Sampling_functions(MixingMatrix):
             print('Recalculating y !')
             map_random_y = jax.random.normal(jax_key_PNRG_y, shape=(self.nstokes, self.n_pix)) / jhp.nside2resol(
                 self.nside
-            )  # *self.mask
+            )
 
         # Computation of the right hand side member of the equation
 
