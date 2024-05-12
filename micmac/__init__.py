@@ -22,7 +22,7 @@ from micmac.jax_sampling_toolbox import *
 from micmac.jax_tools import *
 from micmac.mixingmatrix import *
 from micmac.noisecovar import *
-from micmac.nonparam_likelihood import *
+from micmac.pixel_likelihood import *
 from micmac.statistics import *
 from micmac.templates_spv import *
 from micmac.tools import *
