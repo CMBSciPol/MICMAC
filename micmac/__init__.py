@@ -15,15 +15,15 @@
 # along with MICMAC. If not, see <https://www.gnu.org/licenses/>.
 
 from micmac.customized_models import *
-from micmac.harmonic_Fisher_tools import *
-from micmac.Harmonic_Likelihood_sampling import *
+from micmac.fisher import *
+from micmac.harmonic_likelihood_sampling import *
 from micmac.init_mixingmatrix import *
-from micmac.jax_Sampling_toolbox import *
+from micmac.jax_sampling_toolbox import *
 from micmac.jax_tools import *
 from micmac.mixingmatrix import *
 from micmac.noisecovar import *
-from micmac.Non_param_Likelihood_sampling import *
-from micmac.statistics_toolbox import *
+from micmac.nonparam_likelihood_sampling import *
+from micmac.statistics import *
 from micmac.templates_spv import *
 from micmac.tools import *
 from micmac.utils import *
