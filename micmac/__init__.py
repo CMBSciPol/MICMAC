@@ -16,13 +16,13 @@
 
 from micmac.customized_models import *
 from micmac.fisher import *
-from micmac.harmonic_likelihood_sampling import *
+from micmac.harmonic_likelihood import *
 from micmac.init_mixingmatrix import *
 from micmac.jax_sampling_toolbox import *
 from micmac.jax_tools import *
 from micmac.mixingmatrix import *
 from micmac.noisecovar import *
-from micmac.nonparam_likelihood_sampling import *
+from micmac.nonparam_likelihood import *
 from micmac.statistics import *
 from micmac.templates_spv import *
 from micmac.tools import *
