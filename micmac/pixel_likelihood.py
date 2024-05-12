@@ -29,14 +29,6 @@ from fgbuster import get_instrument
 from jax import config
 from jax_tqdm import scan_tqdm
 
-from micmac.jax_sampling_toolbox import (
-    Sampling_functions,
-    separate_single_MH_step_index_accelerated,
-    separate_single_MH_step_index_v2b,
-    separate_single_MH_step_index_v4_pixel,
-    separate_single_MH_step_index_v4b_pixel,
-    single_Metropolis_Hasting_step,
-)
 from micmac.jax_tools import (
     get_cell_from_map_jax,
     get_reduced_matrix_from_c_ell_jax,
@@ -49,6 +41,14 @@ from micmac.noisecovar import (
     get_inv_BtinvNB_c_ell,
     get_noise_covar_extended,
     get_Wd,
+)
+from micmac.sampling import (
+    Sampling_functions,
+    separate_single_MH_step_index_accelerated,
+    separate_single_MH_step_index_v2b,
+    separate_single_MH_step_index_v4_pixel,
+    separate_single_MH_step_index_v4b_pixel,
+    single_Metropolis_Hasting_step,
 )
 
 from .templates_spv import get_nodes_b, tree_spv_config

@@ -30,15 +30,15 @@ import numpyro
 import toml
 from jax import config
 
-from micmac.jax_sampling_toolbox import (
-    Sampling_functions,
-    multivariate_Metropolis_Hasting_step_numpyro_bounded,
-)
 from micmac.jax_tools import (
     frequency_alms_x_obj_red_covariance_cell_JAX,
     get_reduced_matrix_from_c_ell_jax,
 )
 from micmac.noisecovar import get_true_Cl_noise
+from micmac.sampling import (
+    Sampling_functions,
+    multivariate_Metropolis_Hasting_step_numpyro_bounded,
+)
 from micmac.templates_spv import get_nodes_b, tree_spv_config
 from micmac.tools import (
     get_c_ells_from_red_covariance_matrix,
