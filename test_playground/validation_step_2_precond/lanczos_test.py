@@ -7,11 +7,11 @@ def lanczos_algorithm_JAX(matvec_func, right_member, initial_guess=None, max_ite
 
         Parameters
         ----------
-        :param matvec_func: function that takes a vector and returns the product of the matrix and the vector
-        :param right_member: right member of the linear system of equations
-        :param initial_guess: initial guess for the solution
-        :param treshold: treshold for the convergence of the algorithm
-        :param max_iter: maximum number of iterations
+        matvec_func: function that takes a vector and returns the product of the matrix and the vector
+        right_member: right member of the linear system of equations
+        initial_guess: initial guess for the solution
+        treshold: treshold for the convergence of the algorithm
+        max_iter: maximum number of iterations
 
         Returns
         -------
@@ -66,10 +66,10 @@ def construct_partial_2lvl_preconditioners_JAX(alphas, betas, eigenvectors, matv
 
         Parameters
         ----------
-        :param alphas: alphas from Lanczos algorithm
-        :param betas: betas from Lanczos algorithm
-        :param eigenvectors: eigenvectors from Lanczos algorithm
-        :param matvec_stored: matrix-vector products from Lanczos algorithm
+        alphas: alphas from Lanczos algorithm
+        betas: betas from Lanczos algorithm
+        eigenvectors: eigenvectors from Lanczos algorithm
+        matvec_stored: matrix-vector products from Lanczos algorithm
 
         Returns
         -------
@@ -108,9 +108,9 @@ def apply_preconditioner_JAX(deflation_matrix, partial_precond, matvec_x_deflati
 
         Parameters
         ----------
-        :param partial_2lvl_precond: 2-level preconditioner
-        :param block_diag_precond_func: function that applies block-diagonal preconditioner
-        :param vector: vector to which apply the preconditioner
+        partial_2lvl_precond: 2-level preconditioner
+        block_diag_precond_func: function that applies block-diagonal preconditioner
+        vector: vector to which apply the preconditioner
 
         Returns
         -------

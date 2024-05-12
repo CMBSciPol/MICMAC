@@ -14,14 +14,14 @@ pos_special_freqs = [0,-1]
 r_true = 1e-2 # True value of r, only used to generate the input CMB maps
 
 # [Instrument_parameters]
-instrument_name = 'LiteBIRD' 
-# Either provide instrument name, then frequency_array and the noise levels to form freq_noise_c_ell and will be taken from fgbuster, 
+instrument_name = 'LiteBIRD'
+# Either provide instrument name, then frequency_array and the noise levels to form freq_noise_c_ell and will be taken from fgbuster,
 # or provide expcitely freq_noise_c_ell and frequency_array with instrument_name="customized_instrument"
 # freq_noise_c_ell = []
 # frequency_array = []
 
 # [Metropolis-Hastings_parameters]
-step_size_r = 1e-4
+# step_size_r = 1e-4
 # covariance_B_f = 1e-9
 
 # [Sampling_parameters]

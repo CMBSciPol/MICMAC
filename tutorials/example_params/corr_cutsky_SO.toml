@@ -3,7 +3,6 @@ disable_chex = true
 classical_Gibbs = false
 biased_version = false
 perturbation_eta_covariance = true
-# use_uncorrelated_patches = false
 simultaneous_accept_rate = false
 full_sky_correction = true
 
@@ -20,7 +19,7 @@ save_eta_chain_maps = false # If true, all the sampled eta maps which are margin
 save_s_c_spectra = true # If true, the s_c spectra will be saved
 
 # [Instrument_parameters]
-instrument_name = 'LiteBIRD' # Either provide instrument name, then freq_inverse_noise and frequency_array will be taken from fgbuster, 
+instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_noise and frequency_array will be taken from fgbuster,
 # or provide expcitely freq_inverse_noise and frequency_array with instrument_name="customized_instrument"
 # frequency_array = [90]
 # depth_p = [4]
@@ -35,7 +34,7 @@ sample_r_from_BB = true
 nside = 64
 lmax = 128
 nstokes = 2
-lmin = 2
+lmin = 30
 n_iter = 8 # Number of iterations for Python estimation of alms
 n_components = 3
 pos_special_freqs = [0,-1]
@@ -52,6 +51,6 @@ step_size_r = 1e-3 #1e-4 #1e-5 ???
 
 # [Sampling_parameters]
 # overrelax = 0 #-0.995 # Overrelaxation parameter for the sampling
-number_iterations_sampling = 1300 #1200 #1000 #700 #1500 #400 # Maximum number of iterations for the sampling
+number_iterations_sampling = 375 #5 #10 #300 #400 # Maximum number of iterations for the sampling
 number_iterations_done = 0 # Number of iterations already accomplished, in case the chain is resuming from a previous run
 seed = 42

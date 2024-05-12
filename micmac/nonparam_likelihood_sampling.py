@@ -21,6 +21,7 @@ import healpy as hp
 import jax
 import jax.lax as jlx
 import jax.numpy as jnp
+import jax.random as random
 import jax.scipy as jsp
 import numpy as np
 import toml
@@ -80,7 +81,7 @@ class MICMAC_Sampler(Sampling_functions):
         save_all_B_f_params=True,
         save_s_c_spectra=False,
         sample_r_Metropolis=True,
-        sample_r_from_BB=False,
+        sample_r_from_BB=True,
         sample_C_inv_Wishart=False,
         perturbation_eta_covariance=False,
         simultaneous_accept_rate=False,

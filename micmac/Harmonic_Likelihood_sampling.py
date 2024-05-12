@@ -16,19 +16,21 @@
 
 import time
 from collections import namedtuple
+from functools import partial
 
 import chex as chx
 import fgbuster
 import healpy as hp
 import jax
 import jax.numpy as jnp
+import jax.random as random
 import jaxopt as jopt
 import numpy as np
 import numpyro
 import toml
 from jax import config
 
-from micmac.jax_Sampling_toolbox import (
+from micmac.jax_sampling_toolbox import (
     Sampling_functions,
     multivariate_Metropolis_Hasting_step_numpyro_bounded,
 )

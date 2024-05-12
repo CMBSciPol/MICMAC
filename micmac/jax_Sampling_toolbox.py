@@ -17,12 +17,14 @@
 import time
 
 import chex as chx
+import jax
 import jax.lax as jlax
 import jax.numpy as jnp
+import jax.random as random
 import jax.scipy as jsp
 import jax_healpy as jhp
+import numpy as np
 import numpyro.distributions as dist
-from jax import random
 
 from micmac.jax_tools import (
     alm_dot_product_JAX,
