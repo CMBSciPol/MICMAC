@@ -1,7 +1,7 @@
 # Minimally Informed CMB MAp Constructor: MICMAC
 # [Release coming soon]
 
-<img src="./micmac.png" alt="drawing" width="200">
+<img src="./MICMAC-2.png" alt="drawing" width="200">
 
 MICMAC Logo, credits: Ema Tsang King Sang
 
