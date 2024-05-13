@@ -277,15 +277,15 @@ class Sampling_functions(MixingMatrix):
             jnp.copy(input_map), covariance_unity, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter
         )
 
-    # def get_cond_unobserved_patches(self):
-    #     """
-    #     Get boolean condition on the free B_f indices corresponding to patches within the mask
-    #     """
+    def get_cond_unobserved_patches(self):
+        """
+        Get boolean condition on the free B_f indices corresponding to patches within the mask
+        """
 
-    #     templates = self.get_all_templates()
-    #     # mask_with_m1 = jnp.where(self.mask==0, -1, 1)
-    #     templates = templates.at[:,:, self.mask == 0].set(-1)
-    #     return jnp.isin(jnp.arange(self.len_params), jnp.unique(templates))
+        templates = self.get_all_templates()
+        # mask_with_m1 = jnp.where(self.mask==0, -1, 1)
+        templates = templates.at[:, :, self.mask == 0].set(-1)
+        return jnp.isin(jnp.arange(self.len_params), jnp.unique(templates))
 
     def get_cond_unobserved_patches_from_indices(self, indices):
         """
