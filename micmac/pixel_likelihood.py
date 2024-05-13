@@ -1255,7 +1255,7 @@ class MICMAC_Sampler(Sampling_functions):
         ## Starting the Gibbs sampling !!!!
         time_start_sampling = time.time()
         # Start sampling !!!
-        last_sample, all_samples = jlx.scan(all_sampling_steps, initial_carry, jnp.arange(actual_number_of_iterations))
+        last_sample, all_samples = jlax.scan(all_sampling_steps, initial_carry, jnp.arange(actual_number_of_iterations))
         time_full_chain = (time.time() - time_start_sampling) / 60
         print(f'End of iterations in {time_full_chain} minutes, saving all files !', flush=True)
 
