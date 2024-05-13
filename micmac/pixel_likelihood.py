@@ -19,7 +19,7 @@ import time
 import chex as chx
 import healpy as hp
 import jax
-import jax.lax as jlx
+import jax.lax as jlax
 import jax.numpy as jnp
 import jax.random as random
 import jax.scipy as jsp
