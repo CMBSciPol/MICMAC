@@ -20,9 +20,9 @@ seed_realization_input=42
 
 delta_ell = 1
 
-reduction_noise = 5
+reduction_noise = 1
 factor_Fisher = 0.5
-factor_Fisher_r = 1
+factor_Fisher_r = 5
 relative_treshold = 0
 sigma_gap = 10
 fgs_model = 'customized_parametric'
@@ -42,9 +42,9 @@ use_last_sample = false
 save_last_sample = true
 stack_former_file_ver = true
 
-name_toml = 'corr_cutsky_d1s1customparam_LB_r0_v3h.toml' #
+name_toml = 'corr_cutsky_d1s1customparam_LB_r0_v3i.toml' #
 name_file_spv = 'params_spv_LB_nside1.yaml'
 
 file_ver_last_sample = 'corr_cutsky_d1s1customparam_LB_r0_v3g'
 former_file_ver = 'corr_cutsky_d1s1customparam_LB_r0_v3g'
-file_ver = 'corr_cutsky_d1s1customparam_LB_r0_v3h'
+file_ver = 'corr_cutsky_d1s1customparam_LB_r0_v3i'
