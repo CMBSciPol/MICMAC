@@ -161,7 +161,6 @@ def get_observation_customized(instrument='', sky=None, noise=False, nside=None,
     from fgbuster.observation_helpers import (
         get_instrument,
         get_noise_realization,
-        get_observation,
         standardize_instrument,
     )
 
@@ -225,6 +224,7 @@ def fgs_freq_maps_from_customized_model_nonparam(
     mixing_mat: array
         mixing matrix, returned only if return_mixing_mat is True
     """
+    from fgbuster.observation_helpers import get_observation
     from fgbuster.separation_recipes import _my_ud_grade
 
     n_fgs_comp = len(fgs_models)
