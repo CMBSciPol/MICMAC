@@ -1,22 +1,16 @@
-# [Quick_test_parameters]
-disable_chex = true
-classical_Gibbs = false
+# [Run_settings]
 biased_version = false
 perturbation_eta_covariance = true
 simultaneous_accept_rate = false
-full_sky_correction = true
 
-# [C sampling]
-non_centered_moves = false
-use_binning=false
-save_intermediary_centered_moves = false
+# [r sampling]
 limit_r_value = true
 min_r_value = 0
 
 # [Data]
 save_CMB_chain_maps = false # If true, all the sampled CMB maps which are marginalized over will be saved
 save_eta_chain_maps = false # If true, all the sampled eta maps which are marginalized over will be saved
-save_s_c_spectra = true # If true, the s_c spectra will be saved
+save_s_c_spectra = false # If true, the s_c spectra will be saved
 
 # [Instrument_parameters]
 instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_noise and frequency_array will be taken from fgbuster,
@@ -28,7 +22,7 @@ instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_n
 r_true = 0
 sample_r_Metropolis = true
 sample_C_inv_Wishart = false
-sample_r_from_BB = true
+# sample_r_from_BB = true
 
 # [Problem_parameters]
 nside = 64
@@ -47,10 +41,10 @@ tolerance_CG = 1e-8 # Tolerance for the different CGs
 atol_CG = 1e-8
 
 # [Metropolis-Hastings-within-Gibbs_parameters]
-step_size_r = 1e-3 #1e-4 #1e-5 ???
+# step_size_r = 1e-3 #1e-4 #1e-5 ???
 
 # [Sampling_parameters]
 # overrelax = 0 #-0.995 # Overrelaxation parameter for the sampling
-number_iterations_sampling = 375 #5 #10 #300 #400 # Maximum number of iterations for the sampling
+number_iterations_sampling = 100 #5 #10 #300 #400 # Maximum number of iterations for the sampling
 number_iterations_done = 0 # Number of iterations already accomplished, in case the chain is resuming from a previous run
 seed = 42

@@ -40,14 +40,39 @@ The tutorials make use of an additional Python library not installed by default
     ```shell
     python -m pip install git+https://github.com/dpole/cmbdb
     ```
+Note: If you fork the repository and want to commit some changes, you may want to use pre-commit. When committing with pre-commit, your changes will probably be reformatted, you must then re-add them and re-commit.
 
 ## License
 This code is released under the GPLv3 license, which can be found in the [LICENSE](./LICENSE) file.
 
-## Contribution
+## Contact
 
-For any contribution sollicitation, please contact morshed at apc.in2p3.fr or rizzieri at apc.in2p3.fr
+For any solicitation, please contact `morshed at apc.in2p3.fr` or `rizzieri at apc.in2p3.fr`
 
-Note: When using pre-commit, your changes will probably be reformatted, you must then re-add them and re-commit.
 
 ## Citation
+
+If you use `micmac`, please consider citing:
+```
+@misc{morshed2024pixel,
+      title={Pixel domain implementation of the Minimally Informed CMB MAp foreground Cleaning (MICMAC) method},
+      author={Magdy Morshed and Arianna Rizzieri and Cl\'ement Leloup and Josquin Errard and Radek Stompor},
+      year={2024},
+      eprint={2405.18365},
+      archivePrefix={arXiv},
+      primaryClass={astro-ph.CO}
+}
+@article{Leloup:2023vkb,
+    author = "Leloup, Cl\'ement and Errard, Josquin and Stompor, Radek",
+    title = "{Nonparametric maximum likelihood component separation for CMB polarization data}",
+    eprint = "2308.03412",
+    archivePrefix = "arXiv",
+    primaryClass = "astro-ph.CO",
+    doi = "10.1103/PhysRevD.108.123547",
+    journal = "Phys. Rev. D",
+    volume = "108",
+    number = "12",
+    pages = "123547",
+    year = "2023"
+}
+```

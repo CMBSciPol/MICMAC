@@ -83,7 +83,7 @@ class MICMAC_Sampler(Sampling_functions):
         sample_r_Metropolis=True,
         sample_r_from_BB=True,
         sample_C_inv_Wishart=False,
-        perturbation_eta_covariance=False,
+        perturbation_eta_covariance=True,
         simultaneous_accept_rate=False,
         non_centered_moves=False,
         save_intermediary_centered_moves=False,
@@ -165,7 +165,7 @@ class MICMAC_Sampler(Sampling_functions):
             minimum r value accepted for r sample if limit_r_value is True, default 0
 
         perturbation_eta_covariance: bool (optional)
-            approach to compute difference between CMB noise component for eta log proba instead of repeating the CG for each B_f sampling, default False
+            approach to compute difference between CMB noise component for eta log proba instead of repeating the CG for each B_f sampling, default True
         simultaneous_accept_rate: bool (optional)
             use the simultaneous accept rate for the patches of the B_f sampling, default False
 
