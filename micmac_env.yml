@@ -1,0 +1,27 @@
+name: micmac_env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - camb
+  - cfitsio=4.2.0
+  - jax
+  - jaxlib
+  - healpy
+  - numpy
+  - numpyro
+  - pip
+  - python=3.9
+  - scipy
+  - yaml
+  - pip:
+      - jax-healpy
+      - jax-tqdm
+      - jaxopt
+      - jaxtyping
+      - toml
+      - typeguard
+      - lineax
+      - chex
+      - anytree
+      - fgbuster @ git+https://github.com/fgbuster/fgbuster.git
