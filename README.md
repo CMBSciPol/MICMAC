@@ -1,5 +1,4 @@
 # Minimally Informed CMB MAp Constructor: MICMAC
-# [Release coming soon]
 
 <img src="./MICMAC-2.png" alt="drawing" width="200">
 
