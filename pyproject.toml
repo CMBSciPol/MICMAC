@@ -63,6 +63,11 @@ module = [
 ]
 ignore_missing_imports = true
 
+[tool.setuptools]
+packages = ["micmac"]
+
 [tool.setuptools_scm]
-version_scheme = 'pre-release'
-fallback_version = '0.0.0'
+# version_scheme = 'release'
+# fallback_version = '0.0.0'
+# local_scheme = "no-local-version"
+# write_to = "micmac/_version.py"
