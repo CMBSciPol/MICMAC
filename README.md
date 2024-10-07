@@ -17,7 +17,7 @@ The easiest way to install and use `micmac` is the following
     ```
 - create a virtual environment with the required dependencies, with `conda`,
     ```bash
-    conda env create -f micmac_env.yml
+    conda create micmac_env
     conda activate micmac_env
     ```
     or, with `virtualenv`,
