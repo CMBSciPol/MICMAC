@@ -28,7 +28,7 @@ import numpyro
 import toml
 from jax import config
 
-from micmac.third_party import get_instrument
+from micmac.external.fgbuster import get_instrument
 from micmac.foregrounds.templates import get_nodes_b, tree_spv_config
 from micmac.likelihood.sampling import (
     Sampling_functions,

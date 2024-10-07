@@ -18,4 +18,4 @@ from micmac.foregrounds import *
 from micmac.likelihood import *
 from micmac.noise import *
 from micmac.toolbox import *
-from micmac.third_party import *
+from micmac.external.fgbuster import *
