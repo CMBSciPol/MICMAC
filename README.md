@@ -15,6 +15,7 @@ The easiest way to install and use `micmac` is the following
     ```
     git clone https://github.com/CMBSciPol/MICMAC && cd MICMAC
     ```
+<!--
 - create a virtual environment with the required dependencies, with `conda`,
     ```bash
     conda create micmac_env
@@ -25,6 +26,7 @@ The easiest way to install and use `micmac` is the following
     virtualenv micmac_env
     source micmac_env/bin/activate
     ```
+-->
 - install `micmac`
     ```bash
     python -m pip install .
@@ -39,12 +41,6 @@ The easiest way to install and use `micmac` is the following
 
 ## How to use `micmac`
 You will find in the `tutorials` directory notebooks showcasing how to use `micmac`.
-
-The tutorials make use of an additional Python library not installed by default
-- `cmbdb`
-    ```shell
-    python -m pip install git+https://github.com/dpole/cmbdb
-    ```
 
 Note: 
 * The package performs highly expensive computations, we advice to allow for a sufficiently large number of cores.
