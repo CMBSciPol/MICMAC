@@ -14,4 +14,6 @@
 # You should have received a copy of the GNU General Public License
 # along with MICMAC. If not, see <https://www.gnu.org/licenses/>.
 
-from . import harmonic, pixel, sampling
+from micmac.likelihood.harmonic import *
+from micmac.likelihood.pixel import *
+from micmac.likelihood.sampling import *

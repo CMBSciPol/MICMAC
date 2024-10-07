@@ -25,6 +25,7 @@ import numpy as np
 
 __all__ = [
     'get_reduced_matrix_from_c_ell_jax',
+    'get_c_ells_from_red_covariance_matrix',
     'get_c_ells_from_red_covariance_matrix_JAX',
     'get_sqrt_reduced_matrix_from_matrix_jax',
     'get_cell_from_map_jax',

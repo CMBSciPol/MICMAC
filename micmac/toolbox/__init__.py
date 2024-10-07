@@ -14,4 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with MICMAC. If not, see <https://www.gnu.org/licenses/>.
 
-from . import fisher, statistics, tools, utils
+from micmac.toolbox.fisher import *
+from micmac.toolbox.statistics import *
+from micmac.toolbox.tools import *
+from micmac.toolbox.utils import *

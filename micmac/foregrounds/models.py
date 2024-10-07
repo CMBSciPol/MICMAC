@@ -27,7 +27,6 @@ __all__ = [
     'parametric_sky_customized',
     'get_observation_customized',
     'fgs_freq_maps_from_customized_model_nonparam',
-    'd1s1_sky_customized',
 ]
 
 h_over_k = constants.h * 1e9 / constants.k
@@ -80,7 +79,7 @@ def parametric_sky_customized(fgs_models, nside_map, nside_spv):
         PySM model to consider
     nside_map: int
         Healpix nside of the final maps
-    nside_spv: int
+    nside_spv: list
         Healpix nside of the spectral parameters
 
     Returns
@@ -98,7 +97,7 @@ def parametric_sky_customized(fgs_models, nside_map, nside_spv):
         if model == 'd1':
             # beta dust
             beta_mbb = sky.components[f].mbb_index.value
-            beta_mbb_dowgraded = hp.ud_grade(beta_mbb, nside_spv)
+            beta_mbb_dowgraded = hp.ud_grade(beta_mbb, nside_spv[f])
             # hp.mollview(beta_mbb_dowgraded, title='Downgraded beta dust')
             beta_mbb_new = hp.ud_grade(beta_mbb_dowgraded, nside_map)
             # hp.mollview(beta_mbb_new, title='New beta dust')
@@ -107,7 +106,7 @@ def parametric_sky_customized(fgs_models, nside_map, nside_spv):
                 sky.components[f].mbb_index.value[i] = item
             # temp dust
             temp_mbb = sky.components[f].mbb_temperature.value
-            temp_mbb_dowgraded = hp.ud_grade(temp_mbb, nside_spv)
+            temp_mbb_dowgraded = hp.ud_grade(temp_mbb, nside_spv[f])
             # hp.mollview(temp_mbb_dowgraded, title='Downgraded temp dust')
             temp_mbb_new = hp.ud_grade(temp_mbb_dowgraded, nside_map)
             # hp.mollview(temp_mbb_new, title='New temp dust')
@@ -117,7 +116,7 @@ def parametric_sky_customized(fgs_models, nside_map, nside_spv):
         elif model == 's1':
             # beta synch
             beta_pl = sky.components[f].pl_index.value
-            beta_pl_dowgraded = hp.ud_grade(beta_pl, nside_spv)
+            beta_pl_dowgraded = hp.ud_grade(beta_pl, nside_spv[f])
             # hp.mollview(beta_pl_dowgraded, title='Downgraded beta synch')
             beta_pl_new = hp.ud_grade(beta_pl_dowgraded, nside_map)
             # hp.mollview(beta_pl_new, title='New beta synch')
@@ -213,7 +212,7 @@ def fgs_freq_maps_from_customized_model_nonparam(
     ----------
     nside_map: int
         nside at which the final maps are built
-    nside_spv: int
+    nside_spv: list
         nside at which the spv in the scaling laws is downgraded
     instrument: dictionary
         dictionary containing the instrument configuration,
@@ -241,11 +240,11 @@ def fgs_freq_maps_from_customized_model_nonparam(
     # Loop over fgs components (typically synch and dust)
     for i, model_i in enumerate(fgs_models):
         # Take initial freq maps
-        if nside_spv == 0:
+        if nside_spv[i] == 0:
             freq_maps_fgs_i = get_observation(instrument, model_i, nside=1, noise=False)[:, 1, :]
             freq_maps_fgs_i = np.average(freq_maps_fgs_i, axis=1)
         else:
-            freq_maps_fgs_i = get_observation(instrument, model_i, nside=nside_spv, noise=False)[
+            freq_maps_fgs_i = get_observation(instrument, model_i, nside=nside_spv[i], noise=False)[
                 :, 1, :
             ]  # keep only Q (assumed same mixing mat elements for Q and U)
         # Build new mixing matrix elements

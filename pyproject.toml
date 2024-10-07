@@ -35,12 +35,14 @@ dependencies = [
     'jax>=0.4.23',
     'numpy',
     'scipy',
+    'pysm3',
     'cmbdb @ git+https://github.com/dpole/cmbdb.git',
     'jaxlib',
     'jax-tqdm',
     'jax-healpy',
     'numpyro',
     'chex',
+    'anytree',
 ]
 dynamic = ['version']
 
@@ -50,6 +52,7 @@ full = [
     'lineax',
     'matplotlib',
     'jaxopt',
+    'toml',
 ]
 
 
