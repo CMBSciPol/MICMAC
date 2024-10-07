@@ -166,7 +166,7 @@ def get_observation_customized(instrument='', sky=None, noise=False, nside=None,
         Shape is ``(n_freq, 3, n_pix)``
     """
     import pysm3.units as u
-    from fgbuster.observation_helpers import (
+    from micmac.third_party import (
         get_instrument,
         get_noise_realization,
         standardize_instrument,
@@ -232,8 +232,8 @@ def fgs_freq_maps_from_customized_model_nonparam(
     mixing_mat: array
         mixing matrix, returned only if return_mixing_mat is True
     """
-    from fgbuster.observation_helpers import get_observation
-    from fgbuster.separation_recipes import _my_ud_grade
+    from micmac.third_party import get_observation
+    from micmac.third_party import _my_ud_grade
 
     n_fgs_comp = len(fgs_models)
     mixing_mat = np.zeros((len(instrument.frequency), n_fgs_comp, hp.nside2npix(nside_map)))

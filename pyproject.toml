@@ -40,7 +40,6 @@ dependencies = [
     'jax-healpy',
     'numpyro',
     'chex',
-    'fgbuster @ git+https://github.com/fgbuster/fgbuster.git',
 ]
 dynamic = ['version']
 

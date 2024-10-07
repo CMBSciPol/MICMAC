@@ -19,7 +19,6 @@ from collections import namedtuple
 from functools import partial
 
 import chex as chx
-import fgbuster
 import healpy as hp
 import jax
 import jax.numpy as jnp
@@ -29,6 +28,7 @@ import numpyro
 import toml
 from jax import config
 
+from micmac.third_party import get_instrument
 from micmac.foregrounds.templates import get_nodes_b, tree_spv_config
 from micmac.likelihood.sampling import (
     Sampling_functions,
@@ -754,7 +754,7 @@ def create_Harmonic_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv)
     f.close()
 
     if dictionary_parameters['instrument_name'] != 'customized_instrument':
-        instrument = fgbuster.get_instrument(dictionary_parameters['instrument_name'])
+        instrument = get_instrument(dictionary_parameters['instrument_name'])
         dictionary_parameters['frequency_array'] = jnp.array(instrument['frequency'])
         dictionary_parameters['freq_noise_c_ell'] = get_true_Cl_noise(
             jnp.array(instrument['depth_p']), dictionary_parameters['lmax']
