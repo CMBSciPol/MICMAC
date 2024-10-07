@@ -36,6 +36,11 @@ The easiest way to install and use `micmac` is the following
     python -m pip install -e .
     ```
 
+The tutorials and tests make use of additional Python libraries not installed by default, to install the full version of micmac with those libraries use:
+```bash
+python -m pip install .[full]
+```
+    
 **Note:** this package uses the [JAX library](https://jax.readthedocs.io), hence can be run on GPUs. If you run on GPUs or TPUs install JAX by following the official [installation guide](https://jax.readthedocs.io/en/latest/installation.html).
 
 
