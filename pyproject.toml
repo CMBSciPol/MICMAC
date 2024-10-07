@@ -35,6 +35,7 @@ dependencies = [
     'jax>=0.4.23',
     'numpy',
     'scipy',
+    'cmbdb @ git+https://github.com/dpole/cmbdb.git',
     'jaxlib',
     'jax-tqdm',
     'jax-healpy',

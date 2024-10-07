@@ -15,7 +15,7 @@
 # along with MICMAC. If not, see <https://www.gnu.org/licenses/>.
 
 """
-Module to create fake fgs models starting from the PySM ones.
+Module to create customized fgs models starting from the PySM ones.
 """
 import healpy as hp
 import numpy as np
@@ -264,52 +264,3 @@ def fgs_freq_maps_from_customized_model_nonparam(
         return freq_maps_final, mixing_mat
 
     return freq_maps_final
-
-
-#### Deprecated (but still used in old version v3_customized of multinode notebook):
-# TODO: verify that not needed anymore in the multinode notebook and delete
-def d1s1_sky_customized(nside_map, nside_spv):
-    """
-    Gives d1s1-like model with less spv of the spectral parameters.
-
-    Parameters
-    ----------
-    nside_map: int
-        Healpix nside of the final maps
-    nside_spv: int
-        Healpix nside of the spectral parameters
-
-    Returns
-    -------
-    sky: pysm3.Sky
-        PySM-like Sky object with the modified spectral parameters
-    """
-    ### Get the sky
-    sky = Sky(nside=nside_map, preset_strings=['d1', 's1'])
-    ### Modify the spectral parameter values
-    # beta dust
-    beta_mbb = sky.components[0].mbb_index.value
-    beta_mbb_dowgraded = hp.ud_grade(beta_mbb, nside_spv)
-    # hp.mollview(beta_mbb_dowgraded, title='Downgraded beta dust')
-    beta_mbb_new = hp.ud_grade(beta_mbb_dowgraded, nside_map)
-    # hp.mollview(beta_mbb_new, title='New beta dust')
-    for i, item in enumerate(beta_mbb_new):
-        sky.components[0].mbb_index.value[i] = item
-    # temp dust
-    temp_mbb = sky.components[0].mbb_temperature.value
-    temp_mbb_dowgraded = hp.ud_grade(temp_mbb, nside_spv)
-    # hp.mollview(temp_mbb_dowgraded, title='Downgraded temp dust')
-    temp_mbb_new = hp.ud_grade(temp_mbb_dowgraded, nside_map)
-    # hp.mollview(temp_mbb_new, title='New temp dust')
-    for i, item in enumerate(temp_mbb_new):
-        sky.components[0].mbb_temperature.value[i] = item
-    # beta synch
-    beta_pl = sky.components[1].pl_index.value
-    beta_pl_dowgraded = hp.ud_grade(beta_pl, nside_spv)
-    # hp.mollview(beta_pl_dowgraded, title='Downgraded beta synch')
-    beta_pl_new = hp.ud_grade(beta_pl_dowgraded, nside_map)
-    # hp.mollview(beta_pl_new, title='New beta synch')
-    for i, item in enumerate(beta_pl_new):
-        sky.components[1].pl_index[i] = item
-    # plt.show()
-    return sky
