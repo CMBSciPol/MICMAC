@@ -32,7 +32,7 @@ requires-python = '>=3.7'
 license = {file = 'LICENSE'}
 dependencies = [
     'healpy>=0.16.6',
-    'jax>=0.4.23',
+    'jax>=0.4.27',
     'numpy',
     'scipy',
     'pysm3',
