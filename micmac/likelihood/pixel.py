@@ -284,9 +284,8 @@ class MICMAC_Sampler(Sampling_functions):
         assert (
             jnp.size(self.indexes_free_Bf) <= self.len_params
         )  # The number of free parameters should be less than the total number of parameters
-        assert jnp.isin(
-            self.indexes_free_Bf, jnp.arange(self.len_params)
-        ).all()  # The indexes should be in the range of the total number of parameters
+        assert jnp.max(self.indexes_free_Bf) <= self.len_params # The indexes should be in the range of the total number of parameters
+        assert jnp.min(self.indexes_free_Bf) >= 0 # The indexes should be in the range of the total number of parameters
         self.number_iterations_sampling = int(
             number_iterations_sampling
         )  # Maximum number of iterations for the sampling

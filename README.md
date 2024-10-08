@@ -49,7 +49,12 @@ You will find in the `tutorials` directory notebooks showcasing how to use `micm
 
 Note: 
 * The package performs highly expensive computations, we advice to allow for a sufficiently large number of cores.
-* If you fork the repository and want to commit some changes, you may want to use pre-commit. When committing with pre-commit, your changes will probably be reformatted, you must then re-add them and re-commit.
+* If you fork the repository and want to commit some changes, you may want to use pre-commit:
+    ```bash
+    pip install pre-commit
+    pre-commit install
+    ```
+    When committing with pre-commit, your changes will probably be reformatted, you must then re-add them and re-commit.
 
 
 ## License
