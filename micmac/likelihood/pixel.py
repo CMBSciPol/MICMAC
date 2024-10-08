@@ -735,7 +735,7 @@ class MICMAC_Sampler(Sampling_functions):
 
                 print('Previous free indexes for B_f', self.indexes_free_Bf, self.indexes_free_Bf.size, flush=True)
                 self.indexes_free_Bf = self.indexes_free_Bf.at[
-                    self.get_cond_unobserved_patches_from_indices(self.indexes_free_Bf)
+                    self.get_cond_unobserved_patches_from_indices_optimized(self.indexes_free_Bf)
                 ].get()
                 ## Get boolean array to identify which free indexes are not relevant
                 print('New free indexes for B_f', self.indexes_free_Bf, self.indexes_free_Bf.size, flush=True)

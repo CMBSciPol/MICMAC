@@ -310,6 +310,24 @@ class Sampling_functions(MixingMatrix):
         templates = templates.at[:, :, self.mask == 0].set(-1)
         return jnp.isin(indices, jnp.unique(templates))
 
+    def get_cond_unobserved_patches_from_indices_optimized(self, indices):
+        """
+        Get boolean condition on the free B_f indices corresponding to patches within the mask
+        """
+
+        templates = self.get_all_templates()
+        templates = templates.at[:, :, self.mask == 0].set(-1)
+
+        def scan_isin(carry, frequency):
+            """Check if indices are in the templates for a given frequency"""
+
+            new_carry = jnp.logical_or(carry, jnp.isin(indices, templates[frequency, :, :]))
+            return new_carry, frequency
+        
+        initial_carry = jnp.zeros_like(indices, dtype=jnp.bool_)
+
+        return jlax.scan(scan_isin, initial_carry, jnp.arange(self.n_frequencies))[0]
+
     def get_sampling_eta_v2(
         self,
         red_cov_approx_matrix_sqrt,
