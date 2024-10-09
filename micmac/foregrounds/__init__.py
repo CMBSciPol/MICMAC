@@ -14,4 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with MICMAC. If not, see <https://www.gnu.org/licenses/>.
 
-from . import initmixingmatrix, mixingmatrix, models, templates
+from micmac.foregrounds.initmixingmatrix import *
+from micmac.foregrounds.mixingmatrix import *
+from micmac.foregrounds.models import *
+from micmac.foregrounds.templates import *

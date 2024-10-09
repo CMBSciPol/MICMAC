@@ -15,7 +15,7 @@
 # along with MICMAC. If not, see <https://www.gnu.org/licenses/>.
 
 """
-Module to create fake fgs models starting from the PySM ones.
+Module to create customized fgs models starting from the PySM ones.
 """
 import healpy as hp
 import numpy as np
@@ -27,7 +27,6 @@ __all__ = [
     'parametric_sky_customized',
     'get_observation_customized',
     'fgs_freq_maps_from_customized_model_nonparam',
-    'd1s1_sky_customized',
 ]
 
 h_over_k = constants.h * 1e9 / constants.k
@@ -80,7 +79,7 @@ def parametric_sky_customized(fgs_models, nside_map, nside_spv):
         PySM model to consider
     nside_map: int
         Healpix nside of the final maps
-    nside_spv: int
+    nside_spv: list
         Healpix nside of the spectral parameters
 
     Returns
@@ -98,7 +97,7 @@ def parametric_sky_customized(fgs_models, nside_map, nside_spv):
         if model == 'd1':
             # beta dust
             beta_mbb = sky.components[f].mbb_index.value
-            beta_mbb_dowgraded = hp.ud_grade(beta_mbb, nside_spv)
+            beta_mbb_dowgraded = hp.ud_grade(beta_mbb, nside_spv[f])
             # hp.mollview(beta_mbb_dowgraded, title='Downgraded beta dust')
             beta_mbb_new = hp.ud_grade(beta_mbb_dowgraded, nside_map)
             # hp.mollview(beta_mbb_new, title='New beta dust')
@@ -107,7 +106,7 @@ def parametric_sky_customized(fgs_models, nside_map, nside_spv):
                 sky.components[f].mbb_index.value[i] = item
             # temp dust
             temp_mbb = sky.components[f].mbb_temperature.value
-            temp_mbb_dowgraded = hp.ud_grade(temp_mbb, nside_spv)
+            temp_mbb_dowgraded = hp.ud_grade(temp_mbb, nside_spv[f])
             # hp.mollview(temp_mbb_dowgraded, title='Downgraded temp dust')
             temp_mbb_new = hp.ud_grade(temp_mbb_dowgraded, nside_map)
             # hp.mollview(temp_mbb_new, title='New temp dust')
@@ -117,7 +116,7 @@ def parametric_sky_customized(fgs_models, nside_map, nside_spv):
         elif model == 's1':
             # beta synch
             beta_pl = sky.components[f].pl_index.value
-            beta_pl_dowgraded = hp.ud_grade(beta_pl, nside_spv)
+            beta_pl_dowgraded = hp.ud_grade(beta_pl, nside_spv[f])
             # hp.mollview(beta_pl_dowgraded, title='Downgraded beta synch')
             beta_pl_new = hp.ud_grade(beta_pl_dowgraded, nside_map)
             # hp.mollview(beta_pl_new, title='New beta synch')
@@ -166,7 +165,7 @@ def get_observation_customized(instrument='', sky=None, noise=False, nside=None,
         Shape is ``(n_freq, 3, n_pix)``
     """
     import pysm3.units as u
-    from fgbuster.observation_helpers import (
+    from micmac.external.fgbuster import (
         get_instrument,
         get_noise_realization,
         standardize_instrument,
@@ -213,7 +212,7 @@ def fgs_freq_maps_from_customized_model_nonparam(
     ----------
     nside_map: int
         nside at which the final maps are built
-    nside_spv: int
+    nside_spv: list
         nside at which the spv in the scaling laws is downgraded
     instrument: dictionary
         dictionary containing the instrument configuration,
@@ -232,8 +231,8 @@ def fgs_freq_maps_from_customized_model_nonparam(
     mixing_mat: array
         mixing matrix, returned only if return_mixing_mat is True
     """
-    from fgbuster.observation_helpers import get_observation
-    from fgbuster.separation_recipes import _my_ud_grade
+    from micmac.external.fgbuster import get_observation
+    from micmac.external.fgbuster import _my_ud_grade
 
     n_fgs_comp = len(fgs_models)
     mixing_mat = np.zeros((len(instrument.frequency), n_fgs_comp, hp.nside2npix(nside_map)))
@@ -241,11 +240,11 @@ def fgs_freq_maps_from_customized_model_nonparam(
     # Loop over fgs components (typically synch and dust)
     for i, model_i in enumerate(fgs_models):
         # Take initial freq maps
-        if nside_spv == 0:
+        if nside_spv[i] == 0:
             freq_maps_fgs_i = get_observation(instrument, model_i, nside=1, noise=False)[:, 1, :]
             freq_maps_fgs_i = np.average(freq_maps_fgs_i, axis=1)
         else:
-            freq_maps_fgs_i = get_observation(instrument, model_i, nside=nside_spv, noise=False)[
+            freq_maps_fgs_i = get_observation(instrument, model_i, nside=nside_spv[i], noise=False)[
                 :, 1, :
             ]  # keep only Q (assumed same mixing mat elements for Q and U)
         # Build new mixing matrix elements
@@ -264,52 +263,3 @@ def fgs_freq_maps_from_customized_model_nonparam(
         return freq_maps_final, mixing_mat
 
     return freq_maps_final
-
-
-#### Deprecated (but still used in old version v3_customized of multinode notebook):
-# TODO: verify that not needed anymore in the multinode notebook and delete
-def d1s1_sky_customized(nside_map, nside_spv):
-    """
-    Gives d1s1-like model with less spv of the spectral parameters.
-
-    Parameters
-    ----------
-    nside_map: int
-        Healpix nside of the final maps
-    nside_spv: int
-        Healpix nside of the spectral parameters
-
-    Returns
-    -------
-    sky: pysm3.Sky
-        PySM-like Sky object with the modified spectral parameters
-    """
-    ### Get the sky
-    sky = Sky(nside=nside_map, preset_strings=['d1', 's1'])
-    ### Modify the spectral parameter values
-    # beta dust
-    beta_mbb = sky.components[0].mbb_index.value
-    beta_mbb_dowgraded = hp.ud_grade(beta_mbb, nside_spv)
-    # hp.mollview(beta_mbb_dowgraded, title='Downgraded beta dust')
-    beta_mbb_new = hp.ud_grade(beta_mbb_dowgraded, nside_map)
-    # hp.mollview(beta_mbb_new, title='New beta dust')
-    for i, item in enumerate(beta_mbb_new):
-        sky.components[0].mbb_index.value[i] = item
-    # temp dust
-    temp_mbb = sky.components[0].mbb_temperature.value
-    temp_mbb_dowgraded = hp.ud_grade(temp_mbb, nside_spv)
-    # hp.mollview(temp_mbb_dowgraded, title='Downgraded temp dust')
-    temp_mbb_new = hp.ud_grade(temp_mbb_dowgraded, nside_map)
-    # hp.mollview(temp_mbb_new, title='New temp dust')
-    for i, item in enumerate(temp_mbb_new):
-        sky.components[0].mbb_temperature.value[i] = item
-    # beta synch
-    beta_pl = sky.components[1].pl_index.value
-    beta_pl_dowgraded = hp.ud_grade(beta_pl, nside_spv)
-    # hp.mollview(beta_pl_dowgraded, title='Downgraded beta synch')
-    beta_pl_new = hp.ud_grade(beta_pl_dowgraded, nside_map)
-    # hp.mollview(beta_pl_new, title='New beta synch')
-    for i, item in enumerate(beta_pl_new):
-        sky.components[1].pl_index[i] = item
-    # plt.show()
-    return sky

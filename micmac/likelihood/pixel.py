@@ -25,10 +25,10 @@ import jax.random as random
 import jax.scipy as jsp
 import numpy as np
 import toml
-from fgbuster import get_instrument
 from jax import config
 from jax_tqdm import scan_tqdm
 
+from micmac.external.fgbuster import get_instrument
 from micmac.foregrounds.templates import get_nodes_b, tree_spv_config
 from micmac.likelihood.sampling import (
     Sampling_functions,
@@ -276,9 +276,12 @@ class MICMAC_Sampler(Sampling_functions):
         assert (
             jnp.size(self.indexes_free_Bf) <= self.len_params
         )  # The number of free parameters should be less than the total number of parameters
-        assert jnp.isin(
-            self.indexes_free_Bf, jnp.arange(self.len_params)
-        ).all()  # The indexes should be in the range of the total number of parameters
+        assert (
+            jnp.max(self.indexes_free_Bf) <= self.len_params
+        )  # The indexes should be in the range of the total number of parameters
+        assert (
+            jnp.min(self.indexes_free_Bf) >= 0
+        )  # The indexes should be in the range of the total number of parameters
         self.number_iterations_sampling = int(
             number_iterations_sampling
         )  # Maximum number of iterations for the sampling
@@ -723,7 +726,7 @@ class MICMAC_Sampler(Sampling_functions):
 
                 print('Previous free indexes for B_f', self.indexes_free_Bf, self.indexes_free_Bf.size, flush=True)
                 self.indexes_free_Bf = self.indexes_free_Bf.at[
-                    self.get_cond_unobserved_patches_from_indices(self.indexes_free_Bf)
+                    self.get_cond_unobserved_patches_from_indices_optimized(self.indexes_free_Bf)
                 ].get()
                 ## Get boolean array to identify which free indexes are not relevant
                 print('New free indexes for B_f', self.indexes_free_Bf, self.indexes_free_Bf.size, flush=True)

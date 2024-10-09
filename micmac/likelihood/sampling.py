@@ -322,7 +322,7 @@ class Sampling_functions(MixingMatrix):
         def scan_isin(carry, frequency):
             """Check if indices are in the templates for a given frequency"""
 
-            new_carry = jnp.logical_or(carry, jnp.isin(indices, jnp.unique(templates[frequency, :, :])))
+            new_carry = jnp.logical_or(carry, jnp.isin(indices, templates[frequency, :, :]))
             return new_carry, frequency
 
         initial_carry = jnp.zeros_like(indices, dtype=jnp.bool_)

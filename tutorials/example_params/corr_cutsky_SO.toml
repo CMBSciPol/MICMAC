@@ -13,7 +13,7 @@ save_eta_chain_maps = false # If true, all the sampled eta maps which are margin
 save_s_c_spectra = false # If true, the s_c spectra will be saved
 
 # [Instrument_parameters]
-instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_noise and frequency_array will be taken from fgbuster,
+instrument_name = 'SO_SAT' # Either provide instrument name, then freq_inverse_noise and frequency_array will be taken from cmbdb,
 # or provide expcitely freq_inverse_noise and frequency_array with instrument_name="customized_instrument"
 # frequency_array = [90]
 # depth_p = [4]

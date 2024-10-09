@@ -14,4 +14,4 @@
 # You should have received a copy of the GNU General Public License
 # along with MICMAC. If not, see <https://www.gnu.org/licenses/>.
 
-from micmac.noise.noisecovar import *
+from micmac.external.fgbuster import *

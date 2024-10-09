@@ -32,15 +32,17 @@ requires-python = '>=3.7'
 license = {file = 'LICENSE'}
 dependencies = [
     'healpy>=0.16.6',
-    'jax>=0.4.23',
+    'jax>=0.4.27',
     'numpy',
     'scipy',
+    'pysm3',
+    'cmbdb @ git+https://github.com/dpole/cmbdb.git',
     'jaxlib',
     'jax-tqdm',
     'jax-healpy',
     'numpyro',
     'chex',
-    'fgbuster @ git+https://github.com/fgbuster/fgbuster.git',
+    'anytree',
 ]
 dynamic = ['version']
 
@@ -50,6 +52,7 @@ full = [
     'lineax',
     'matplotlib',
     'jaxopt',
+    'toml',
 ]
 
 

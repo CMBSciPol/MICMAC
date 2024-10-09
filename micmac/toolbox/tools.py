@@ -24,7 +24,9 @@ import jax.numpy as jnp
 import numpy as np
 
 __all__ = [
+    'get_reduced_matrix_from_c_ell',
     'get_reduced_matrix_from_c_ell_jax',
+    'get_c_ells_from_red_covariance_matrix',
     'get_c_ells_from_red_covariance_matrix_JAX',
     'get_c_ells_from_red_covariance_matrix',
     'get_sqrt_reduced_matrix_from_matrix_jax',
@@ -205,7 +207,8 @@ def get_cell_from_map_jax(pixel_maps, lmax, n_iter=8):
 
     # Wrapper for anafast, to prepare the pure callback of JAX
     def wrapper_anafast(maps_, lmax=lmax, n_iter=n_iter):
-        return hp.anafast(maps_, lmax=lmax, iter=n_iter)
+        maps_np = jax.tree.map(np.asarray, maps_)
+        return hp.anafast(maps_np, lmax=lmax, iter=n_iter)
 
     # Pure call back of anafast, to be used with JAX for JIT compilation
     @partial(jax.jit, static_argnums=1)
@@ -369,12 +372,14 @@ def maps_x_red_covariance_cell_JAX(maps_input, red_matrix_sqrt, nside, lmin, n_i
 
     # Wrapper for map2alm, to prepare the pure callback of JAX
     def wrapper_map2alm(maps_, lmax=lmax, n_iter=n_iter, nside=nside):
-        alm_T, alm_E, alm_B = hp.map2alm(maps_.reshape((3, 12 * nside**2)), lmax=lmax, iter=n_iter)
+        maps_np = jax.tree.map(np.asarray, maps_).reshape((3, 12 * nside**2))
+        alm_T, alm_E, alm_B = hp.map2alm(maps_np, lmax=lmax, iter=n_iter)
         return np.array([alm_T, alm_E, alm_B])
 
     # Wrapper for alm2map, to prepare the pure callback of JAX
     def wrapper_alm2map(alm_, lmax=lmax, nside=nside):
-        return hp.alm2map(alm_, nside, lmax=lmax)
+        alm_np = jax.tree.map(np.asarray, alm_)
+        return hp.alm2map(alm_np, nside, lmax=lmax)
 
     # Pure call back of map2alm, to be used with JAX for JIT compilation
     @partial(jax.jit, static_argnums=(1, 2))

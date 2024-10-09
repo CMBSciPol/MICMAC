@@ -15,7 +15,7 @@ r_true = 1e-2 # True value of r, only used to generate the input CMB maps
 
 # [Instrument_parameters]
 instrument_name = 'LiteBIRD'
-# Either provide instrument name, then frequency_array and the noise levels to form freq_noise_c_ell and will be taken from fgbuster,
+# Either provide instrument name, then frequency_array and the noise levels to form freq_noise_c_ell and will be taken from cmbdb,
 # or provide expcitely freq_noise_c_ell and frequency_array with instrument_name="customized_instrument"
 # freq_noise_c_ell = []
 # frequency_array = []

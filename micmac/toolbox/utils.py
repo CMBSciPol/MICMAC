@@ -21,7 +21,7 @@ __all__ = ['get_instr', 'generate_power_spectra_CAMB', 'loading_params']
 
 def get_instr(freqs, depth_p):
     """
-    Return the instrument dictionnary
+    Return the instrument dictionary
 
     Parameters
     ----------
@@ -33,7 +33,7 @@ def get_instr(freqs, depth_p):
     Returns
     -------
     instrument: dict
-        instrument dictionnary with keys 'frequency', 'depth_p', 'depth_i'
+        instrument dictionary with keys 'frequency', 'depth_p', 'depth_i'
     """
     assert len(freqs) == len(depth_p)
 
@@ -42,7 +42,6 @@ def get_instr(freqs, depth_p):
     instrument_dict['depth_p'] = np.array(depth_p, dtype=float)
     instrument_dict['depth_i'] = instrument_dict['depth_p'] / np.sqrt(2)
 
-    # instrument = fgbuster.standardize_instrument(instrument_dict)
     return instrument_dict
 
 
