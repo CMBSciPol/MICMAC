@@ -83,7 +83,6 @@ class MICMAC_Sampler(Sampling_functions):
         save_all_B_f_params=True,
         save_s_c_spectra=False,
         sample_r_Metropolis=True,
-        sample_r_from_BB=True,
         sample_C_inv_Wishart=False,
         perturbation_eta_covariance=True,
         simultaneous_accept_rate=False,
@@ -91,7 +90,6 @@ class MICMAC_Sampler(Sampling_functions):
         save_intermediary_centered_moves=False,
         limit_r_value=False,
         min_r_value=0,
-        full_sky_correction=True,
         biased_version=False,
         classical_Gibbs=False,
         use_binning=False,
@@ -153,14 +151,13 @@ class MICMAC_Sampler(Sampling_functions):
             save the eta chain maps, default False
 
         sample_r_Metropolis: bool (optional)
-            sample r with Metropolis-Hastings instead of the full power spectrum being sampled, default True
+            sample r with a Metropolis-within-Gibbs step from the BB power spectrum of the
+            reconstructed sample of the CMB map during the Gibbs iteration, default True
             Either sample_r_Metropolis or sample_C_inv_Wishart should True but not both
         sample_C_inv_Wishart: bool (optional)
             sample C_inv with Wishart distribution instead of simply r being sampled, default False
             Either sample_r_Metropolis or sample_C_inv_Wishart should True but not both
 
-        sample_r_from_BB: bool (optional)
-            sample r from the BB power spectrum, only relevant if sample_r_Metropolis is True, default False
         limit_r_value: bool (optional)
             limit r value being sampled with the minmum r value given by min_r_value, default False
         min_r_value: float (optional)
@@ -247,15 +244,10 @@ class MICMAC_Sampler(Sampling_functions):
         self.simultaneous_accept_rate = bool(
             simultaneous_accept_rate
         )  # To use the simultaneous accept rate for the patches of the B_f sampling
-        self.full_sky_correction = bool(
-            full_sky_correction
-        )  # To use the full sky correction for the log-proba of Bf sampling
         assert ((sample_r_Metropolis and sample_C_inv_Wishart) == False) and (
             (sample_r_Metropolis or not (sample_C_inv_Wishart)) or (not (sample_r_Metropolis) or sample_C_inv_Wishart)
         )
         self.sample_r_Metropolis = bool(sample_r_Metropolis)  # To sample r with Metropolis-Hastings
-        assert (sample_r_from_BB and sample_r_Metropolis) or not (sample_r_from_BB)
-        self.sample_r_from_BB = bool(sample_r_from_BB)  # To sample r from the BB power spectrum
         self.sample_C_inv_Wishart = bool(sample_C_inv_Wishart)
         self.use_binning = bool(use_binning)  # To use binning for the sampling of inverse Wishart CMB covariance
         self.acceptance_posdef = bool(acceptance_posdef)  # To accept only positive definite matrices for C sampling
@@ -686,27 +678,22 @@ class MICMAC_Sampler(Sampling_functions):
         r_sampling_MH = single_Metropolis_Hasting_step
         # r_sampling_MH = bounded_single_Metropolis_Hasting_step
         if self.sample_r_Metropolis:
-            log_proba_r = self.get_conditional_proba_C_from_r
-            if self.sample_r_from_BB:
-                print('Sampling r from BB !!!', flush=True)
-                log_proba_r = self.get_conditional_proba_C_from_r_wBB
+            log_proba_r = self.get_conditional_proba_C_from_r_wBB
             if self.use_binning:
                 print('Using BB binning for the sampling of r !!!', flush=True)
                 log_proba_r = self.get_binned_conditional_proba_C_from_r_wBB
 
         ## Function to sample the mixing matrix free parameters in the most general way
         jitted_Bf_func_sampling = jax.jit(
-            self.get_conditional_proba_mixing_matrix_v2b_JAX, static_argnames=['biased_bool', 'full_sky_correction']
+            self.get_conditional_proba_mixing_matrix_v2b_JAX, static_argnames=['biased_bool']
         )
         sampling_func = separate_single_MH_step_index_accelerated
 
         if self.biased_version or self.perturbation_eta_covariance:
             print('Using biased version or perturbation version of mixing matrix sampling !!!', flush=True)
             ## Function to sample the mixing matrix free parameters through the difference of the log-proba, to have only one CG done
-            if self.full_sky_correction:
-                print('Using full_sky correction !!!', flush=True)
             jitted_Bf_func_sampling = jax.jit(
-                self.get_conditional_proba_mixing_matrix_v3_JAX, static_argnames=['biased_bool', 'full_sky_correction']
+                self.get_conditional_proba_mixing_matrix_v3_JAX, static_argnames=['biased_bool']
             )
             sampling_func = separate_single_MH_step_index_v2b
 
@@ -721,7 +708,7 @@ class MICMAC_Sampler(Sampling_functions):
                 )
                 jitted_Bf_func_sampling = jax.jit(
                     self.get_conditional_proba_mixing_matrix_v3_pixel_JAX,
-                    static_argnames=['biased_bool', 'full_sky_correction'],
+                    static_argnames=['biased_bool'],
                 )
                 sampling_func = separate_single_MH_step_index_v4_pixel
                 if (self.size_patches != self.size_patches[0]).any():
@@ -798,8 +785,6 @@ class MICMAC_Sampler(Sampling_functions):
             print('Not sampling for eta and B_f, only for s_c and the CMB covariance !', flush=True)
         if self.sample_r_Metropolis:
             print('Sample for r instead of C !', flush=True)
-            if self.sample_r_from_BB:
-                print('Sample for r with the BB likelihood !', flush=True)
             if self.limit_r_value:
                 print(f'Limiting the r value to be superior to {self.min_r_value} !', flush=True)
         if self.non_centered_moves:
@@ -1187,8 +1172,6 @@ class MICMAC_Sampler(Sampling_functions):
                         dict_parameters_sampling_B_f['indexes_patches_Bf'] = first_indices_patches_free_Bf
                         dict_parameters_sampling_B_f['len_indexes_Bf'] = self.len_params
                         # TODO: Accelerate by removing indexes of indexes_patches_Bf if the corresponding patches are not in indexes_free_Bf, nor in the mask
-                    ## Test parameter
-                    dict_parameters_sampling_B_f['full_sky_correction'] = self.full_sky_correction
                     ## Sampling B_f !
                     new_subPRNGKey_3, new_carry['params_mixing_matrix_sample'] = sampling_func(
                         random_PRNGKey=new_subPRNGKey_3,
@@ -1320,5 +1303,11 @@ def create_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv=''):
     # Read or create spv config
     root_tree = tree_spv_config(path_file_spv, n_betas, n_fgs_comp, print_tree=True)
     dictionary_parameters['spv_nodes_b'] = get_nodes_b(root_tree)
+
+    ## Temporary, TODO: To remove
+    if 'full_sky_correction' in dictionary_parameters:
+        del dictionary_parameters['full_sky_correction']
+    if 'sample_r_from_BB' in dictionary_parameters:
+        del dictionary_parameters['sample_r_from_BB']
 
     return MICMAC_Sampler(**dictionary_parameters)

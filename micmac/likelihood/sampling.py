@@ -41,6 +41,7 @@ from micmac.toolbox.tools import (
 __all__ = [
     'Sampling_functions',
     'single_Metropolis_Hasting_step',
+    'bounded_single_Metropolis_Hasting_step_numpyro',
     'bounded_single_Metropolis_Hasting_step',
     'multivariate_Metropolis_Hasting_step',
     'multivariate_Metropolis_Hasting_step_numpyro',
@@ -309,6 +310,24 @@ class Sampling_functions(MixingMatrix):
         templates = self.get_all_templates()
         templates = templates.at[:, :, self.mask == 0].set(-1)
         return jnp.isin(indices, jnp.unique(templates))
+
+    def get_cond_unobserved_patches_from_indices_optimized(self, indices):
+        """
+        Get boolean condition on the free B_f indices corresponding to patches within the mask
+        """
+
+        templates = self.get_all_templates()
+        templates = templates.at[:, :, self.mask == 0].set(-1)
+
+        def scan_isin(carry, frequency):
+            """Check if indices are in the templates for a given frequency"""
+
+            new_carry = jnp.logical_or(carry, jnp.isin(indices, jnp.unique(templates[frequency, :, :])))
+            return new_carry, frequency
+
+        initial_carry = jnp.zeros_like(indices, dtype=jnp.bool_)
+
+        return jlax.scan(scan_isin, initial_carry, jnp.arange(self.n_frequencies))[0]
 
     def get_sampling_eta_v2(
         self,
@@ -1413,7 +1432,6 @@ class Sampling_functions(MixingMatrix):
         first_guess=None,
         return_inverse=False,
         precond_func=None,
-        full_sky_correction=False,
     ):
         """
         Get conditional probability of correction term in the likelihood from the full mixing matrix
@@ -1505,14 +1523,8 @@ class Sampling_functions(MixingMatrix):
             flush=True,
         )
 
-        central_term = self.mask
-        if full_sky_correction:
-            central_term = jnp.ones_like(self.mask)
-
         ## Computing the log-proba of the correction term
-        second_term_complete = jnp.einsum(
-            'sp,p,sp', component_eta_maps, central_term, inverse_term.reshape(self.nstokes, self.n_pix)
-        )
+        second_term_complete = jnp.einsum('sp,sp', component_eta_maps, inverse_term.reshape(self.nstokes, self.n_pix))
         if return_inverse:
             return -(-0 + second_term_complete) / 2.0 * jhp.nside2resol(self.nside) ** 2, inverse_term.reshape(
                 self.nstokes, self.n_pix
@@ -1529,7 +1541,6 @@ class Sampling_functions(MixingMatrix):
         component_eta_maps,
         red_cov_approx_matrix_sqrt,
         inverse_term_x_Capprox_root=None,
-        full_sky_correction=True,
     ):
         """Get conditional probability of correction term in the likelihood from the full mixing matrix,
         assuming the difference between the old and new mixing matrix is small
@@ -1628,18 +1639,12 @@ class Sampling_functions(MixingMatrix):
         ## Applying the operator (N_{c,new}^{-1} - N_{c,old}^{-1}) to C_approx^{1/2} A^{-1} eta
         perturbation_term = func_to_apply(inverse_term_x_Capprox_root).reshape(self.nstokes, self.n_pix)
 
-        central_term = self.mask
-        if full_sky_correction:
-            central_term = jnp.ones_like(self.mask)
-
         ## Computing contribution of \eta A^{-1} \eta
-        first_order_term = jnp.einsum(
-            'sp,p,sp', component_eta_maps, central_term, inverse_term.reshape(self.nstokes, self.n_pix)
-        )
+        first_order_term = jnp.einsum('sp,sp', component_eta_maps, inverse_term.reshape(self.nstokes, self.n_pix))
 
         ## Computing contribution of \eta A^{-1} C_approx^{1/2} (N_{c,new}^{-1} - N_{c,old}^{-1}) C_approx^{1/2} A^{-1} \eta
         perturbation_term = jnp.einsum(
-            'sp,p,sp', perturbation_term, central_term, inverse_term_x_Capprox_root.reshape(self.nstokes, self.n_pix)
+            'sp,sp', perturbation_term, inverse_term_x_Capprox_root.reshape(self.nstokes, self.n_pix)
         )
 
         ## Assembling everything
@@ -1659,7 +1664,6 @@ class Sampling_functions(MixingMatrix):
         component_eta_maps,
         red_cov_approx_matrix_sqrt,
         inverse_term_x_Capprox_root=None,
-        full_sky_correction=True,
     ):
         """
         Get conditional probability of correction term in the likelihood from the full mixing matrix,
@@ -1759,17 +1763,12 @@ class Sampling_functions(MixingMatrix):
         ## Applying the operator (N_{c,new}^{-1} - N_{c,old}^{-1}) to C_approx^{1/2} A^{-1} eta
         perturbation_term = func_to_apply(inverse_term_x_Capprox_root).reshape(self.nstokes, self.n_pix)
 
-        central_term = self.mask
-        if full_sky_correction:
-            central_term = jnp.ones_like(self.mask)
         ## Computing contribution of \eta A^{-1} \eta
-        first_order_term = jnp.einsum(
-            'sp,p,sp->p', component_eta_maps, central_term, inverse_term.reshape(self.nstokes, self.n_pix)
-        )
+        first_order_term = jnp.einsum('sp,sp->p', component_eta_maps, inverse_term.reshape(self.nstokes, self.n_pix))
 
         ## Computing contribution of \eta A^{-1} C_approx^{1/2} (N_{c,new}^{-1} - N_{c,old}^{-1}) C_approx^{1/2} A^{-1} \eta
         perturbation_term = jnp.einsum(
-            'sp,p,sp->p', perturbation_term, central_term, inverse_term_x_Capprox_root.reshape(self.nstokes, self.n_pix)
+            'sp,sp->p', perturbation_term, inverse_term_x_Capprox_root.reshape(self.nstokes, self.n_pix)
         )
 
         ## Assembling everything
@@ -1790,7 +1789,6 @@ class Sampling_functions(MixingMatrix):
         first_guess=None,
         biased_bool=False,
         precond_func=None,
-        full_sky_correction=True,
     ):
         """Get conditional probability of the conditional probability associated with the B_f parameters
 
@@ -1848,7 +1846,6 @@ class Sampling_functions(MixingMatrix):
                 first_guess=first_guess,
                 return_inverse=True,
                 precond_func=precond_func,
-                full_sky_correction=full_sky_correction,
             )
 
         return (log_proba_spectral_likelihood + log_proba_perturbation_likelihood), inverse_term
@@ -1863,7 +1860,6 @@ class Sampling_functions(MixingMatrix):
         first_guess=None,
         previous_inverse_x_Capprox_root=None,
         biased_bool=False,
-        full_sky_correction=False,
     ):
         """Get conditional probability of the conditional probability associated with the B_f parameters
 
@@ -1919,7 +1915,6 @@ class Sampling_functions(MixingMatrix):
                 component_eta_maps,
                 red_cov_approx_matrix_sqrt,
                 inverse_term_x_Capprox_root=previous_inverse_x_Capprox_root,
-                full_sky_correction=full_sky_correction,
             )
 
         return log_proba_spectral_likelihood + log_proba_perturbation_likelihood
@@ -1935,7 +1930,6 @@ class Sampling_functions(MixingMatrix):
         first_guess=None,
         previous_inverse_x_Capprox_root=None,
         biased_bool=False,
-        full_sky_correction=False,
     ):
         """Get conditional probability of the conditional probability associated with the B_f parameters
 
@@ -1995,7 +1989,6 @@ class Sampling_functions(MixingMatrix):
                 component_eta_maps,
                 red_cov_approx_matrix_sqrt,
                 inverse_term_x_Capprox_root=previous_inverse_x_Capprox_root,
-                full_sky_correction=full_sky_correction,
             )
 
         full_log_proba_pixel = log_proba_spectral_likelihood + log_proba_perturbation_likelihood
@@ -2165,6 +2158,52 @@ def single_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_size, log_pr
     )
 
     return new_sample.reshape(old_sample.shape, order='F')
+
+
+def bounded_single_Metropolis_Hasting_step_numpyro(state, step_size, log_proba, min_value=-jnp.inf, **model_kwargs):
+    """
+    Single Metropolis-Hasting step for a single parameter, with a Gaussian proposal distribution
+
+    Parameters
+    ----------
+    random_PRNGKey: array[jnp.uint32] of dimensions [2]
+        JAX random key to be splitted to generate the proposal and uniform distribution sample
+    old_sample: array
+        old sample of the parameter
+    step_size: array[float]
+        standard deviation for the proposal distribution
+    log_proba: array[float]
+        log-probability function of the model
+    model_kwargs: dictionary
+        additional arguments for the log-probability function
+
+    Returns
+    -------
+    array
+        new sample of the parameter
+    """
+    old_sample, random_PRNGKey = state
+
+    # Splitting the random key
+    rng_key, key_proposal, key_accept = random.split(random_PRNGKey, 3)
+
+    # Generating the proposal sample
+    sample_proposal = dist.Normal(jnp.ravel(old_sample, order='F'), step_size).sample(key_proposal)
+
+    # Checking if the proposal is lower than the minimum value
+    sample_proposal = jnp.where(sample_proposal < min_value, jnp.ravel(old_sample, order='F'), sample_proposal)
+
+    # Computing the acceptance probability
+    accept_prob = -(
+        log_proba(jnp.ravel(old_sample, order='F'), **model_kwargs) - log_proba(sample_proposal, **model_kwargs)
+    )
+
+    # Accepting or rejecting the proposal
+    new_sample = jnp.where(
+        jnp.log(dist.Uniform().sample(key_accept)) < accept_prob, sample_proposal, jnp.ravel(old_sample, order='F')
+    )
+
+    return new_sample.reshape(old_sample.shape, order='F'), rng_key
 
 
 def bounded_single_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_size, log_proba, min_value, **model_kwargs):
