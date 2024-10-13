@@ -1307,6 +1307,26 @@ def create_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv=''):
     root_tree = tree_spv_config(path_file_spv, n_betas, n_fgs_comp, print_tree=True)
     dictionary_parameters['spv_nodes_b'] = get_nodes_b(root_tree)
 
+    ## Getting the covariance of Bf from toml file
+    if 'step_size_Bf_1' in dictionary_parameters and 'step_size_Bf_2' in dictionary_parameters:
+        n_frequencies = len(dictionary_parameters['frequency_array'])
+        col_dim_B_f = n_frequencies - len(dictionary_parameters['pos_special_freqs'])
+
+        dictionary_parameters['covariance_B_f'] = np.zeros(
+            (col_dim_B_f * n_fgs_comp, col_dim_B_f * n_fgs_comp)
+        )  # Creating the covariance matrix for B_f
+
+        np.fill_diagonal(
+            dictionary_parameters['covariance_B_f'][:col_dim_B_f, :col_dim_B_f], step_size_Bf_1
+        )  # Filling diagonal with step_size_Bf_1 for first foreground component
+        np.fill_diagonal(
+            dictionary_parameters['covariance_B_f'][col_dim_B_f : 2 * col_dim_B_f, col_dim_B_f : 2 * col_dim_B_f],
+            step_size_Bf_2,
+        )  # Filling diagonal with step_size_Bf_2 for second foreground component
+
+        del dictionary_parameters['step_size_Bf_1']
+        del dictionary_parameters['step_size_Bf_2']
+
     ## Temporary, TODO: To remove
     if 'full_sky_correction' in dictionary_parameters:
         del dictionary_parameters['full_sky_correction']
