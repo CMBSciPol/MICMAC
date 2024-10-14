@@ -777,10 +777,28 @@ class MICMAC_Sampler(Sampling_functions):
             if self.covariance_B_f.shape[0] != self.len_params:
                 print('Covariance matrix for B_f is not of the right shape !', flush=True)
                 # initial_step_size_Bf = jnp.repeat(initial_step_size_Bf, self.len_params//self.covariance_B_f.shape[0], axis=0)
-                initial_step_size_Bf = jnp.broadcast_to(
-                    initial_step_size_Bf,
-                    (self.len_params // self.covariance_B_f.shape[0], self.covariance_B_f.shape[0]),
-                ).ravel(order='F')
+                if self.covariance_B_f.shape[0] != 2 * (self.n_frequencies - len_pos_special_freqs):
+                    raise ValueError(
+                        f'Covariance matrix for B_f is not of the right shape with shape {self.covariance_B_f.shape[0]}, it cannot be properly expanded with the considered multipatch distribution!'
+                    )
+
+                if (
+                    self.size_patches is not None and (self.size_patches == self.size_patches[0]).all()
+                ):  # If all patches have the same size
+                    initial_step_size_Bf = jnp.broadcast_to(  # Broadcasting the step-size for each patch size
+                        initial_step_size_Bf,
+                        (self.len_params // self.covariance_B_f.shape[0], self.covariance_B_f.shape[0]),
+                    ).ravel(order='F')
+                else:  # If patches have different sizes
+                    previous_initial_Bf = jnp.copy(initial_step_size_Bf)
+                    initial_step_size_Bf = jnp.zeros(self.len_params)
+                    for i in range(
+                        1, self.size_patches
+                    ):  # Loop over the patches to update the step-size for each patch size
+                        initial_step_size_Bf[
+                            self.sum_size_patches_indexed_freq_comp[i - 1] : self.sum_size_patches_indexed_freq_comp[i]
+                        ] = previous_initial_Bf[i - 1]
+                    initial_step_size_Bf[self.sum_size_patches_indexed_freq_comp[-1] :] = previous_initial_Bf[-1]
                 print('New step-size B_f', initial_step_size_Bf, flush=True)
 
         ## Few prints to re-check the toml parameters chosen
@@ -1317,11 +1335,11 @@ def create_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv=''):
         )  # Creating the covariance matrix for B_f
 
         np.fill_diagonal(
-            dictionary_parameters['covariance_B_f'][:col_dim_B_f, :col_dim_B_f], step_size_Bf_1
+            dictionary_parameters['covariance_B_f'][:col_dim_B_f, :col_dim_B_f], dictionary_parameters['step_size_Bf_1']
         )  # Filling diagonal with step_size_Bf_1 for first foreground component
         np.fill_diagonal(
             dictionary_parameters['covariance_B_f'][col_dim_B_f : 2 * col_dim_B_f, col_dim_B_f : 2 * col_dim_B_f],
-            step_size_Bf_2,
+            dictionary_parameters['step_size_Bf_2'],
         )  # Filling diagonal with step_size_Bf_2 for second foreground component
 
         del dictionary_parameters['step_size_Bf_1']
