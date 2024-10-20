@@ -39,7 +39,7 @@ from micmac.toolbox.tools import (
 )
 
 __all__ = [
-    'Sampling_functions',
+    'SamplingFunctions',
     'single_Metropolis_Hasting_step',
     'bounded_single_Metropolis_Hasting_step_numpyro',
     'bounded_single_Metropolis_Hasting_step',
@@ -54,7 +54,7 @@ __all__ = [
 ]
 
 
-class Sampling_functions(MixingMatrix):
+class SamplingFunctions(MixingMatrix):
     def __init__(
         self,
         nside,

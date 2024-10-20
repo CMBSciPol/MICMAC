@@ -31,7 +31,7 @@ from jax import config
 from micmac.external.fgbuster import get_instrument
 from micmac.foregrounds.templates import get_nodes_b, tree_spv_config
 from micmac.likelihood.sampling import (
-    Sampling_functions,
+    SamplingFunctions,
     multivariate_Metropolis_Hasting_step_numpyro_bounded,
 )
 from micmac.noise.noisecovar import get_true_Cl_noise
@@ -44,7 +44,7 @@ from micmac.toolbox.tools import (
 from micmac.toolbox.utils import generate_power_spectra_CAMB
 
 __all__ = [
-    'Harmonic_MICMAC_Sampler',
+    'HarmonicMicmacSampler',
     'create_Harmonic_MICMAC_sampler_from_MICMAC_sampler_obj',
     'create_Harmonic_MICMAC_sampler_from_toml_file',
 ]
@@ -52,7 +52,7 @@ __all__ = [
 config.update('jax_enable_x64', True)
 
 
-class Harmonic_MICMAC_Sampler(Sampling_functions):
+class HarmonicMicmacSampler(SamplingFunctions):
     def __init__(
         self,
         nside,
@@ -110,7 +110,7 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
         spv_nodes_b: list[dictionaries] (optional)
             tree for the spatial variability, to generate from a yaml file, default []
             in principle set up by get_nodes_b
-            WARNING: The spatial variability is not currently supported, but will be passed to MICMAC_Sampler obj when using create_Harmonic_MICMAC_sampler_from_MICMAC_sampler_obj
+            WARNING: The spatial variability is not currently supported, but will be passed to MicmacSampler obj when using create_Harmonic_MICMAC_sampler_from_MICMAC_sampler_obj
 
         biased_version: bool (optional)
             use the biased version of the likelihood, so no computation of the correction term, default False
@@ -735,19 +735,19 @@ class Harmonic_MICMAC_Sampler(Sampling_functions):
 
 def create_Harmonic_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv):
     """
-    Create a Harmonic_MICMAC_Sampler object from the path of a toml file and the yaml file for spatial variability
+    Create a HarmonicMicmacSampler object from the path of a toml file and the yaml file for spatial variability
 
     Parameters
     ----------
     path_toml_file : str
-        path to the toml file for the main options of Harmonic_MICMAC_Sampler
+        path to the toml file for the main options of HarmonicMicmacSampler
     path_file_spv : str
         path to the yaml file for the spatial variability options
 
     Returns
     -------
-    Harmonic_MICMAC_Sampler_obj : Harmonic_MICMAC_Sampler
-        Harmonic_MICMAC_Sampler object
+    Harmonic_MICMAC_Sampler_obj : HarmonicMicmacSampler
+        HarmonicMicmacSampler object
     """
     with open(path_toml_file) as f:
         dictionary_parameters = toml.load(f)
@@ -769,12 +769,12 @@ def create_Harmonic_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv)
     # Read or create spv config
     root_tree = tree_spv_config(path_file_spv, n_betas, n_fgs_comp, print_tree=True)
     dictionary_parameters['spv_nodes_b'] = get_nodes_b(root_tree)
-    return Harmonic_MICMAC_Sampler(**dictionary_parameters)
+    return HarmonicMicmacSampler(**dictionary_parameters)
 
 
 def create_Harmonic_MICMAC_sampler_from_MICMAC_sampler_obj(MICMAC_sampler_obj, depth_p_array, covariance_B_f=None):
     """
-    Create a Harmonic_MICMAC_Sampler object from a MICMAC_Sampler object
+    Create a HarmonicMicmacSampler object from a MicmacSampler object
     """
 
     first_dict = ['nside', 'lmax', 'nstokes', 'frequency_array', 'pos_special_freqs', 'n_components']
@@ -797,7 +797,7 @@ def create_Harmonic_MICMAC_sampler_from_MICMAC_sampler_obj(MICMAC_sampler_obj, d
     dictionary_parameters['spv_nodes_b'] = spv_nodes_b
 
     print('Test', dictionary_parameters['freq_noise_c_ell'].shape)
-    Harmonic_MICMAC_Sampler_obj = Harmonic_MICMAC_Sampler(**dictionary_parameters)
+    Harmonic_MICMAC_Sampler_obj = HarmonicMicmacSampler(**dictionary_parameters)
 
     list_attributes = [
         'pos_special_freqs',

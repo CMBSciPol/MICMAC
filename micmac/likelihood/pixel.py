@@ -31,7 +31,7 @@ from jax_tqdm import scan_tqdm
 from micmac.external.fgbuster import get_instrument
 from micmac.foregrounds.templates import get_nodes_b, tree_spv_config
 from micmac.likelihood.sampling import (
-    Sampling_functions,
+    SamplingFunctions,
     separate_single_MH_step_index_accelerated,
     separate_single_MH_step_index_v2b,
     separate_single_MH_step_index_v4_pixel,
@@ -55,12 +55,12 @@ from micmac.toolbox.tools import (
 )
 from micmac.toolbox.utils import generate_power_spectra_CAMB, get_instr
 
-__all__ = ['MICMAC_Sampler', 'create_MICMAC_sampler_from_toml_file']
+__all__ = ['MicmacSampler', 'create_MICMAC_sampler_from_dictionnary', 'create_MICMAC_sampler_from_toml_file']
 
 config.update('jax_enable_x64', True)
 
 
-class MICMAC_Sampler(Sampling_functions):
+class MicmacSampler(SamplingFunctions):
     def __init__(
         self,
         nside,
@@ -556,7 +556,7 @@ class MICMAC_Sampler(Sampling_functions):
             - self.all_samples_CMB_c_ell (if self.sample_C_inv_Wishart is True)
             - self.all_params_mixing_matrix_samples (always)
 
-        This same function can be used to continue a chain from a previous run, by giving the number of iterations already done in the MICMAC_Sampler object,
+        This same function can be used to continue a chain from a previous run, by giving the number of iterations already done in the MicmacSampler object,
         giving the chains to the attributes of the object, and giving the last iteration results as initial guesses.
 
         Parameters
@@ -1279,28 +1279,24 @@ class MICMAC_Sampler(Sampling_functions):
         self.last_sample = last_sample
 
 
-def create_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv=''):
+def create_MicmacSampler_from_dictionnary(dictionary_parameters, path_file_spv=''):
     """
-    Create a MICMAC_Sampler object from:
+    Create a MicmacSampler object from:
     * the path of a toml file: params for the sims and for the sampling
     * the path of a spv file: params for addressing spatial variability
 
     Parameters
     ----------
-    path_toml_file : str
-        path to the toml file for the main options of Harmonic_MICMAC_Sampler
+    dictionary_parameters : dictionary
+        dictionary for the main options of MicmacSampler
     path_file_spv : str
         path to the yaml file for the spatial variability options
 
     Returns
     -------
-    MICMAC_Sampler_obj: MICMAC_Sampler
-        the MICMAC_Sampler object created from the toml file with the spatial variability from the yaml file
+    MICMAC_Sampler_obj: MicmacSampler
+        the MicmacSampler object created from the toml file with the spatial variability from the yaml file
     """
-    ### Opening first the toml file for the simulations and sampling, to create the MICMAC_Sampler object
-    with open(path_toml_file) as f:
-        dictionary_parameters = toml.load(f)
-    f.close()
 
     ## Getting the instrument and the noise covariance
     if dictionary_parameters['instrument_name'] != 'customized_instrument':  ## TODO: Improve a bit this part
@@ -1351,4 +1347,30 @@ def create_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv=''):
     if 'sample_r_from_BB' in dictionary_parameters:
         del dictionary_parameters['sample_r_from_BB']
 
-    return MICMAC_Sampler(**dictionary_parameters)
+    return MicmacSampler(**dictionary_parameters)
+
+
+def create_MicmacSampler_from_toml_file(path_toml_file, path_file_spv=''):
+    """
+    Create a MicmacSampler object from:
+    * the path of a toml file: params for the sims and for the sampling
+    * the path of a spv file: params for addressing spatial variability
+
+    Parameters
+    ----------
+    path_toml_file : str
+        path to the toml file for the main options of MicmacSampler
+    path_file_spv : str
+        path to the yaml file for the spatial variability options
+
+    Returns
+    -------
+    MICMAC_Sampler_obj: MicmacSampler
+        the MicmacSampler object created from the toml file with the spatial variability from the yaml file
+    """
+    ### Opening first the toml file for the simulations and sampling, to create the MicmacSampler object
+    with open(path_toml_file) as f:
+        dictionary_parameters = toml.load(f)
+    f.close()
+
+    return create_MICMAC_sampler_from_dictionnary(dictionary_parameters, path_file_spv=path_file_spv)
