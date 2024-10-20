@@ -95,7 +95,6 @@ class MicmacSampler(SamplingFunctions):
         use_binning=False,
         bin_ell_distribution=None,
         acceptance_posdef=False,
-        r_true=0,
         step_size_r=1e-4,
         covariance_B_f=None,
         indexes_free_Bf=False,
@@ -179,8 +178,6 @@ class MicmacSampler(SamplingFunctions):
             binning distribution for the sampling of inverse Wishart CMB covariance, default None
         acceptance_posdef: accept only positive definite matrices C sampling, bool
 
-        r_true: float (optional)
-            true value of r (only used to compute input CMB maps, not actually used in the sampling), default 0
         step_size_r: float (optional)
             step size for the Metropolis-Hastings sampling of r, default 1e-4
         covariance_B_f: None or array[float] of dimensions [(n_frequencies-len(pos_special_freqs))*(n_components-1), (n_frequencies-len(pos_special_freqs))*(n_components-1)] (optional)
@@ -257,9 +254,6 @@ class MicmacSampler(SamplingFunctions):
         )  # To save intermediary r values in case of non-centered moves in the sampling
         self.limit_r_value = bool(limit_r_value)  # To limit the r value to be positive
         self.min_r_value = float(min_r_value)  # Minimum value for r
-
-        # CMB parameters for input maps generation
-        self.r_true = float(r_true)
 
         # Harmonic noise parameter
         self.freq_noise_c_ell = freq_noise_c_ell  # Noise power spectra for each frequency, in uK^2, dimensions [frequencies, frequencies, lmax+1-lmin] or [frequencies, frequencies, lmax] (in which case it will be cut to lmax+1-lmin)
@@ -359,7 +353,9 @@ class MicmacSampler(SamplingFunctions):
         theoretical_red_cov_r0_total = get_reduced_matrix_from_c_ell(theoretical_r0_total)[self.lmin :]
         return theoretical_red_cov_r0_total, theoretical_red_cov_r1_tensor
 
-    def generate_input_freq_maps_from_fgs(self, freq_maps_fgs, return_only_freq_maps=True, return_only_maps=False):
+    def generate_input_freq_maps_from_fgs(
+        self, freq_maps_fgs, r_true=0, return_only_freq_maps=True, return_only_maps=False
+    ):
         """
         Generate input frequency maps (CMB+foregrounds) from the input frequency foregrounds maps,
         return either the full frequency maps, the full frequency and CMB maps alone,
@@ -369,6 +365,8 @@ class MicmacSampler(SamplingFunctions):
         ----------
         freq_maps_fgs: array[float] of dimensions [n_frequencies,nstokes,n_pix]
             input frequency foregrounds maps
+        r_true: float, optional
+            input tensor-to-scalar ratio r to generate the CMB, default to 0
         return_only_freq_maps: bool (optional)
             return only the full frequency maps, bool
         return_only_maps: bool (optional)
@@ -392,7 +390,7 @@ class MicmacSampler(SamplingFunctions):
 
         # Retrieve fiducial CMB power spectra
         true_cmb_specra = get_c_ells_from_red_covariance_matrix(
-            theoretical_red_cov_r0_total + self.r_true * theoretical_red_cov_r1_tensor
+            theoretical_red_cov_r0_total + r_true * theoretical_red_cov_r1_tensor
         )
         true_cmb_specra_extended = np.zeros((6, self.lmax + 1))
         true_cmb_specra_extended[indices_polar, self.lmin :] = true_cmb_specra
