@@ -55,7 +55,7 @@ from micmac.toolbox.tools import (
 )
 from micmac.toolbox.utils import generate_power_spectra_CAMB, get_instr
 
-__all__ = ['MicmacSampler', 'create_MICMAC_sampler_from_dictionnary', 'create_MICMAC_sampler_from_toml_file']
+__all__ = ['MicmacSampler', 'create_MicmacSampler_from_dictionnary', 'create_MicmacSampler_from_toml_file']
 
 config.update('jax_enable_x64', True)
 
@@ -1329,11 +1329,12 @@ def create_MicmacSampler_from_dictionnary(dictionary_parameters, path_file_spv='
         )  # Creating the covariance matrix for B_f
 
         np.fill_diagonal(
-            dictionary_parameters['covariance_B_f'][:col_dim_B_f, :col_dim_B_f], dictionary_parameters['step_size_Bf_1']
+            dictionary_parameters['covariance_B_f'][:col_dim_B_f, :col_dim_B_f],
+            dictionary_parameters['step_size_Bf_1'] ** 2,
         )  # Filling diagonal with step_size_Bf_1 for first foreground component
         np.fill_diagonal(
             dictionary_parameters['covariance_B_f'][col_dim_B_f : 2 * col_dim_B_f, col_dim_B_f : 2 * col_dim_B_f],
-            dictionary_parameters['step_size_Bf_2'],
+            dictionary_parameters['step_size_Bf_2'] ** 2,
         )  # Filling diagonal with step_size_Bf_2 for second foreground component
 
         del dictionary_parameters['step_size_Bf_1']
@@ -1371,4 +1372,4 @@ def create_MicmacSampler_from_toml_file(path_toml_file, path_file_spv=''):
         dictionary_parameters = toml.load(f)
     f.close()
 
-    return create_MICMAC_sampler_from_dictionnary(dictionary_parameters, path_file_spv=path_file_spv)
+    return create_MicmacSampler_from_dictionnary(dictionary_parameters, path_file_spv=path_file_spv)
