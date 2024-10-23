@@ -579,6 +579,8 @@ class MicmacSampler(SamplingFunctions):
             theoretical reduced covariance matrix for the CMB tensor modes, default empty array
         """
 
+        time_test = time.time()
+
         # Disabling all chex checks to speed up the code
         if self.disable_chex:
             print('Disabling chex !!!', flush=True)
@@ -791,7 +793,7 @@ class MicmacSampler(SamplingFunctions):
                     previous_initial_Bf = jnp.copy(initial_step_size_Bf)
                     initial_step_size_Bf = jnp.zeros(self.len_params)
                     for i in range(
-                        1, self.size_patches
+                        1, self.size_patches.size
                     ):  # Loop over the patches to update the step-size for each patch size
                         initial_step_size_Bf[
                             self.sum_size_patches_indexed_freq_comp[i - 1] : self.sum_size_patches_indexed_freq_comp[i]
@@ -1256,12 +1258,14 @@ class MicmacSampler(SamplingFunctions):
         ## Initialising the first carry to the chains saved
         self.update_one_sample(initial_carry)
 
+        print('Time before entering scan and all_sampling_steps', (time.time() - time_test) / 60, 'minutes', flush=True)
+
         ## Starting the Gibbs sampling !!!!
         time_start_sampling = time.time()
         # Start sampling !!!
         last_sample, all_samples = jlax.scan(all_sampling_steps, initial_carry, jnp.arange(actual_number_of_iterations))
         time_full_chain = (time.time() - time_start_sampling) / 60
-        print(f'End of iterations in {time_full_chain} minutes, saving all files !', flush=True)
+        print(f'End of Gibbs chain in {time_full_chain} minutes, saving all files !', flush=True)
 
         # Saving the samples as attributes of the Sampler object
         time_start_updating = time.time()
