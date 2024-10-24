@@ -294,7 +294,7 @@ class SamplingFunctions(MixingMatrix):
 
     def get_cond_unobserved_patches(self):
         """
-        Get boolean condition on the free B_f indices corresponding to patches within the mask
+        Get boolean condition on the free Bf indices corresponding to patches within the mask
         """
 
         templates = self.get_all_templates()
@@ -304,7 +304,7 @@ class SamplingFunctions(MixingMatrix):
 
     def get_cond_unobserved_patches_from_indices(self, indices):
         """
-        Get boolean condition on the free B_f indices corresponding to patches within the mask
+        Get boolean condition on the free Bf indices corresponding to patches within the mask
         """
 
         templates = self.get_all_templates()
@@ -313,7 +313,7 @@ class SamplingFunctions(MixingMatrix):
 
     def get_cond_unobserved_patches_from_indices_optimized(self, indices):
         """
-        Get boolean condition on the free B_f indices corresponding to patches within the mask
+        Get boolean condition on the free Bf indices corresponding to patches within the mask
         """
 
         templates = self.get_all_templates()
@@ -369,7 +369,7 @@ class SamplingFunctions(MixingMatrix):
         Returns
         -------
         eta_maps: array[float] of dimensions [nstokes, n_pix]
-            eta maps for B_f sampling
+            eta maps for Bf sampling
         """
 
         # Chex test for arguments
@@ -1790,7 +1790,7 @@ class SamplingFunctions(MixingMatrix):
         biased_bool=False,
         precond_func=None,
     ):
-        """Get conditional probability of the conditional probability associated with the B_f parameters
+        """Get conditional probability of the conditional probability associated with the Bf parameters
 
         With notation C_approx instead of \tilde{C}, the associated conditional probability is given by:
             - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c) + \\eta^t ( Id + C_approx^{1/2} N_c^{-1} C_approx^{1/2} )^{-1} \\eta
@@ -1798,7 +1798,7 @@ class SamplingFunctions(MixingMatrix):
         Parameters
         ----------
         new_params_mixing_matrix: array[float] of dimensions [nfreq-len(pos_special_frequencies), ncomp-1]
-            new B_f parameters of the mixing matrix to compute the log-proba
+            new Bf parameters of the mixing matrix to compute the log-proba
         full_data_without_CMB: array[float] of dimensions [frequencies, n_pix]
             data without from which the CMB (sample) was substracted, of dimension
         red_cov_approx_matrix: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
@@ -1861,7 +1861,7 @@ class SamplingFunctions(MixingMatrix):
         previous_inverse_x_Capprox_root=None,
         biased_bool=False,
     ):
-        """Get conditional probability of the conditional probability associated with the B_f parameters
+        """Get conditional probability of the conditional probability associated with the Bf parameters
 
         Note that the difference between the old and new mixing matrix is assumed to be small
 
@@ -1931,7 +1931,7 @@ class SamplingFunctions(MixingMatrix):
         previous_inverse_x_Capprox_root=None,
         biased_bool=False,
     ):
-        """Get conditional probability of the conditional probability associated with the B_f parameters
+        """Get conditional probability of the conditional probability associated with the Bf parameters
 
         Note that the difference between the old and new mixing matrix is assumed to be small
 
@@ -2001,7 +2001,7 @@ class SamplingFunctions(MixingMatrix):
 
     def harmonic_marginal_probability(
         self,
-        sample_B_f_r,
+        sample_Bf_r,
         noise_weighted_alm_data,
         theoretical_red_cov_r1_tensor,
         theoretical_red_cov_r0_total,
@@ -2020,13 +2020,13 @@ class SamplingFunctions(MixingMatrix):
         The data are assumed to be provided in the harmonic domain already noise weighted, and the covariance matrices are assumed to be in the harmonic domain as well.
         All harmonic covariance matrices are assumed to be block diagonal.
 
-        The routine will only work in harmonic domain, so any mixing matrix within sample_B_f_r will be averaged over the pixels.
+        The routine will only work in harmonic domain, so any mixing matrix within sample_Bf_r will be averaged over the pixels.
 
         The routine doesn't explicitely retrieve C, but assume it to be parametrize by r, with C(r) = r * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
 
         Parameters
         ----------
-        sample_B_f_r: array[float] of dimensions [nfreq-len(pos_special_frequencies)*(ncomp-1) + 1]
+        sample_Bf_r: array[float] of dimensions [nfreq-len(pos_special_frequencies)*(ncomp-1) + 1]
             sample of the mixing matrix and r parameter
         noise_weighted_alm_data: array[float] of dimensions [nfreq, nstokes]
             noise weighted alms of the data, do N^{-1} d, given in harmonic domain
@@ -2044,7 +2044,7 @@ class SamplingFunctions(MixingMatrix):
         """
 
         ## Checking the dimensions of the inputs
-        chx.assert_axis_dimension(sample_B_f_r, 0, 2 * (self.n_frequencies - jnp.size(self.pos_special_freqs)) + 1)
+        chx.assert_axis_dimension(sample_Bf_r, 0, 2 * (self.n_frequencies - jnp.size(self.pos_special_freqs)) + 1)
         chx.assert_axis_dimension(red_cov_approx_matrix, 0, self.lmax + 1 - self.lmin)
         chx.assert_axis_dimension(theoretical_red_cov_r1_tensor, 0, self.lmax + 1 - self.lmin)
         chx.assert_axis_dimension(theoretical_red_cov_r0_total, 0, self.lmax + 1 - self.lmin)
@@ -2052,13 +2052,13 @@ class SamplingFunctions(MixingMatrix):
         chx.assert_axis_dimension(noise_weighted_alm_data, 1, self.nstokes)
 
         ## Retrieving the mixing matrix and r parameter
-        r_param = sample_B_f_r[-1]
-        B_f = sample_B_f_r[:-1]
+        r_param = sample_Bf_r[-1]
+        Bf = sample_Bf_r[:-1]
 
         ## Updating the mixing matrix
-        # self.update_params(B_f, jax_use=True)
+        # self.update_params(Bf, jax_use=True)
         # mixing_matrix_sample = self.get_B(jax_use=True).mean(axis=2) # Getting the mean of the mixing matrix over the pixels
-        mixing_matrix_sample = self.get_B_from_params(B_f, jax_use=True).mean(
+        mixing_matrix_sample = self.get_B_from_params(Bf, jax_use=True).mean(
             axis=2
         )  # Getting the mean of the mixing matrix over the pixels
 
@@ -2522,7 +2522,7 @@ def separate_single_MH_step_index_v3(
     max_len_patches_Bf: int
         maximum length of the patches
     len_indexes_Bf: int
-        maximum index of all possible B_f (not only the free ones)
+        maximum index of all possible Bf (not only the free ones)
     model_kwargs: dictionary
         additional arguments for the log-probability function
 
@@ -2537,11 +2537,11 @@ def separate_single_MH_step_index_v3(
     def map_func(carry, counter_i):
         index_Bf = indexes_patches_Bf[counter_i]
         indexes_to_consider = (index_Bf + jnp.arange(max_len_patches_Bf, dtype=jnp.int32)) % len_indexes_Bf
-        mask_in_indexes_B_f = jnp.where(
+        mask_in_indexes_Bf = jnp.where(
             jnp.isin(index_Bf + jnp.arange(max_len_patches_Bf, dtype=jnp.int32), indexes_Bf), 1, 0
         )
         mask_indexes_to_consider = jnp.where(
-            jnp.arange(max_len_patches_Bf) < size_patches[counter_i], mask_in_indexes_B_f, 0
+            jnp.arange(max_len_patches_Bf) < size_patches[counter_i], mask_in_indexes_Bf, 0
         )
 
         rng_key, key_proposal, key_accept = random.split(carry['PRNGKey'], 3)
@@ -2614,7 +2614,7 @@ def separate_single_MH_step_index_v4_pixel(
     max_len_patches_Bf: int
         maximum length of the patches
     len_indexes_Bf: int
-        maximum index of all possible B_f (not only the free ones)
+        maximum index of all possible Bf (not only the free ones)
     model_kwargs: dictionary
         additional arguments for the log-probability function
 
@@ -2629,11 +2629,11 @@ def separate_single_MH_step_index_v4_pixel(
     def map_func(carry, counter_i):
         index_Bf = indexes_patches_Bf[counter_i]
         indexes_to_consider = (index_Bf + jnp.arange(max_len_patches_Bf, dtype=jnp.int32)) % len_indexes_Bf
-        mask_in_indexes_B_f = jnp.where(
+        mask_in_indexes_Bf = jnp.where(
             jnp.isin(index_Bf + jnp.arange(max_len_patches_Bf, dtype=jnp.int32), indexes_Bf), 1, 0
         )
         mask_indexes_to_consider = jnp.where(
-            jnp.arange(max_len_patches_Bf) < size_patches[counter_i], mask_in_indexes_B_f, 0
+            jnp.arange(max_len_patches_Bf) < size_patches[counter_i], mask_in_indexes_Bf, 0
         )
 
         rng_key, key_proposal, key_accept = random.split(carry['PRNGKey'], 3)
@@ -2710,7 +2710,7 @@ def separate_single_MH_step_index_v4b_pixel(
     max_len_patches_Bf: int
         maximum length of the patches
     len_indexes_Bf: int
-        maximum index of all possible B_f (not only the free ones)
+        maximum index of all possible Bf (not only the free ones)
     model_kwargs: dictionary
         additional arguments for the log-probability function
 
@@ -2726,11 +2726,11 @@ def separate_single_MH_step_index_v4b_pixel(
     def map_func(carry, counter_i):
         index_Bf = indexes_patches_Bf[counter_i]
         indexes_to_consider = (index_Bf + jnp.arange(max_len_patches_Bf, dtype=jnp.int32)) % len_indexes_Bf
-        mask_in_indexes_B_f = jnp.where(
+        mask_in_indexes_Bf = jnp.where(
             jnp.isin(index_Bf + jnp.arange(max_len_patches_Bf, dtype=jnp.int32), indexes_Bf), 1, 0
         )
         mask_indexes_to_consider = jnp.where(
-            jnp.arange(max_len_patches_Bf) < size_patches[counter_i], mask_in_indexes_B_f, 0
+            jnp.arange(max_len_patches_Bf) < size_patches[counter_i], mask_in_indexes_Bf, 0
         )
 
         rng_key, key_proposal, key_accept = random.split(carry['PRNGKey'], 3)

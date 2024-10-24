@@ -162,7 +162,7 @@ class MixingMatrix:
             self.values_b = jnp.array(
                 get_values_b(self.spv_nodes_b, self.n_frequencies - len(self.pos_special_freqs), self.n_components - 1)
             )
-            # Values of the first index of each B_f parameter in params
+            # Values of the first index of each Bf parameter in params
             self.indexes_b = jnp.array(
                 get_indexes_b(self.n_frequencies - len(self.pos_special_freqs), self.n_components - 1, self.spv_nodes_b)
             )
@@ -176,7 +176,7 @@ class MixingMatrix:
             self.max_len_patches_Bf = int(self.size_patches.max())
         else:
             self.values_b = None  # Values of the patch nsides corresponding to each node
-            self.indexes_b = jnp.array([[0]])  # Values of the first index of each B_f parameter in params
+            self.indexes_b = jnp.array([[0]])  # Values of the first index of each Bf parameter in params
             self.size_patches = None  # Number of patches for each node
             self.sum_size_patches_indexed_freq_comp = None  # Cumulative sum of the number of patches for each node
             self.max_len_patches_Bf = None  # Maximum number of patches for each node
@@ -212,14 +212,14 @@ class MixingMatrix:
     def get_params_long_python(self, params, print_bool=False):
         # only python version
         """
-        From the params (B_f) to all the entries of the mixing matrix
+        From the params (Bf) to all the entries of the mixing matrix
         only with Python (numpy) without JAX
 
         Parameters
         ----------
         params: array[float]
             Flattened version of all free parameters of the mixing matrix per patch
-            expected to be stored as [B_f1_comp1_patch1, B_f1_comp1_patch2, ..., B_f2_comp1_patch1, ..., B_f1_comp2_patch1, ..., B_fn_comp2_patchn, ...]
+            expected to be stored as [Bf1_comp1_patch1, Bf1_comp1_patch2, ..., Bf2_comp1_patch1, ..., Bf1_comp2_patch1, ..., Bfn_comp2_patchn, ...]
 
         print_bool: bool (optional)
             If True, print the node names
@@ -283,7 +283,7 @@ class MixingMatrix:
             index of params of the corresponding template which will be saved
         params: array[float]
             flatttened compressed array of the free params of the mixing matrix
-            expected to be stored as [B_f1_comp1_patch1, B_f1_comp1_patch2, ..., B_f2_comp1_patch1, ..., B_f1_comp2_patch1, ..., B_fn_comp2_patchn, ...]
+            expected to be stored as [Bf1_comp1_patch1, Bf1_comp1_patch2, ..., Bf2_comp1_patch1, ..., Bf1_comp2_patch1, ..., Bfn_comp2_patchn, ...]
 
         Returns
         -------
@@ -526,7 +526,7 @@ class MixingMatrix:
         ----------
         params: array[float]
             Flattened version of all free parameters of the mixing matrix per patch
-            expected to be stored as [B_f1_comp1_patch1, B_f1_comp1_patch2, ..., B_f2_comp1_patch1, ..., B_f1_comp2_patch1, ..., B_fn_comp2_patchn, ...]
+            expected to be stored as [Bf1_comp1_patch1, Bf1_comp1_patch2, ..., Bf2_comp1_patch1, ..., Bf1_comp2_patch1, ..., Bfn_comp2_patchn, ...]
         jax_use: bool (optional)
             If True, params are expected as JAX Array and B_fgs will be returned as JAX Array, default False
 
@@ -579,7 +579,7 @@ class MixingMatrix:
         ----------
         params: array[float]
             Flattened version of all free parameters of the mixing matrix per patch
-            expected to be stored as [B_f1_comp1_patch1, B_f1_comp1_patch2, ..., B_f2_comp1_patch1, ..., B_f1_comp2_patch1, ..., B_fn_comp2_patchn, ...]
+            expected to be stored as [Bf1_comp1_patch1, Bf1_comp1_patch2, ..., Bf2_comp1_patch1, ..., Bf1_comp2_patch1, ..., Bfn_comp2_patchn, ...]
         jax_use: bool (optional)
             If True, params are expected as JAX Array and B_mat will be returned as JAX Array, default False
 
@@ -610,7 +610,7 @@ class MixingMatrix:
             Healpix nside of one patch distribution, expected lower than nside of the input maps
         params: array[float]
             Flattened version of all free parameters of the mixing matrix per patch
-            expected to be stored as [B_f1_comp1_patch1, B_f1_comp1_patch2, ..., B_f2_comp1_patch1, ..., B_f1_comp2_patch1, ..., B_fn_comp2_patchn, ...]
+            expected to be stored as [Bf1_comp1_patch1, Bf1_comp1_patch2, ..., Bf2_comp1_patch1, ..., Bf1_comp2_patch1, ..., Bfn_comp2_patchn, ...]
         jax_use: bool (optional)
             If True, params are expected as JAX Array and the results will be returned as JAX Array, default False
 
@@ -673,7 +673,7 @@ class MixingMatrix:
             Healpix nside of one patch distribution, expected lower than nside of the input maps
         params: array[float]
             Flattened version of all free parameters of the mixing matrix per patch
-            expected to be stored as [B_f1_comp1_patch1, B_f1_comp1_patch2, ..., B_f2_comp1_patch1, ..., B_f1_comp2_patch1, ..., B_fn_comp2_patchn, ...]
+            expected to be stored as [Bf1_comp1_patch1, Bf1_comp1_patch2, ..., Bf2_comp1_patch1, ..., Bf1_comp2_patch1, ..., Bfn_comp2_patchn, ...]
         jax_use: bool (optional)
             If True, params are expected as JAX Array and the results will be returned as JAX Array, default False
 

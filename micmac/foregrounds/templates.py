@@ -90,7 +90,7 @@ def build_tree_from_dict(node_dict, parent=None):
 
 def count_betas_in_tree(node):
     """
-    Count the number of nodes corresponding to free B_f parameters per frequency per component and per patch
+    Count the number of nodes corresponding to free Bf parameters per frequency per component and per patch
 
     Parameters
     ----------
@@ -100,7 +100,7 @@ def count_betas_in_tree(node):
     Returns
     -------
     count: int
-        number of nodes corresponding to free B_f parameters for the given node
+        number of nodes corresponding to free Bf parameters for the given node
     """
     count = 0
     if node.name.startswith('b'):

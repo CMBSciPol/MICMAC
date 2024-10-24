@@ -68,10 +68,10 @@ class HarmonicMicmacSampler(SamplingFunctions):
         spv_nodes_b=None,
         biased_version=False,
         r_true=0,
-        boundary_B_f=None,
+        boundary_Bf=None,
         boundary_r=None,
         step_size_r=1e-4,
-        covariance_B_f=None,
+        covariance_Bf=None,
         number_iterations_sampling=100,
         number_iterations_done=0,
         seed=0,
@@ -80,7 +80,7 @@ class HarmonicMicmacSampler(SamplingFunctions):
     ):
         """
         Main MICMAC Harmonic sampling object to initialize and launch the Metropolis-Hastings (MH) sampling in harmonic domain.
-        The MH sampling will store B_f and r parameters.
+        The MH sampling will store Bf and r parameters.
 
         Parameters
         ----------
@@ -117,15 +117,15 @@ class HarmonicMicmacSampler(SamplingFunctions):
         r_true: float (optional)
             true value of r (only used to compute input CMB maps, not actually used in the sampling), default 0
 
-        boundary_B_f: None or array[float] (optional)
-            minimum and maximum B_f values accepted for B_f sample, set to [-inf,inf] for each B_f parameter if None, default None
+        boundary_Bf: None or array[float] (optional)
+            minimum and maximum Bf values accepted for Bf sample, set to [-inf,inf] for each Bf parameter if None, default None
         boundary_r: None or array[float] (optional)
             minimum and maximum r values accepted for r sample, set to [-inf,inf] if None, default None
 
         step_size_r: float (optional)
             step size for the Metropolis-Hastings sampling of r, default 1e-4
-        covariance_B_f: None or array[float] of dimensions [(n_frequencies-len(pos_special_freqs))*(n_components-1), (n_frequencies-len(pos_special_freqs))*(n_components-1)] (optional)
-            covariance for the Metropolis-Hastings sampling of B_f ; will be repeated if multiresoltion case, default None
+        covariance_Bf: None or array[float] of dimensions [(n_frequencies-len(pos_special_freqs))*(n_components-1), (n_frequencies-len(pos_special_freqs))*(n_components-1)] (optional)
+            covariance for the Metropolis-Hastings sampling of Bf ; will be repeated if multiresoltion case, default None
         number_iterations_sampling: int (optional)
             maximum number of iterations for the sampling, default 100
         number_iterations_done: int (optional)
@@ -170,20 +170,20 @@ class HarmonicMicmacSampler(SamplingFunctions):
         self.freq_noise_c_ell = freq_noise_c_ell
 
         # Metropolis-Hastings step-size and covariance parameters
-        self.covariance_B_f = covariance_B_f
+        self.covariance_Bf = covariance_Bf
         self.step_size_r = step_size_r
-        if boundary_B_f is None:
-            boundary_B_f = jnp.zeros((2, (self.n_frequencies - len(self.pos_special_freqs)) * (self.n_components - 1)))
-            boundary_B_f = boundary_B_f.at[0, :].set(-jnp.inf)
-            boundary_B_f = boundary_B_f.at[1, :].set(jnp.inf)
+        if boundary_Bf is None:
+            boundary_Bf = jnp.zeros((2, (self.n_frequencies - len(self.pos_special_freqs)) * (self.n_components - 1)))
+            boundary_Bf = boundary_Bf.at[0, :].set(-jnp.inf)
+            boundary_Bf = boundary_Bf.at[1, :].set(jnp.inf)
         if boundary_r is None:
             boundary_r = jnp.array([-jnp.inf, jnp.inf])
-        assert np.array(boundary_B_f).shape == (
+        assert np.array(boundary_Bf).shape == (
             2,
             (self.n_frequencies - len(self.pos_special_freqs)) * (self.n_components - 1),
         )
         assert np.array(boundary_r).shape == (2,)
-        self.boundary_B_f_r = jnp.hstack((boundary_B_f, jnp.expand_dims(boundary_r, axis=0).T))
+        self.boundary_Bf_r = jnp.hstack((boundary_Bf, jnp.expand_dims(boundary_r, axis=0).T))
 
         # Sampling parameters
         self.number_iterations_sampling = int(
@@ -322,7 +322,7 @@ class HarmonicMicmacSampler(SamplingFunctions):
 
     def update_samples_MH(self, all_samples):
         """
-        Update the samples with new samples to add for r and B_f
+        Update the samples with new samples to add for r and Bf
 
         Parameters
         ----------
@@ -331,7 +331,7 @@ class HarmonicMicmacSampler(SamplingFunctions):
         """
         # Update the samples of r
         self.all_samples_r = self.update_variable(self.all_samples_r, all_samples[..., -1])
-        # Update the samples of B_f
+        # Update the samples of Bf
         self.all_params_mixing_matrix_samples = self.update_variable(
             self.all_params_mixing_matrix_samples, all_samples[..., :-1]
         )
@@ -395,7 +395,7 @@ class HarmonicMicmacSampler(SamplingFunctions):
         **options_minimizer,
     ):
         """
-        Perform a minimization to find the best r and B_f in harmonic domain. The results will be returned as the best parameters found.
+        Perform a minimization to find the best r and Bf in harmonic domain. The results will be returned as the best parameters found.
 
         Parameters
         ----------
@@ -485,8 +485,8 @@ class HarmonicMicmacSampler(SamplingFunctions):
             raise ValueError('Method used not recognized for minimization')
 
         # Setting up the function to minimize
-        func_to_minimize = lambda sample_B_f_r: -self.harmonic_marginal_probability(
-            sample_B_f_r,
+        func_to_minimize = lambda sample_Bf_r: -self.harmonic_marginal_probability(
+            sample_Bf_r,
             noise_weighted_alm_data=noise_weighted_alm_data,
             red_cov_approx_matrix=red_cov_approx_matrix,
             theoretical_red_cov_r0_total=theoretical_red_cov_r0_total,
@@ -496,12 +496,12 @@ class HarmonicMicmacSampler(SamplingFunctions):
         optimizer = class_solver(fun=func_to_minimize, **options_minimizer)
 
         # Preparing the initial parameters
-        init_params_B_f_r = jnp.concatenate(
+        init_params_Bf_r = jnp.concatenate(
             (init_params_mixing_matrix.ravel(order='F'), jnp.array(initial_guess_r).reshape(1))
         )
 
         print('Start of minimization', flush=True)
-        params, state = optimizer.run(init_params_B_f_r)
+        params, state = optimizer.run(init_params_Bf_r)
         print('End of minimization', flush=True)
 
         print('Found parameters', params, flush=True)
@@ -517,14 +517,14 @@ class HarmonicMicmacSampler(SamplingFunctions):
         theoretical_r0_total,
         theoretical_r1_tensor,
         initial_guess_r=0,
-        covariance_B_f_r=None,
+        covariance_Bf_r=None,
         print_bool=True,
     ):
         """
-        Perform Metropolis Hastings to find the best r and B_f in harmonic domain.
+        Perform Metropolis Hastings to find the best r and Bf in harmonic domain.
         The chains will be stored as object attributes:
             - all_samples_r for r
-            - all_params_mixing_matrix_samples for B_f
+            - all_params_mixing_matrix_samples for Bf
 
         Parameters
         ----------
@@ -540,8 +540,8 @@ class HarmonicMicmacSampler(SamplingFunctions):
             theoretical covariance matrix for the CMB tensor modes
         initial_guess_r : float (optional)
             initial guess for r, default 0
-        covariance_B_f_r : None or array[float] of dimensions [(n_frequencies-len(pos_special_freqs))*(n_correlations-1) + 1, (n_frequencies-len(pos_special_freqs))*(n_correlations-1) + 1] (optional)
-            covariance for the Metropolis-Hastings sampling of B_f and r, default None
+        covariance_Bf_r : None or array[float] of dimensions [(n_frequencies-len(pos_special_freqs))*(n_correlations-1) + 1, (n_frequencies-len(pos_special_freqs))*(n_correlations-1) + 1] (optional)
+            covariance for the Metropolis-Hastings sampling of Bf and r, default None
         print_bool: bool (optional)
             option for test prints, default True
         """
@@ -611,26 +611,26 @@ class HarmonicMicmacSampler(SamplingFunctions):
         if self.last_key_used is not None:
             PRNGKey = self.last_key_used
 
-        ## Preparing the step-size for Metropolis-within-Gibbs of B_f sampling
-        dimension_param_B_f = (self.n_frequencies - len(self.pos_special_freqs)) * (self.n_correlations - 1)
-        if covariance_B_f_r is None:
-            if self.covariance_B_f is None:
-                raise ValueError('Please provide a covariance_B_f')
-            assert (self.covariance_B_f).shape == (dimension_param_B_f, dimension_param_B_f)
+        ## Preparing the step-size for Metropolis-within-Gibbs of Bf sampling
+        dimension_param_Bf = (self.n_frequencies - len(self.pos_special_freqs)) * (self.n_correlations - 1)
+        if covariance_Bf_r is None:
+            if self.covariance_Bf is None:
+                raise ValueError('Please provide a covariance_Bf')
+            assert (self.covariance_Bf).shape == (dimension_param_Bf, dimension_param_Bf)
 
-            ## Building the full covariance of both B_f and r, without correlations between B_f and r
-            covariance_B_f_r = jnp.zeros((dimension_param_B_f + 1, dimension_param_B_f + 1))
-            covariance_B_f_r = covariance_B_f_r.at[:dimension_param_B_f, :dimension_param_B_f].set(
-                self.covariance_B_f
-            )  ## Setting the covariance for B_f
-            covariance_B_f_r = covariance_B_f_r.at[dimension_param_B_f, dimension_param_B_f].set(
+            ## Building the full covariance of both Bf and r, without correlations between Bf and r
+            covariance_Bf_r = jnp.zeros((dimension_param_Bf + 1, dimension_param_Bf + 1))
+            covariance_Bf_r = covariance_Bf_r.at[:dimension_param_Bf, :dimension_param_Bf].set(
+                self.covariance_Bf
+            )  ## Setting the covariance for Bf
+            covariance_Bf_r = covariance_Bf_r.at[dimension_param_Bf, dimension_param_Bf].set(
                 self.step_size_r**2
             )  ## Setting the step-size for r
         else:
-            assert covariance_B_f_r.shape == (dimension_param_B_f + 1, dimension_param_B_f + 1)
+            assert covariance_Bf_r.shape == (dimension_param_Bf + 1, dimension_param_Bf + 1)
 
         if print_bool:
-            print('Covariance B_f, r:', covariance_B_f_r, flush=True)
+            print('Covariance Bf, r:', covariance_Bf_r, flush=True)
 
         ## Getting alms from the input maps
         input_freq_alms = self.get_alm_from_frequency_maps(input_freq_maps)
@@ -650,10 +650,10 @@ class HarmonicMicmacSampler(SamplingFunctions):
         class MetropolisHastings(numpyro.infer.mcmc.MCMCKernel):
             sample_field = 'u'
 
-            def __init__(self, log_proba, covariance_matrix, boundary_B_f_r=self.boundary_B_f_r):
+            def __init__(self, log_proba, covariance_matrix, boundary_Bf_r=self.boundary_Bf_r):
                 self.log_proba = log_proba
                 self.covariance_matrix = covariance_matrix
-                self.boundary_B_f_r = boundary_B_f_r
+                self.boundary_Bf_r = boundary_Bf_r
 
             def init(self, rng_key, num_warmup, init_params, model_args, model_kwargs):
                 return MHState(init_params, rng_key)
@@ -666,19 +666,19 @@ class HarmonicMicmacSampler(SamplingFunctions):
                     state,
                     covariance_matrix=self.covariance_matrix,
                     log_proba=self.log_proba,
-                    boundary=self.boundary_B_f_r,
+                    boundary=self.boundary_Bf_r,
                     **model_kwargs,
                 )
                 return MHState(new_sample, rng_key)
 
         mcmc_obj = numpyro.infer.mcmc.MCMC(
-            MetropolisHastings(log_proba=self.harmonic_marginal_probability, covariance_matrix=covariance_B_f_r),
+            MetropolisHastings(log_proba=self.harmonic_marginal_probability, covariance_matrix=covariance_Bf_r),
             num_warmup=0,
             num_samples=self.number_iterations_sampling - self.number_iterations_done,
             progress_bar=True,
         )
 
-        # Initializing r and B_f samples
+        # Initializing r and Bf samples
         init_params_mixing_matrix_r = jnp.concatenate(
             (params_mixing_matrix_init_sample, jnp.array(initial_guess_r).reshape(1))
         )
@@ -709,12 +709,12 @@ class HarmonicMicmacSampler(SamplingFunctions):
 
     def compute_covariance_from_samples(self):
         """
-        Compute the covariance matrix from the sample chains of B_f and r
+        Compute the covariance matrix from the sample chains of Bf and r
 
         Returns
         -------
-        covariance_B_f_r : array[float]
-            covariance matrix of the samples of B_f and r
+        covariance_Bf_r : array[float]
+            covariance matrix of the samples of Bf and r
         """
         if self.number_iterations_done == 0:
             raise ValueError(
@@ -722,15 +722,15 @@ class HarmonicMicmacSampler(SamplingFunctions):
             )
 
         print('Computing the covariance matrix from the samples', flush=True)
-        all_samples_B_f_r = np.zeros(
+        all_samples_Bf_r = np.zeros(
             (self.number_iterations_sampling, (self.n_frequencies - len(self.pos_special_freqs)) * 2 + 1)
         )
-        all_samples_B_f_r[:, :-1] = self.all_params_mixing_matrix_samples.reshape(
+        all_samples_Bf_r[:, :-1] = self.all_params_mixing_matrix_samples.reshape(
             (self.number_iterations_sampling, (self.n_frequencies - len(self.pos_special_freqs)) * 2)
         )
-        all_samples_B_f_r[:, -1] = self.all_samples_r
+        all_samples_Bf_r[:, -1] = self.all_samples_r
 
-        return jnp.cov(all_samples_B_f_r, rowvar=False)
+        return jnp.cov(all_samples_Bf_r, rowvar=False)
 
 
 def create_Harmonic_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv):
@@ -772,7 +772,7 @@ def create_Harmonic_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv)
     return HarmonicMicmacSampler(**dictionary_parameters)
 
 
-def create_Harmonic_MICMAC_sampler_from_MICMAC_sampler_obj(MICMAC_sampler_obj, depth_p_array, covariance_B_f=None):
+def create_Harmonic_MICMAC_sampler_from_MICMAC_sampler_obj(MICMAC_sampler_obj, depth_p_array, covariance_Bf=None):
     """
     Create a HarmonicMicmacSampler object from a MicmacSampler object
     """
@@ -787,12 +787,12 @@ def create_Harmonic_MICMAC_sampler_from_MICMAC_sampler_obj(MICMAC_sampler_obj, d
     ]
 
     # total number of params in the mixing matrix for a specific pixel
-    n_free_B_f = (
+    n_free_Bf = (
         np.size(dictionary_parameters['frequency_array']) - len(dictionary_parameters['pos_special_freqs'])
     ) * (dictionary_parameters['n_components'] - 1)
     # Create spv config
     spv_nodes_b = get_nodes_b(
-        tree_spv_config('', n_free_B_f, dictionary_parameters['n_components'] - 1, print_tree=False)
+        tree_spv_config('', n_free_Bf, dictionary_parameters['n_components'] - 1, print_tree=False)
     )
     dictionary_parameters['spv_nodes_b'] = spv_nodes_b
 
@@ -808,7 +808,7 @@ def create_Harmonic_MICMAC_sampler_from_MICMAC_sampler_obj(MICMAC_sampler_obj, d
         'biased_version',
         'r_true',
         'step_size_r',
-        'covariance_B_f',
+        'covariance_Bf',
         'instrument_name',
         'number_iterations_sampling',
         'number_iterations_done',
@@ -819,7 +819,7 @@ def create_Harmonic_MICMAC_sampler_from_MICMAC_sampler_obj(MICMAC_sampler_obj, d
     for attr in list_attributes:
         Harmonic_MICMAC_Sampler_obj.__setattr__(attr, getattr(MICMAC_sampler_obj, attr))
 
-    if covariance_B_f is not None:
-        Harmonic_MICMAC_Sampler_obj.covariance_B_f = covariance_B_f
+    if covariance_Bf is not None:
+        Harmonic_MICMAC_Sampler_obj.covariance_Bf = covariance_Bf
 
     return Harmonic_MICMAC_Sampler_obj

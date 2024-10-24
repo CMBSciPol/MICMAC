@@ -109,7 +109,7 @@ class InitMixingMatrix:
         Returns
         -------
         init_param_values: array
-            initial parameter values as a flattened array of values ordered as [B_f1_comp1_patch1, B_f1_comp1_patch2, ..., B_f2_comp1_patch1, ..., B_f1_comp2_patch1, ..., B_fn_comp2_patchn, ...]
+            initial parameter values as a flattened array of values ordered as [Bf1_comp1_patch1, Bf1_comp1_patch2, ..., Bf2_comp1_patch1, ..., Bf1_comp2_patch1, ..., Bfn_comp2_patchn, ...]
         """
         # Get params of B pixel indep or with pixel dimension
         if isinstance(self.non_param_fgs_mixing_matrix, Iterable):

@@ -80,7 +80,7 @@ class MicmacSampler(SamplingFunctions):
         mask=None,
         save_CMB_chain_maps=False,
         save_eta_chain_maps=False,
-        save_all_B_f_params=True,
+        save_all_Bf_params=True,
         save_s_c_spectra=False,
         sample_r_Metropolis=True,
         sample_C_inv_Wishart=False,
@@ -96,7 +96,7 @@ class MicmacSampler(SamplingFunctions):
         bin_ell_distribution=None,
         acceptance_posdef=False,
         step_size_r=1e-4,
-        covariance_B_f=None,
+        covariance_Bf=None,
         indexes_free_Bf=False,
         number_iterations_sampling=100,
         number_iterations_done=0,
@@ -108,7 +108,7 @@ class MicmacSampler(SamplingFunctions):
         """
         Main MICMAC pixel sampling object to initialize and launch the Gibbs sampling in pixel domain.
 
-        The Gibbs sampling will always store B_f and r (or C) parameters
+        The Gibbs sampling will always store Bf and r (or C) parameters
 
         Parameters
         ----------
@@ -163,14 +163,14 @@ class MicmacSampler(SamplingFunctions):
             minimum r value accepted for r sample if limit_r_value is True, default 0
 
         perturbation_eta_covariance: bool (optional)
-            approach to compute difference between CMB noise component for eta log proba instead of repeating the CG for each B_f sampling, default True
+            approach to compute difference between CMB noise component for eta log proba instead of repeating the CG for each Bf sampling, default True
         simultaneous_accept_rate: bool (optional)
-            use the simultaneous accept rate for the patches of the B_f sampling, default False
+            use the simultaneous accept rate for the patches of the Bf sampling, default False
 
         biased_version: bool (optional)
             use the biased version of the likelihood, so no computation of the correction term, default False
         classical_Gibbs: bool (optional)
-            sampling only for s_c and the CMB covariance, and neither B_f or eta, default False
+            sampling only for s_c and the CMB covariance, and neither Bf or eta, default False
 
         use_binning: bool (optional)
             use binning for the sampling of inverse Wishart CMB covariance, if False bin_ell_distribution will not be used, default False
@@ -180,10 +180,10 @@ class MicmacSampler(SamplingFunctions):
 
         step_size_r: float (optional)
             step size for the Metropolis-Hastings sampling of r, default 1e-4
-        covariance_B_f: None or array[float] of dimensions [(n_frequencies-len(pos_special_freqs))*(n_components-1), (n_frequencies-len(pos_special_freqs))*(n_components-1)] (optional)
-            covariance for the Metropolis-Hastings sampling of B_f ; will be repeated if multiresoltion case, default None
+        covariance_Bf: None or array[float] of dimensions [(n_frequencies-len(pos_special_freqs))*(n_components-1), (n_frequencies-len(pos_special_freqs))*(n_components-1)] (optional)
+            covariance for the Metropolis-Hastings sampling of Bf ; will be repeated if multiresoltion case, default None
         indexes_free_Bf: bool or array[int] (optional)
-            indexes of the free B_f parameters to actually sample and leave the rest of the indices fixed, array of integers, default False to sample all B_f
+            indexes of the free Bf parameters to actually sample and leave the rest of the indices fixed, array of integers, default False to sample all Bf
 
         number_iterations_sampling: int (optional)
             maximum number of iterations for the sampling, default 100
@@ -237,10 +237,10 @@ class MicmacSampler(SamplingFunctions):
         self.biased_version = bool(biased_version)  # To have a run without the correction term
         self.perturbation_eta_covariance = bool(
             perturbation_eta_covariance
-        )  # To use the perturbation approach for the eta contribution in log-proba of B_f
+        )  # To use the perturbation approach for the eta contribution in log-proba of Bf
         self.simultaneous_accept_rate = bool(
             simultaneous_accept_rate
-        )  # To use the simultaneous accept rate for the patches of the B_f sampling
+        )  # To use the simultaneous accept rate for the patches of the Bf sampling
         assert ((sample_r_Metropolis and sample_C_inv_Wishart) == False) and (
             (sample_r_Metropolis or not (sample_C_inv_Wishart)) or (not (sample_r_Metropolis) or sample_C_inv_Wishart)
         )
@@ -259,12 +259,12 @@ class MicmacSampler(SamplingFunctions):
         self.freq_noise_c_ell = freq_noise_c_ell  # Noise power spectra for each frequency, in uK^2, dimensions [frequencies, frequencies, lmax+1-lmin] or [frequencies, frequencies, lmax] (in which case it will be cut to lmax+1-lmin)
 
         # Metropolis-Hastings parameters
-        self.covariance_B_f = covariance_B_f  # Covariance for the Metropolis-Hastings step sampling of B_f
+        self.covariance_Bf = covariance_Bf  # Covariance for the Metropolis-Hastings step sampling of Bf
         self.step_size_r = step_size_r  # Step size for the Metropolis-Hastings step sampling of r
 
         # Sampling parameters
         if indexes_free_Bf is False:
-            # If given as False, then we sample all B_f
+            # If given as False, then we sample all Bf
             indexes_free_Bf = jnp.arange(self.len_params)
         self.indexes_free_Bf = jnp.array(indexes_free_Bf)
         assert (
@@ -287,7 +287,7 @@ class MicmacSampler(SamplingFunctions):
         # Saving parameters
         self.save_CMB_chain_maps = bool(save_CMB_chain_maps)  # Save the CMB chain maps
         self.save_eta_chain_maps = bool(save_eta_chain_maps)  # Save the eta chain maps
-        self.save_all_B_f_params = bool(save_all_B_f_params)  # Save all the B_f chains
+        self.save_all_Bf_params = bool(save_all_Bf_params)  # Save all the Bf chains
         self.save_s_c_spectra = bool(save_s_c_spectra)  # Save the s_c spectra
 
         # Optional parameters
@@ -477,8 +477,8 @@ class MicmacSampler(SamplingFunctions):
                 all_samples['r_sample'] = all_samples['r_sample'].squeeze()
             self.all_samples_r = self.update_variable(self.all_samples_r, all_samples['r_sample'])
 
-        # Update the mixing matrix B_f parameters if they were sampled
-        if self.save_all_B_f_params:
+        # Update the mixing matrix Bf parameters if they were sampled
+        if self.save_all_Bf_params:
             self.all_params_mixing_matrix_samples = self.update_variable(
                 self.all_params_mixing_matrix_samples, all_samples['params_mixing_matrix_sample']
             )
@@ -521,7 +521,7 @@ class MicmacSampler(SamplingFunctions):
             else:
                 self.all_samples_r = self.update_variable(self.all_samples_r, one_sample['r_sample'])
 
-        if self.save_all_B_f_params:
+        if self.save_all_Bf_params:
             self.all_params_mixing_matrix_samples = self.update_variable(
                 self.all_params_mixing_matrix_samples,
                 jnp.expand_dims(one_sample['params_mixing_matrix_sample'], axis=0),
@@ -544,7 +544,7 @@ class MicmacSampler(SamplingFunctions):
             1. The sampling of \eta by computing \eta =  x + C_approx^(1/2) N_c^{-1/2} y ; where x is band-limited
             2. A CG for the Wiener filter (WF) and fluctuation variables s_c: (s_c - s_{c,WF})^t (C^{-1} + N_c^{-1}) (s_c - s_{c,WF})
             3. The c_ell sampling, either by parametrizing it by r or by sampling an inverse Wishart distribution
-            4. Mixing matrix B_f sampling with: -(d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c) + \eta^t (Id + C_{approx}^{1/2} N_c^{-1} C_{approx}^{1/2}) \eta
+            4. Mixing matrix Bf sampling with: -(d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c) + \eta^t (Id + C_{approx}^{1/2} N_c^{-1} C_{approx}^{1/2}) \eta
 
         The results of the chain will be stored in the class attributes, depending if the save options are put to True or False:
             - self.all_samples_eta (if self.save_eta_chain_maps is True)
@@ -566,7 +566,7 @@ class MicmacSampler(SamplingFunctions):
         CMB_c_ell: array[float] of dimensions [number_correlations, lmax+1]
             CMB power spectra, where number_correlations is the number of auto- and cross-correlations relevant considering the number of Stokes parameters
         init_params_mixing_matrix: array[float] of dimensions [len_params]
-            initial parameters for the mixing matrix elements B_f; expected to be given flattened as [B_f_s1, B_f_s2, ..., B_f_sn, B_f_d1, ..., B_f_dn]
+            initial parameters for the mixing matrix elements Bf; expected to be given flattened as [Bf_s1, Bf_s2, ..., Bf_sn, Bf_d1, ..., Bf_dn]
         initial_guess_r: float (optional)
             initial guess for r, default 1e-8
         initial_wiener_filter_term: array[float] of dimensions [nstokes, n_pix] or empty (optional)
@@ -720,22 +720,22 @@ class MicmacSampler(SamplingFunctions):
 
                 ## Redefining the free Bf indexes to sample to the one
                 # condition_unobserved_patches = self.get_cond_unobserved_patches() ## Get boolean array to identify which free indexes are not relevant
-                # print("Previous free indexes for B_f", self.indexes_free_Bf, flush=True)
+                # print("Previous free indexes for Bf", self.indexes_free_Bf, flush=True)
                 # self.indexes_free_Bf = jnp.array(self.indexes_free_Bf).at[condition_unobserved_patches].get()
-                # print("New free indexes for B_f", self.indexes_free_Bf, flush=True)
+                # print("New free indexes for Bf", self.indexes_free_Bf, flush=True)
 
-                print('Previous free indexes for B_f', self.indexes_free_Bf, self.indexes_free_Bf.size, flush=True)
+                print('Previous free indexes for Bf', self.indexes_free_Bf, self.indexes_free_Bf.size, flush=True)
                 self.indexes_free_Bf = self.indexes_free_Bf.at[
                     self.get_cond_unobserved_patches_from_indices_optimized(self.indexes_free_Bf)
                 ].get()
                 ## Get boolean array to identify which free indexes are not relevant
-                print('New free indexes for B_f', self.indexes_free_Bf, self.indexes_free_Bf.size, flush=True)
+                print('New free indexes for Bf', self.indexes_free_Bf, self.indexes_free_Bf.size, flush=True)
 
                 indexes_patches_Bf = jnp.array(self.indexes_b.ravel(order='F'), dtype=jnp.int64)
 
                 def which_interval(carry, index_Bf):
                     """
-                    Selecting the patches to be used for the B_f sampling by checking if the index_Bf is in the interval of the patches
+                    Selecting the patches to be used for the Bf sampling by checking if the index_Bf is in the interval of the patches
                     """
                     return (
                         carry
@@ -765,21 +765,21 @@ class MicmacSampler(SamplingFunctions):
         actual_number_of_iterations = self.number_iterations_sampling - self.number_iterations_done
 
         if not (self.classical_Gibbs):
-            ## Preparing the step-size for Metropolis-within-Gibbs of B_f sampling
+            ## Preparing the step-size for Metropolis-within-Gibbs of Bf sampling
 
             ## try/except step only because jsp.linalg.sqrtm is not implemented in GPU
             try:
-                initial_step_size_Bf = jnp.array(jnp.diag(jsp.linalg.sqrtm(self.covariance_B_f)), dtype=jnp.float64)
+                initial_step_size_Bf = jnp.array(jnp.diag(jsp.linalg.sqrtm(self.covariance_Bf)), dtype=jnp.float64)
             except:
-                initial_step_size_Bf = jnp.array(jnp.diag(jnp.sqrt(self.covariance_B_f)), dtype=jnp.float64)
+                initial_step_size_Bf = jnp.array(jnp.diag(jnp.sqrt(self.covariance_Bf)), dtype=jnp.float64)
             assert len(initial_step_size_Bf.shape) == 1
-            print('Step-size B_f', initial_step_size_Bf, flush=True)
-            if self.covariance_B_f.shape[0] != self.len_params:
-                print('Covariance matrix for B_f is not of the right shape !', flush=True)
-                # initial_step_size_Bf = jnp.repeat(initial_step_size_Bf, self.len_params//self.covariance_B_f.shape[0], axis=0)
-                if self.covariance_B_f.shape[0] != 2 * (self.n_frequencies - len_pos_special_freqs):
+            print('Step-size Bf', initial_step_size_Bf, flush=True)
+            if self.covariance_Bf.shape[0] != self.len_params:
+                print('Covariance matrix for Bf is not of the right shape !', flush=True)
+                # initial_step_size_Bf = jnp.repeat(initial_step_size_Bf, self.len_params//self.covariance_Bf.shape[0], axis=0)
+                if self.covariance_Bf.shape[0] != 2 * (self.n_frequencies - len_pos_special_freqs):
                     raise ValueError(
-                        f'Covariance matrix for B_f is not of the right shape with shape {self.covariance_B_f.shape[0]}, it cannot be properly expanded with the considered multipatch distribution!'
+                        f'Covariance matrix for Bf is not of the right shape with shape {self.covariance_Bf.shape[0]}, it cannot be properly expanded with the considered multipatch distribution!'
                     )
 
                 if (
@@ -787,7 +787,7 @@ class MicmacSampler(SamplingFunctions):
                 ):  # If all patches have the same size
                     initial_step_size_Bf = jnp.broadcast_to(  # Broadcasting the step-size for each patch size
                         initial_step_size_Bf,
-                        (self.len_params // self.covariance_B_f.shape[0], self.covariance_B_f.shape[0]),
+                        (self.len_params // self.covariance_Bf.shape[0], self.covariance_Bf.shape[0]),
                     ).ravel(order='F')
                 else:  # If patches have different sizes
                     previous_initial_Bf = jnp.copy(initial_step_size_Bf)
@@ -799,11 +799,11 @@ class MicmacSampler(SamplingFunctions):
                             self.sum_size_patches_indexed_freq_comp[i - 1] : self.sum_size_patches_indexed_freq_comp[i]
                         ] = previous_initial_Bf[i - 1]
                     initial_step_size_Bf[self.sum_size_patches_indexed_freq_comp[-1] :] = previous_initial_Bf[-1]
-                print('New step-size B_f', initial_step_size_Bf, flush=True)
+                print('New step-size Bf', initial_step_size_Bf, flush=True)
 
         ## Few prints to re-check the toml parameters chosen
         if self.classical_Gibbs:
-            print('Not sampling for eta and B_f, only for s_c and the CMB covariance !', flush=True)
+            print('Not sampling for eta and Bf, only for s_c and the CMB covariance !', flush=True)
         if self.sample_r_Metropolis:
             print('Sample for r instead of C !', flush=True)
             if self.limit_r_value:
@@ -852,21 +852,21 @@ class MicmacSampler(SamplingFunctions):
             - Sampling of eta, for the correction term ; perform as well a CG if the perturbation approach is chosen
             - Sampling of s_c, for the constrained CMB map realization ; sampling both Wiener filter and fluctuation maps
             - Sampling of C or r parametrizing C, for the CMB covariance matrix
-            - Sampling of the free B_f parameters, for the mixing matrix
+            - Sampling of the free Bf parameters, for the mixing matrix
 
             Parameters
             ----------
             carry: dictionary
-                dictionary containing the following variables at 1 iteration depending on the option chosen: WF maps, fluctuation maps, CMB covariance, r samples, B_f samples, PRNGKey
+                dictionary containing the following variables at 1 iteration depending on the option chosen: WF maps, fluctuation maps, CMB covariance, r samples, Bf samples, PRNGKey
             iteration: int
                 current iteration number
 
             Returns
             -------
             new_carry: dictionary
-                dictionary containing the following variables at the next iteration: WF maps, fluctuation maps, CMB covariance, r sample, B_f sample, PRNGKey
+                dictionary containing the following variables at the next iteration: WF maps, fluctuation maps, CMB covariance, r sample, Bf sample, PRNGKey
             all_samples: dictionary
-                dictionary containing the variables to save as chains, so depending on the options chosen: eta maps, WF maps, fluctuation maps, CMB covariance, r sample, B_f sample
+                dictionary containing the variables to save as chains, so depending on the options chosen: eta maps, WF maps, fluctuation maps, CMB covariance, r sample, Bf sample
             """
 
             # Extracting the JAX PRNG key from the carry
@@ -945,7 +945,7 @@ class MicmacSampler(SamplingFunctions):
                     ).ravel()
 
                 if self.perturbation_eta_covariance:
-                    # Computing the inverse associated log proba term fixed correction covariance for the B_f sampling, in case of the perturbative approach
+                    # Computing the inverse associated log proba term fixed correction covariance for the Bf sampling, in case of the perturbative approach
                     _, inverse_term = func_logproba_eta(
                         invBtinvNB[0, 0],
                         new_carry['eta_maps'],
@@ -1143,7 +1143,7 @@ class MicmacSampler(SamplingFunctions):
                 new_carry['red_cov_matrix_sample'], (self.lmax + 1 - self.lmin, self.nstokes, self.nstokes)
             )
 
-            # Sampling step 4: sampling of mixing matrix B_f
+            # Sampling step 4: sampling of mixing matrix Bf
 
             ## Preparation of sampling step 4
 
@@ -1161,10 +1161,10 @@ class MicmacSampler(SamplingFunctions):
                 # Preparing the step-size
                 step_size_Bf = initial_step_size_Bf
 
-                # Sampling B_f
+                # Sampling Bf
                 if self.perturbation_eta_covariance or self.biased_version:
-                    ## Preparing the parameters to provide for the sampling of B_f
-                    dict_parameters_sampling_B_f = {
+                    ## Preparing the parameters to provide for the sampling of Bf
+                    dict_parameters_sampling_Bf = {
                         'indexes_Bf': self.indexes_free_Bf,
                         'full_data_without_CMB': full_data_without_CMB,
                         'red_cov_approx_matrix_sqrt': red_cov_approx_matrix_sqrt,
@@ -1180,29 +1180,29 @@ class MicmacSampler(SamplingFunctions):
                             lmin=self.lmin,
                             n_iter=self.n_iter,
                         ).ravel()
-                        dict_parameters_sampling_B_f['previous_inverse_x_Capprox_root'] = inverse_term_x_Capprox_root
-                        dict_parameters_sampling_B_f['first_guess'] = inverse_term
+                        dict_parameters_sampling_Bf['previous_inverse_x_Capprox_root'] = inverse_term_x_Capprox_root
+                        dict_parameters_sampling_Bf['first_guess'] = inverse_term
 
                     if not (self.biased_version):
                         ## If not biased, provide the eta maps
-                        dict_parameters_sampling_B_f['component_eta_maps'] = new_carry['eta_maps']
+                        dict_parameters_sampling_Bf['component_eta_maps'] = new_carry['eta_maps']
                     if self.simultaneous_accept_rate:
                         ## Provide as well the indexes of the patches in case of the uncorrelated patches version
-                        dict_parameters_sampling_B_f['size_patches'] = size_patches
-                        dict_parameters_sampling_B_f['max_len_patches_Bf'] = max_len_patches_Bf
-                        dict_parameters_sampling_B_f['indexes_patches_Bf'] = first_indices_patches_free_Bf
-                        dict_parameters_sampling_B_f['len_indexes_Bf'] = self.len_params
+                        dict_parameters_sampling_Bf['size_patches'] = size_patches
+                        dict_parameters_sampling_Bf['max_len_patches_Bf'] = max_len_patches_Bf
+                        dict_parameters_sampling_Bf['indexes_patches_Bf'] = first_indices_patches_free_Bf
+                        dict_parameters_sampling_Bf['len_indexes_Bf'] = self.len_params
                         # TODO: Accelerate by removing indexes of indexes_patches_Bf if the corresponding patches are not in indexes_free_Bf, nor in the mask
-                    ## Sampling B_f !
+                    ## Sampling Bf !
                     new_subPRNGKey_3, new_carry['params_mixing_matrix_sample'] = sampling_func(
                         random_PRNGKey=new_subPRNGKey_3,
                         old_sample=carry['params_mixing_matrix_sample'],
                         step_size=step_size_Bf,
                         log_proba=jitted_Bf_func_sampling,
-                        **dict_parameters_sampling_B_f,
+                        **dict_parameters_sampling_Bf,
                     )
                 else:
-                    ## Sampling B_f with older version -> might be slower
+                    ## Sampling Bf with older version -> might be slower
                     new_subPRNGKey_3, new_carry['params_mixing_matrix_sample'], inverse_term = sampling_func(
                         random_PRNGKey=new_subPRNGKey_3,
                         old_sample=carry['params_mixing_matrix_sample'],
@@ -1223,11 +1223,11 @@ class MicmacSampler(SamplingFunctions):
                 # Checking the shape of the resulting mixing matrix
                 chx.assert_shape(new_carry['params_mixing_matrix_sample'], (self.len_params,))
             else:
-                ## Classical Gibbs sampling, no need to sample B_f but still needs to provide them to the next iteration in case it is used for the CMB noise component
+                ## Classical Gibbs sampling, no need to sample Bf but still needs to provide them to the next iteration in case it is used for the CMB noise component
                 new_carry['params_mixing_matrix_sample'] = carry['params_mixing_matrix_sample']
                 # all_samples['params_mixing_matrix_sample'] = new_carry['params_mixing_matrix_sample']
 
-            ## Saving the B_f obtained
+            ## Saving the Bf obtained
             all_samples['params_mixing_matrix_sample'] = new_carry['params_mixing_matrix_sample']
 
             ## Passing as well the PRNGKey to the next iteration
@@ -1331,18 +1331,18 @@ def create_MicmacSampler_from_dictionnary(dictionary_parameters, path_file_spv='
     ## Getting the covariance of Bf from toml file
     if 'step_size_Bf_1' in dictionary_parameters and 'step_size_Bf_2' in dictionary_parameters:
         n_frequencies = len(dictionary_parameters['frequency_array'])
-        col_dim_B_f = n_frequencies - len(dictionary_parameters['pos_special_freqs'])
+        col_dim_Bf = n_frequencies - len(dictionary_parameters['pos_special_freqs'])
 
-        dictionary_parameters['covariance_B_f'] = np.zeros(
-            (col_dim_B_f * n_fgs_comp, col_dim_B_f * n_fgs_comp)
-        )  # Creating the covariance matrix for B_f
+        dictionary_parameters['covariance_Bf'] = np.zeros(
+            (col_dim_Bf * n_fgs_comp, col_dim_Bf * n_fgs_comp)
+        )  # Creating the covariance matrix for Bf
 
         np.fill_diagonal(
-            dictionary_parameters['covariance_B_f'][:col_dim_B_f, :col_dim_B_f],
+            dictionary_parameters['covariance_Bf'][:col_dim_Bf, :col_dim_Bf],
             dictionary_parameters['step_size_Bf_1'] ** 2,
         )  # Filling diagonal with step_size_Bf_1 for first foreground component
         np.fill_diagonal(
-            dictionary_parameters['covariance_B_f'][col_dim_B_f : 2 * col_dim_B_f, col_dim_B_f : 2 * col_dim_B_f],
+            dictionary_parameters['covariance_Bf'][col_dim_Bf : 2 * col_dim_Bf, col_dim_Bf : 2 * col_dim_Bf],
             dictionary_parameters['step_size_Bf_2'] ** 2,
         )  # Filling diagonal with step_size_Bf_2 for second foreground component
 
