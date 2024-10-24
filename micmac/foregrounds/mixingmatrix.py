@@ -159,19 +159,22 @@ class MixingMatrix:
 
         if self.n_components != 1:
             # Values of the patch nsides corresponding to each node
-            self.values_b = jnp.array(
-                get_values_b(self.spv_nodes_b, self.n_frequencies - len(self.pos_special_freqs), self.n_components - 1)
+            self.values_b = (
+                jnp.array(
+                    get_values_b(
+                        self.spv_nodes_b, self.n_frequencies - len(self.pos_special_freqs), self.n_components - 1
+                    )
+                )
+                .ravel(order='F')
+                .reshape((self.n_frequencies - len(self.pos_special_freqs), self.n_components - 1), order='F')
             )
             # Values of the first index of each Bf parameter in params
             self.indexes_b = jnp.array(
                 get_indexes_b(self.n_frequencies - len(self.pos_special_freqs), self.n_components - 1, self.spv_nodes_b)
             )
             self.size_patches = jnp.array([get_n_patches_b(node) for node in self.spv_nodes_b])
-            self.sum_size_patches_indexed_freq_comp = (
-                self.size_patches.cumsum().reshape(
-                    (self.n_frequencies - len(self.pos_special_freqs), self.n_components - 1), order='F'
-                )
-                - self.size_patches[0]
+            self.sum_size_patches_indexed_freq_comp = (self.size_patches.cumsum() - self.size_patches).reshape(
+                (self.n_frequencies - len(self.pos_special_freqs), self.n_components - 1), order='F'
             )
             self.max_len_patches_Bf = int(self.size_patches.max())
         else:

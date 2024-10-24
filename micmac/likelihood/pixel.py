@@ -792,13 +792,20 @@ class MicmacSampler(SamplingFunctions):
                 else:  # If patches have different sizes
                     previous_initial_Bf = jnp.copy(initial_step_size_Bf)
                     initial_step_size_Bf = jnp.zeros(self.len_params)
+                    number_free_Bf = (self.n_frequencies - len_pos_special_freqs) * (self.n_components - 1)
+
+                    extended_array = np.zeros((number_free_Bf + 1), dtype=np.int64)
+                    extended_array[0] = 0
+                    extended_array[1:] = self.sum_size_patches_indexed_freq_comp.ravel(order='F') + self.size_patches
+
                     for i in range(
-                        1, self.size_patches.size
+                        self.size_patches.size
                     ):  # Loop over the patches to update the step-size for each patch size
-                        initial_step_size_Bf[
-                            self.sum_size_patches_indexed_freq_comp[i - 1] : self.sum_size_patches_indexed_freq_comp[i]
-                        ] = previous_initial_Bf[i - 1]
-                    initial_step_size_Bf[self.sum_size_patches_indexed_freq_comp[-1] :] = previous_initial_Bf[-1]
+                        initial_step_size_Bf = initial_step_size_Bf.at[extended_array[i] : extended_array[i + 1]].set(
+                            previous_initial_Bf[i]
+                        )
+                    initial_step_size_Bf = initial_step_size_Bf.at[extended_array[-1]].set(previous_initial_Bf[-1])
+
                 print('New step-size Bf', initial_step_size_Bf, flush=True)
 
         ## Few prints to re-check the toml parameters chosen
