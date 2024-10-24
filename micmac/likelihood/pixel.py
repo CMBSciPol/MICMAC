@@ -1258,7 +1258,12 @@ class MicmacSampler(SamplingFunctions):
         ## Initialising the first carry to the chains saved
         self.update_one_sample(initial_carry)
 
-        print('Time before entering scan and all_sampling_steps', (time.time() - time_test) / 60, 'minutes', flush=True)
+        print(
+            '###### Time before entering scan and all_sampling_steps',
+            (time.time() - time_test) / 60,
+            'minutes',
+            flush=True,
+        )
 
         ## Starting the Gibbs sampling !!!!
         time_start_sampling = time.time()
