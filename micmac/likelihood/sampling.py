@@ -2742,7 +2742,7 @@ def separate_single_MH_step_index_v4b_pixel(
         proposal_params = jnp.copy(carry['sample'])
         proposal_params = proposal_params.at[indexes_to_consider].set(sample_proposal)
 
-        nside_b = jnp.where(size_patches[counter_i] == 1, 1, jnp.sqrt(size_patches[counter_i] / 12))
+        nside_b = jnp.where(size_patches[counter_i] == 1, 0, jnp.sqrt(size_patches[counter_i] / 12))
         proposal_log_proba = log_proba(proposal_params, nside_patch=nside_b, **model_kwargs)
 
         old_log_proba = jlax.cond(
@@ -2767,7 +2767,7 @@ def separate_single_MH_step_index_v4b_pixel(
         }
         return new_carry, new_param
 
-    nside_init = jnp.where(size_patches[0] == 1, 1, jnp.sqrt(size_patches[0] / 12))
+    nside_init = jnp.where(size_patches[0] == 1, 0, jnp.sqrt(size_patches[0] / 12))
     initial_carry = {
         'PRNGKey': random_PRNGKey,
         'sample': old_sample,
