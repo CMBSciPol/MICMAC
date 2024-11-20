@@ -1356,12 +1356,6 @@ def create_MicmacSampler_from_dictionnary(dictionary_parameters, path_file_spv='
         del dictionary_parameters['step_size_Bf_1']
         del dictionary_parameters['step_size_Bf_2']
 
-    ## Temporary, TODO: To remove
-    if 'full_sky_correction' in dictionary_parameters:
-        del dictionary_parameters['full_sky_correction']
-    if 'sample_r_from_BB' in dictionary_parameters:
-        del dictionary_parameters['sample_r_from_BB']
-
     return MicmacSampler(**dictionary_parameters)
 
 
