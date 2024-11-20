@@ -372,7 +372,7 @@ class HarmonicMicmacSampler(SamplingFunctions):
 
         def get_freq_alm(num_frequency):
             input_map_extended = jnp.vstack(
-                (JAX_input_freq_maps[num_frequency, 0], JAX_input_freq_maps[num_frequency, ...])
+                (jnp.zeros_like(JAX_input_freq_maps[num_frequency, 0]), JAX_input_freq_maps[num_frequency, ...])
             )  ## Adding empty temperature map
 
             all_alms = jnp.array(
@@ -382,6 +382,69 @@ class HarmonicMicmacSampler(SamplingFunctions):
             return all_alms[3 - self.nstokes :, ...]  ## Removing the empty temperature alms
 
         return jax.vmap(get_freq_alm)(jnp.arange(self.n_frequencies))  ## Getting alms for all frequencies
+
+    def get_masked_alm_from_frequency_maps(self, input_freq_maps):
+        """
+        For simulation pruposes, get masked alms from input full sky frequency maps using JAX,
+        to avoid E->B leakage issues
+
+        Parameters
+        ----------
+        input_freq_maps : array[float] of dimensions [n_frequencies,nstokes,n_pix]
+            input frequency maps
+
+        Returns
+        -------
+        freq_alms_input_maps : array[float] of dimensions [n_frequencies,nstokes,(lmax+1)*(lmax+2)//2]
+            alms from the input frequency maps
+            the (lmax+1)*(lmax+2)//2 dimension is the flattened number of lm coefficients stored according to the Healpy convention
+        """
+
+        assert input_freq_maps.shape == (self.n_frequencies, self.nstokes, self.n_pix)
+
+        # Wrapper for alm2map, to prepare the pure callback of JAX
+        def wrapper_alm2map(alm_, lmax=lmax, nside=nside):
+            alm_np = jax.tree.map(np.asarray, alm_)
+            return hp.alm2map(alm_np, nside, lmax=lmax)
+
+        ## Preparing JAX pure call back for the Healpy map2alm function
+        @partial(jax.jit, static_argnums=(1, 2))
+        def pure_call_alm2map(alm_, lmax, nside):
+            shape_output = (3, 12 * nside**2)
+            return jax.pure_callback(wrapper_alm2map, jax.ShapeDtypeStruct(shape_output, np.float64), alm_)
+
+        def get_freq_alm(num_frequency, JAX_input_freq_alms):
+            input_alm_extended = jnp.vstack(
+                (jnp.zeros_like(JAX_input_freq_alms[num_frequency, 0]), JAX_input_freq_alms[num_frequency, ...])
+            )  ## Adding empty temperature map
+
+            all_maps = jnp.array(
+                pure_call_alm2map(input_alm_extended, lmax=self.lmax)
+            )  ## Getting alms for all stokes parameters
+
+            return all_maps[3 - self.nstokes :, ...]  ## Removing the empty temperature alms
+
+        full_sky_alms = self.get_alm_from_frequency_maps(input_freq_maps)
+
+        E_modes_only_alms = jnp.zeros_like(full_sky_alms)
+        B_modes_only_alms = jnp.zeros_like(full_sky_alms)
+
+        E_modes_only_alms = E_modes_only_alms.at[:, -2, :].set(full_sky_alms[:, -2, :])
+        B_modes_only_alms = B_modes_only_alms.at[:, -1, :].set(full_sky_alms[:, -1, :])
+
+        freq_map_E_modes = jax.vmap(get_freq_alm, in_axes=(0, None))(
+            jnp.arange(self.n_frequencies), E_modes_only_alms
+        )  ## Getting alms for all frequencies with E modes only
+        freq_map_B_modes = jax.vmap(get_freq_alm, in_axes=(0, None))(
+            jnp.arange(self.n_frequencies), B_modes_only_alms
+        )  ## Getting alms for all frequencies with B modes only
+
+        f_sky = self.mask.sum() / self.mask.size
+
+        masked_alm_E_modes = self.get_alm_from_frequency_maps(freq_map_E_modes * self.mask)
+        masked_alm_B_modes = self.get_alm_from_frequency_maps(freq_map_B_modes * self.mask)
+
+        return (masked_alm_E_modes + masked_alm_B_modes) / jnp.sqrt(f_sky)
 
     def perform_harmonic_minimize(
         self,
