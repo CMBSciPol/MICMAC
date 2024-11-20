@@ -518,6 +518,7 @@ class HarmonicMicmacSampler(SamplingFunctions):
         theoretical_r1_tensor,
         initial_guess_r=0,
         covariance_Bf_r=None,
+        input_freq_alms=None,
         print_bool=True,
     ):
         """
@@ -542,6 +543,8 @@ class HarmonicMicmacSampler(SamplingFunctions):
             initial guess for r, default 0
         covariance_Bf_r : None or array[float] of dimensions [(n_frequencies-len(pos_special_freqs))*(n_correlations-1) + 1, (n_frequencies-len(pos_special_freqs))*(n_correlations-1) + 1] (optional)
             covariance for the Metropolis-Hastings sampling of Bf and r, default None
+        input_freq_alms : array[float] of dimensions [n_frequencies,nstokes,(lmax + 1) * (lmax // 2 + 1)] (optional)
+            if provided, input_freq_alms is used instead of input_freq_maps for the MH steps
         print_bool: bool (optional)
             option for test prints, default True
         """
@@ -635,7 +638,8 @@ class HarmonicMicmacSampler(SamplingFunctions):
             print('Covariance Bf, r:', covariance_Bf_r, flush=True)
 
         ## Getting alms from the input maps
-        input_freq_alms = self.get_alm_from_frequency_maps(input_freq_maps)
+        if input_freq_alms is None:
+            input_freq_alms = self.get_alm_from_frequency_maps(input_freq_maps)
         ## Preparing the noise weighted alms
         freq_red_inverse_noise = jnp.einsum(
             'fgl,sk->fglsk', self.freq_noise_c_ell, jnp.eye(self.nstokes)
