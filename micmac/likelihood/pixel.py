@@ -595,6 +595,16 @@ class MicmacSampler(SamplingFunctions):
         else:
             indices_to_consider = np.arange(6)  # All auto- and cross-correlations
 
+        ## Testing the inverse frequency noise
+        assert (
+            self.freq_inverse_noise is not None
+        ), 'The inverse noise for the frequencies should be provided as an attribute of the MicmacSampler object'
+        assert freq_inverse_noise.shape == (
+            self.n_frequencies,
+            self.n_frequencies,
+            self.n_pix,
+        ), 'The inverse noise for the frequencies should have dimensions [n_frequencies,n_frequencies,n_pix]'
+
         ## Testing the initial WF term, or initialize it properly
         if len(initial_wiener_filter_term) == 0:
             wiener_filter_term = jnp.zeros((self.nstokes, self.n_pix))

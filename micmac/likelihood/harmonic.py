@@ -45,8 +45,8 @@ from micmac.toolbox.utils import generate_power_spectra_CAMB
 
 __all__ = [
     'HarmonicMicmacSampler',
-    'create_Harmonic_MICMAC_sampler_from_MICMAC_sampler_obj',
-    'create_Harmonic_MICMAC_sampler_from_toml_file',
+    'create_HarmonicMicmacSampler_from_MicmacSampler_obj',
+    'create_HarmonicMicmacSampler_from_toml_file',
 ]
 
 config.update('jax_enable_x64', True)
@@ -65,9 +65,8 @@ class HarmonicMicmacSampler(SamplingFunctions):
         lmin=2,
         n_iter=8,
         mask=None,
-        spv_nodes_b=None,
+        spv_nodes_b=[],
         biased_version=False,
-        r_true=0,
         boundary_Bf=None,
         boundary_r=None,
         step_size_r=1e-4,
@@ -110,12 +109,10 @@ class HarmonicMicmacSampler(SamplingFunctions):
         spv_nodes_b: list[dictionaries] (optional)
             tree for the spatial variability, to generate from a yaml file, default []
             in principle set up by get_nodes_b
-            WARNING: The spatial variability is not currently supported, but will be passed to MicmacSampler obj when using create_Harmonic_MICMAC_sampler_from_MICMAC_sampler_obj
+            WARNING: The spatial variability is not currently supported, but will be passed to MicmacSampler obj when using create_Harmonic_MicmacSampler_from_MicmacSampler_obj
 
         biased_version: bool (optional)
             use the biased version of the likelihood, so no computation of the correction term, default False
-        r_true: float (optional)
-            true value of r (only used to compute input CMB maps, not actually used in the sampling), default 0
 
         boundary_Bf: None or array[float] (optional)
             minimum and maximum Bf values accepted for Bf sample, set to [-inf,inf] for each Bf parameter if None, default None
@@ -163,7 +160,6 @@ class HarmonicMicmacSampler(SamplingFunctions):
         )  # If True, use the biased version of the likelihood, so no computation of the correction term
 
         # CMB parameters
-        self.r_true = float(r_true)
         assert (freq_noise_c_ell.shape == (self.n_frequencies, self.n_frequencies, self.lmax + 1 - self.lmin)) or (
             freq_noise_c_ell.shape == (self.n_frequencies, self.n_frequencies, self.lmax + 1)
         )
@@ -246,7 +242,9 @@ class HarmonicMicmacSampler(SamplingFunctions):
         theoretical_red_cov_r0_total = get_reduced_matrix_from_c_ell(theoretical_r0_total)[self.lmin :]
         return theoretical_red_cov_r0_total, theoretical_red_cov_r1_tensor
 
-    def generate_input_freq_maps_from_fgs(self, freq_maps_fgs, return_only_freq_maps=True, return_only_maps=False):
+    def generate_input_freq_maps_from_fgs(
+        self, freq_maps_fgs, r_true=0, return_only_freq_maps=True, return_only_maps=False
+    ):
         """
         Generate input frequency maps (CMB+foregrounds) from the input frequency foregrounds maps,
         return either the full frequency maps, the full frequency and CMB maps alone,
@@ -279,7 +277,7 @@ class HarmonicMicmacSampler(SamplingFunctions):
 
         # Retrieve fiducial CMB power spectra
         true_cmb_specra = get_c_ells_from_red_covariance_matrix(
-            theoretical_red_cov_r0_total + self.r_true * theoretical_red_cov_r1_tensor
+            theoretical_red_cov_r0_total + r_true * theoretical_red_cov_r1_tensor
         )
         true_cmb_specra_extended = np.zeros((6, self.lmax + 1))
         true_cmb_specra_extended[indices_polar, self.lmin :] = true_cmb_specra
@@ -733,20 +731,20 @@ class HarmonicMicmacSampler(SamplingFunctions):
         return jnp.cov(all_samples_Bf_r, rowvar=False)
 
 
-def create_Harmonic_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv):
+def create_HarmonicMicmacSampler_from_dictionnary(dictionary_parameters, path_file_spv):
     """
     Create a HarmonicMicmacSampler object from the path of a toml file and the yaml file for spatial variability
 
     Parameters
     ----------
-    path_toml_file : str
-        path to the toml file for the main options of HarmonicMicmacSampler
+    dictionary_parameters : dictionary
+        dictionary for the main options of HarmonicMicmacSampler
     path_file_spv : str
         path to the yaml file for the spatial variability options
 
     Returns
     -------
-    Harmonic_MICMAC_Sampler_obj : HarmonicMicmacSampler
+    HarmonicMicmacSampler_obj : HarmonicMicmacSampler
         HarmonicMicmacSampler object
     """
     with open(path_toml_file) as f:
@@ -755,10 +753,14 @@ def create_Harmonic_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv)
 
     if dictionary_parameters['instrument_name'] != 'customized_instrument':
         instrument = get_instrument(dictionary_parameters['instrument_name'])
-        dictionary_parameters['frequency_array'] = jnp.array(instrument['frequency'])
-        dictionary_parameters['freq_noise_c_ell'] = get_true_Cl_noise(
-            jnp.array(instrument['depth_p']), dictionary_parameters['lmax']
-        )[..., dictionary_parameters['lmin'] :]
+    else:
+        instrument = get_instr(dictionary_parameters['frequency_array'], dictionary_parameters['depth_p'])
+        del dictionary_parameters['depth_p']
+
+    dictionary_parameters['frequency_array'] = jnp.array(instrument['frequency'])
+    dictionary_parameters['freq_noise_c_ell'] = get_true_Cl_noise(
+        jnp.array(instrument['depth_p']), dictionary_parameters['lmax']
+    )[..., dictionary_parameters['lmin'] :]
 
     ## Spatial variability (spv) params
     n_fgs_comp = dictionary_parameters['n_components'] - 1
@@ -769,57 +771,123 @@ def create_Harmonic_MICMAC_sampler_from_toml_file(path_toml_file, path_file_spv)
     # Read or create spv config
     root_tree = tree_spv_config(path_file_spv, n_betas, n_fgs_comp, print_tree=True)
     dictionary_parameters['spv_nodes_b'] = get_nodes_b(root_tree)
+
+    ## Getting the covariance of Bf from toml file
+    if 'step_size_Bf_1' in dictionary_parameters and 'step_size_Bf_2' in dictionary_parameters:
+        n_frequencies = len(dictionary_parameters['frequency_array'])
+        col_dim_Bf = n_frequencies - len(dictionary_parameters['pos_special_freqs'])
+
+        dictionary_parameters['covariance_Bf'] = np.zeros(
+            (col_dim_Bf * n_fgs_comp, col_dim_Bf * n_fgs_comp)
+        )  # Creating the covariance matrix for Bf
+
+        np.fill_diagonal(
+            dictionary_parameters['covariance_Bf'][:col_dim_Bf, :col_dim_Bf],
+            dictionary_parameters['step_size_Bf_1'] ** 2,
+        )  # Filling diagonal with step_size_Bf_1 for first foreground component
+        np.fill_diagonal(
+            dictionary_parameters['covariance_Bf'][col_dim_Bf : 2 * col_dim_Bf, col_dim_Bf : 2 * col_dim_Bf],
+            dictionary_parameters['step_size_Bf_2'] ** 2,
+        )  # Filling diagonal with step_size_Bf_2 for second foreground component
+
+        del dictionary_parameters['step_size_Bf_1']
+        del dictionary_parameters['step_size_Bf_2']
+
     return HarmonicMicmacSampler(**dictionary_parameters)
 
 
-def create_Harmonic_MICMAC_sampler_from_MICMAC_sampler_obj(MICMAC_sampler_obj, depth_p_array, covariance_Bf=None):
+def create_HarmonicMicmacSampler_from_toml_file(path_toml_file, path_file_spv=''):
+    """
+    Create a MicmacSampler object from:
+    * the path of a toml file: params for the sims and for the sampling
+    * the path of a spv file: params for addressing spatial variability
+
+    Parameters
+    ----------
+    path_toml_file : str
+        path to the toml file for the main options of MicmacSampler
+    path_file_spv : str
+        path to the yaml file for the spatial variability options
+
+    Returns
+    -------
+    MICMAC_Sampler_obj: MicmacSampler
+        the MicmacSampler object created from the toml file with the spatial variability from the yaml file
+    """
+    ### Opening first the toml file for the simulations and sampling, to create the MicmacSampler object
+    with open(path_toml_file) as f:
+        dictionary_parameters = toml.load(f)
+    f.close()
+
+    return create_HarmonicMicmacSampler_from_dictionnary(dictionary_parameters, path_file_spv=path_file_spv)
+
+
+def create_HarmonicMicmacSampler_from_MicmacSampler_obj(MICMAC_sampler_obj, depth_p_array=None):
     """
     Create a HarmonicMicmacSampler object from a MicmacSampler object
+
+    Parameters
+    ----------
+    MICMAC_sampler_obj : MicmacSampler
+        MicmacSampler object
+    depth_p_array : array[float] of dimensions [n_pix]
+        depth_p_array for the noise power spectrum
+
+    Returns
+    -------
+    HarmonicMicmacSampler_obj : HarmonicMicmacSampler
+        HarmonicMicmacSampler object
     """
 
-    first_dict = ['nside', 'lmax', 'nstokes', 'frequency_array', 'pos_special_freqs', 'n_components']
+    arguments_HarmonicMicmacSampler = inspect.getfullargspec(HarmonicMicmacSampler).args
+
     dictionary_parameters = dict()
-    for attr in first_dict:
-        dictionary_parameters[attr] = getattr(MICMAC_sampler_obj, attr)
+    for attr in arguments_HarmonicMicmacSampler:
+        if attr in MICMAC_sampler_obj:
+            dictionary_parameters[attr] = getattr(MICMAC_sampler_obj, attr)
 
-    dictionary_parameters['freq_noise_c_ell'] = get_true_Cl_noise(depth_p_array, MICMAC_sampler_obj.lmax)[
-        ..., MICMAC_sampler_obj.lmin :
-    ]
+    if MICMAC_sampler_obj['freq_noise_c_ell'] is None:
+        assert depth_p_array is not None
+        dictionary_parameters['freq_noise_c_ell'] = get_true_Cl_noise(depth_p_array, MICMAC_sampler_obj.lmax)[
+            ..., MICMAC_sampler_obj.lmin :
+        ]
 
-    # total number of params in the mixing matrix for a specific pixel
-    n_free_Bf = (
-        np.size(dictionary_parameters['frequency_array']) - len(dictionary_parameters['pos_special_freqs'])
-    ) * (dictionary_parameters['n_components'] - 1)
-    # Create spv config
-    spv_nodes_b = get_nodes_b(
-        tree_spv_config('', n_free_Bf, dictionary_parameters['n_components'] - 1, print_tree=False)
-    )
-    dictionary_parameters['spv_nodes_b'] = spv_nodes_b
+    return HarmonicMicmacSampler(**dictionary_parameters)
 
-    print('Test', dictionary_parameters['freq_noise_c_ell'].shape)
-    Harmonic_MICMAC_Sampler_obj = HarmonicMicmacSampler(**dictionary_parameters)
 
-    list_attributes = [
-        'pos_special_freqs',
-        'n_components',
-        'lmin',
-        'n_iter',
-        'mask',
-        'biased_version',
-        'r_true',
-        'step_size_r',
-        'covariance_Bf',
-        'instrument_name',
-        'number_iterations_sampling',
-        'number_iterations_done',
-        'seed',
-        'disable_chex',
-    ]
+def create_MicmacSampler_from_HarmonicMicmacSampler_obj(HarmonicMicmac_sampler_obj, depth_p_array=None):
+    """
+    Create a MicmacSampler object from a HarmonicMicmacSampler object
 
-    for attr in list_attributes:
-        Harmonic_MICMAC_Sampler_obj.__setattr__(attr, getattr(MICMAC_sampler_obj, attr))
+    Parameters
+    ----------
+    HarmonicMicmac_sampler_obj : HarmonicMicmacSampler
+        HarmonicMicmacSampler object
+    depth_p_array : array[float] of dimensions [n_pix]
+        depth_p_array for the noise power spectrum
 
-    if covariance_Bf is not None:
-        Harmonic_MICMAC_Sampler_obj.covariance_Bf = covariance_Bf
+    Returns
+    -------
+    MICMAC_sampler_obj : MicmacSampler
+        MicmacSampler object
+    """
 
-    return Harmonic_MICMAC_Sampler_obj
+    arguments_MicmacSampler = inspect.getfullargspec(MicmacSampler).args
+
+    dictionary_parameters = dict()
+    for attr in arguments_MicmacSampler:
+        if attr in HarmonicMicmac_sampler_obj:
+            dictionary_parameters[attr] = getattr(HarmonicMicmac_sampler_obj, attr)
+
+    if depth_p_array is not None:
+        dictionary_parameters['freq_inverse_noise'] = micmac.get_noise_covar_extended(
+            depth_p_array, HarmonicMicmac_sampler_obj.nside
+        )  # MICMAC_obj.freq_inverse_noise
+    else:
+        dictionary_parameters['freq_inverse_noise'] = None
+        print(
+            'No depth_p_array provided, freq_inverse_noise set to None, the Gibbs sampling cannot be launched if freq_inverse_noise is set to None',
+            flush=True,
+        )
+
+    return MicmacSampler(**dictionary_parameters)
