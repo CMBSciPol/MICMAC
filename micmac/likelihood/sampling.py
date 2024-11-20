@@ -2047,7 +2047,7 @@ class SamplingFunctions(MixingMatrix):
         chx.assert_axis_dimension(sample_Bf_r, 0, 2 * (self.n_frequencies - jnp.size(self.pos_special_freqs)) + 1)
         chx.assert_axis_dimension(red_cov_approx_matrix, 0, self.lmax + 1 - self.lmin)
         chx.assert_axis_dimension(theoretical_red_cov_r1_tensor, 0, self.lmax + 1 - self.lmin)
-        chx.assert_axis_dimension(theoretical_red_cov_r0_total, 0, self.lmax + 1 - self.lmin)
+        chx.assert_equal_shape(theoretical_red_cov_r0_total, theoretical_red_cov_r1_tensor)
         chx.assert_axis_dimension(noise_weighted_alm_data, 0, self.n_frequencies)
         chx.assert_axis_dimension(noise_weighted_alm_data, 1, self.nstokes)
 
