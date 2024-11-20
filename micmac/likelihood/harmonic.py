@@ -45,8 +45,10 @@ from micmac.toolbox.utils import generate_power_spectra_CAMB
 
 __all__ = [
     'HarmonicMicmacSampler',
-    'create_HarmonicMicmacSampler_from_MicmacSampler_obj',
+    'create_HarmonicMicmacSampler_from_dictionnary',
     'create_HarmonicMicmacSampler_from_toml_file',
+    'create_HarmonicMicmacSampler_from_MicmacSampler_obj',
+    'create_MicmacSampler_from_HarmonicMicmacSampler_obj',
 ]
 
 config.update('jax_enable_x64', True)
