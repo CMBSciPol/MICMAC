@@ -817,9 +817,6 @@ def create_HarmonicMicmacSampler_from_dictionnary(dictionary_parameters, path_fi
     HarmonicMicmacSampler_obj : HarmonicMicmacSampler
         HarmonicMicmacSampler object
     """
-    with open(path_toml_file) as f:
-        dictionary_parameters = toml.load(f)
-    f.close()
 
     if dictionary_parameters['instrument_name'] != 'customized_instrument':
         instrument = get_instrument(dictionary_parameters['instrument_name'])
