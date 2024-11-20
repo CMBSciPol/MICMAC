@@ -197,7 +197,6 @@ class HarmonicMicmacSampler(SamplingFunctions):
         # Samples preparation
         self.all_params_mixing_matrix_samples = jnp.empty(0)
         self.all_samples_r = jnp.empty(0)
-        self.last_key_used = None
 
     def generate_CMB(self, return_spectra=True):
         """
@@ -354,7 +353,8 @@ class HarmonicMicmacSampler(SamplingFunctions):
 
         ## Preparing JAX wrapper for the Healpy map2alm function
         def wrapper_map2alm(maps_, lmax=self.lmax, n_iter=self.n_iter, nside=self.nside):
-            alm_T, alm_E, alm_B = hp.map2alm(maps_.reshape((3, 12 * nside**2)), lmax=lmax, iter=n_iter)
+            maps_np = jax.tree.map(np.asarray, maps_).reshape((3, 12 * nside**2))
+            alm_T, alm_E, alm_B = hp.map2alm(maps_np, lmax=lmax, iter=n_iter)
             return np.array([alm_T, alm_E, alm_B])
 
         ## Preparing JAX pure call back for the Healpy map2alm function
@@ -604,10 +604,12 @@ class HarmonicMicmacSampler(SamplingFunctions):
             red_cov_approx_matrix = jnp.zeros_like(red_cov_approx_matrix)
 
         ## Preparing the JAX PRNG key from the seed of the object
-        PRNGKey = random.PRNGKey(self.seed)
-
-        if self.last_key_used is not None:
-            PRNGKey = self.last_key_used
+        if np.size(self.seed) == 1:
+            PRNGKey = random.PRNGKey(self.seed)
+        elif np.size(self.seed) == 2:
+            PRNGKey = jnp.array(self.seed, dtype=jnp.uint32)
+        else:
+            raise ValueError('Seed should be either a scalar or a 2D array interpreted as a JAX PRNG Key!')
 
         ## Preparing the step-size for Metropolis-within-Gibbs of Bf sampling
         dimension_param_Bf = (self.n_frequencies - len(self.pos_special_freqs)) * (self.n_correlations - 1)
@@ -703,7 +705,7 @@ class HarmonicMicmacSampler(SamplingFunctions):
         # Saving the samples as attributes of the Sampler object
         self.update_samples_MH(posterior_samples)
         self.number_iterations_done = self.number_iterations_sampling
-        self.last_key_used = PRNGKey
+        self.last_PRNGKey = PRNGKey
 
     def compute_covariance_from_samples(self):
         """
