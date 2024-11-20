@@ -2056,11 +2056,10 @@ class SamplingFunctions(MixingMatrix):
         Bf = sample_Bf_r[:-1]
 
         ## Updating the mixing matrix
-        # self.update_params(Bf, jax_use=True)
-        # mixing_matrix_sample = self.get_B(jax_use=True).mean(axis=2) # Getting the mean of the mixing matrix over the pixels
-        mixing_matrix_sample = self.get_B_from_params(Bf, jax_use=True).mean(
-            axis=2
-        )  # Getting the mean of the mixing matrix over the pixels
+        mixing_matrix_sample = self.get_B_from_params(Bf, jax_use=True)[
+            :, :, 0
+        ]  # Getting the mixing matrix without the pixel dimension ;
+        # all pixels are equivalent here and taking a specific ith pixel helps the XLA compiler to improve the computation
 
         ## Reconstructing the CMB covariance matrix parametrized by r_param
         red_CMB_cell = theoretical_red_cov_r0_total + r_param * theoretical_red_cov_r1_tensor

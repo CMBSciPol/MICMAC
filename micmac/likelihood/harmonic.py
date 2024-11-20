@@ -600,7 +600,6 @@ class HarmonicMicmacSampler(SamplingFunctions):
         # Preparing for the full Metropolis-Hatings sampling
 
         ## Initial guesses preparation
-        initial_eta = jnp.zeros((self.nstokes, self.n_pix))
         params_mixing_matrix_init_sample = jnp.copy(init_params_mixing_matrix).ravel(order='F')
 
         ## CMB covariance preparation in the format [lmax+1-lmin,nstokes,nstokes]
