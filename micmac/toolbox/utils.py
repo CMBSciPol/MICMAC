@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU General Public License
 # along with MICMAC. If not, see <https://www.gnu.org/licenses/>.
 
+import os
+
 import numpy as np
 
 __all__ = ['get_instr', 'generate_power_spectra_CAMB', 'loading_params']
@@ -154,6 +156,9 @@ def loading_params(directory_save_file, file_ver, MICMAC_sampler_obj):
         dictionary of all parameters loaded from the files
     """
     dict_all_params = dict()
+
+    dict_existing_params = MICMAC_sampler_obj.__dict__
+
     # Loading all files
     initial_freq_maps_path = directory_save_file + file_ver + '_initial_data.npy'
     initial_freq_maps = np.load(initial_freq_maps_path)
@@ -167,12 +172,12 @@ def loading_params(directory_save_file, file_ver, MICMAC_sampler_obj):
     initial_noise_map = np.load(initial_noise_map_path)
     dict_all_params['input_noise_map'] = initial_noise_map
 
-    if MICMAC_sampler_obj.save_eta_chain_maps:
+    if 'save_eta_chain_maps' in dict_existing_params and MICMAC_sampler_obj.save_eta_chain_maps:
         all_eta_maps_path = directory_save_file + file_ver + '_all_eta_maps.npy'
         all_eta_maps = np.load(all_eta_maps_path)
         dict_all_params['all_eta_maps'] = all_eta_maps
 
-    if MICMAC_sampler_obj.save_CMB_chain_maps:
+    if 'save_CMB_chain_maps' in dict_existing_params and MICMAC_sampler_obj.save_CMB_chain_maps:
         all_s_c_WF_maps_path = directory_save_file + file_ver + '_all_s_c_WF_maps.npy'
         all_s_c_WF_maps = np.load(all_s_c_WF_maps_path)
         dict_all_params['all_s_c_WF_maps'] = all_s_c_WF_maps
@@ -181,19 +186,26 @@ def loading_params(directory_save_file, file_ver, MICMAC_sampler_obj):
         all_s_c_fluct_maps = np.load(all_s_c_fluct_maps_path)
         dict_all_params['all_s_c_fluct_maps'] = all_s_c_fluct_maps
 
-    if MICMAC_sampler_obj.save_s_c_spectra:
+    if 'save_s_c_spectra' in dict_existing_params and MICMAC_sampler_obj.save_s_c_spectra:
         all_s_c_spectra_path = directory_save_file + file_ver + '_all_s_c_spectra.npy'
         all_s_c_spectra = np.load(all_s_c_spectra_path)
         dict_all_params['all_samples_s_c_spectra'] = all_s_c_spectra
 
-    if MICMAC_sampler_obj.sample_r_Metropolis:
+    if 'sample_r_Metropolis' in dict_existing_params and MICMAC_sampler_obj.sample_r_Metropolis:
         all_r_samples_path = directory_save_file + file_ver + '_all_r_samples.npy'
         all_r_samples = np.load(all_r_samples_path)
         dict_all_params['all_r_samples'] = all_r_samples
-    elif MICMAC_sampler_obj.sample_C_inv_Wishart:
+    elif 'sample_C_inv_Wishart' in dict_existing_params and MICMAC_sampler_obj.sample_C_inv_Wishart:
         all_cell_samples_path = directory_save_file + file_ver + '_all_cell_samples.npy'
         all_cell_samples = np.load(all_cell_samples_path)
         dict_all_params['all_cell_samples'] = all_cell_samples
+    else:
+        if os.path.exists(directory_save_file + file_ver + '_all_r_samples.npy'):
+            all_r_samples_path = directory_save_file + file_ver + '_all_r_samples.npy'
+            all_r_samples = np.load(all_r_samples_path)
+            dict_all_params['all_r_samples'] = all_r_samples
+        else:
+            print('No r samples found', flush=True)
 
     all_params_mixing_matrix_samples_path = directory_save_file + file_ver + '_all_params_mixing_matrix_samples.npy'
     all_params_mixing_matrix_samples = np.load(all_params_mixing_matrix_samples_path)
@@ -201,14 +213,14 @@ def loading_params(directory_save_file, file_ver, MICMAC_sampler_obj):
 
     dict_all_params['last_PRNGKey'] = np.load(directory_save_file + file_ver + '_last_PRNGkey.npy')
 
-    try:
+    if os.path.exists(directory_save_file + file_ver + '_c_approx.npy'):
         dict_all_params['c_approx'] = np.load(directory_save_file + file_ver + '_c_approx.npy')
-    except:
+    else:
         print('No c_approx found', flush=True)
 
-    try:
-        dict_all_params['input_alms'] = np.load(directory_save_file + file_ver + '_input_alms.npy')
-    except:
-        print('No input_alms found', flush=True)
+    if os.path.exists(directory_save_file + file_ver + 'input_freq_alms.npy'):
+        dict_all_params['input_freq_alms'] = np.load(directory_save_file + file_ver + 'input_freq_alms.npy')
+    else:
+        print('No input_freq_alms found', flush=True)
 
     return dict_all_params
