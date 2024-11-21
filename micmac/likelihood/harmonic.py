@@ -73,6 +73,7 @@ class HarmonicMicmacSampler(SamplingFunctions):
         boundary_r=None,
         step_size_r=1e-4,
         covariance_Bf=None,
+        indexes_free_Bf=False,
         number_iterations_sampling=100,
         number_iterations_done=0,
         seed=0,
@@ -401,6 +402,7 @@ class HarmonicMicmacSampler(SamplingFunctions):
         For simulation pruposes, get masked alms from input full sky frequency maps using JAX,
         to avoid E->B leakage issues
 
+
         Parameters
         ----------
         input_freq_maps : array[float] of dimensions [n_frequencies,nstokes,n_pix]
@@ -411,6 +413,10 @@ class HarmonicMicmacSampler(SamplingFunctions):
         freq_alms_input_maps : array[float] of dimensions [n_frequencies,nstokes,(lmax+1)*(lmax+2)//2]
             alms from the input frequency maps
             the (lmax+1)*(lmax+2)//2 dimension is the flattened number of lm coefficients stored according to the Healpy convention
+
+        Notes
+        -------
+        The final alms will see their low multipoles below self.lmin set to zero to avoid mask coupling scales to low multipoles
         """
 
         assert input_freq_maps.shape == (self.n_frequencies, self.nstokes, self.n_pix)
@@ -457,7 +463,22 @@ class HarmonicMicmacSampler(SamplingFunctions):
         masked_alm_E_modes = self.get_alm_from_frequency_maps(freq_map_E_modes * self.mask)
         masked_alm_B_modes = self.get_alm_from_frequency_maps(freq_map_B_modes * self.mask)
 
-        return (masked_alm_E_modes + masked_alm_B_modes) / jnp.sqrt(f_sky)
+        result_alms = jnp.zeros_like(masked_alm_B_modes)
+        result_alms = result_alms.at[:, -2, :].set(masked_alm_E_modes[:, -2, :])
+        result_alms = result_alms.at[:, -1, :].set(
+            masked_alm_B_modes[:, -1, :]
+        )  ## Keeping only the E and B modes separately
+
+        freq_red_matrix = jnp.einsum(
+            'f,q,l,ij->fqlij',
+            jnp.ones(self.n_frequencies),
+            jnp.ones(self.n_frequencies),
+            jnp.ones(self.lmax + 1),
+            jnp.eye(self.nstokes),
+        )
+        freq_red_matrix = freq_red_matrix.at[:, :, : self.lmin, :, :].set(0)  # Avoiding mask leakage to low multipoles
+
+        return frequency_alms_x_obj_red_covariance_cell_JAX(result_alms, freq_red_matrix, 0) / jnp.sqrt(f_sky)
 
     def perform_harmonic_minimize(
         self,
