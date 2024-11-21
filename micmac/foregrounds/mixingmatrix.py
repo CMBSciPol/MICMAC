@@ -177,12 +177,18 @@ class MixingMatrix:
                 (self.n_frequencies - len(self.pos_special_freqs), self.n_components - 1), order='F'
             )
             self.max_len_patches_Bf = int(self.size_patches.max())
+            n_unknown_freqs = self.n_frequencies - self.n_components + 1
+            n_comp_fgs = self.n_components - 1
+            self.multipatch_bool = not (
+                (self.size_patches == 1).all() and (self.len_params == n_comp_fgs * n_unknown_freqs)
+            )
         else:
             self.values_b = None  # Values of the patch nsides corresponding to each node
             self.indexes_b = jnp.array([[0]])  # Values of the first index of each Bf parameter in params
             self.size_patches = None  # Number of patches for each node
             self.sum_size_patches_indexed_freq_comp = None  # Cumulative sum of the number of patches for each node
             self.max_len_patches_Bf = None  # Maximum number of patches for each node
+            self.multipatch_bool = False
 
     @property
     def n_pix(self):
@@ -360,7 +366,7 @@ class MixingMatrix:
         n_unknown_freqs = self.n_frequencies - self.n_components + 1
         n_comp_fgs = self.n_components - 1
 
-        if (self.size_patches == 1).all() and (self.len_params == n_comp_fgs * n_unknown_freqs):  # No multipatch
+        if self.multipatch_bool:  # No multipatch
             return jnp.broadcast_to(
                 jnp.arange(self.len_params).reshape((n_comp_fgs, n_unknown_freqs), order='F').T,
                 (self.n_pix, n_unknown_freqs, n_comp_fgs),
