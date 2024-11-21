@@ -201,4 +201,14 @@ def loading_params(directory_save_file, file_ver, MICMAC_sampler_obj):
 
     dict_all_params['last_PRNGKey'] = np.load(directory_save_file + file_ver + '_last_PRNGkey.npy')
 
+    try:
+        dict_all_params['c_approx'] = np.load(directory_save_file + file_ver + '_c_approx.npy')
+    except:
+        print('No c_approx found', flush=True)
+
+    try:
+        dict_all_params['input_alms'] = np.load(directory_save_file + file_ver + '_input_alms.npy')
+    except:
+        print('No input_alms found', flush=True)
+
     return dict_all_params
