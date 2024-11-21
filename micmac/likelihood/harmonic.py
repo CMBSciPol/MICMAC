@@ -184,6 +184,19 @@ class HarmonicMicmacSampler(SamplingFunctions):
         self.boundary_Bf_r = jnp.hstack((boundary_Bf, jnp.expand_dims(boundary_r, axis=0).T))
 
         # Sampling parameters
+        if indexes_free_Bf is False:
+            # If given as False, then we sample all Bf
+            indexes_free_Bf = jnp.arange(self.len_params)
+        self.indexes_free_Bf = jnp.array(indexes_free_Bf)
+        assert (
+            jnp.size(self.indexes_free_Bf) <= self.len_params
+        )  # The number of free parameters should be less than the total number of parameters
+        assert (
+            jnp.max(self.indexes_free_Bf) <= self.len_params
+        )  # The indexes should be in the range of the total number of parameters
+        assert (
+            jnp.min(self.indexes_free_Bf) >= 0
+        )  # The indexes should be in the range of the total number of parameters
         self.number_iterations_sampling = int(
             number_iterations_sampling
         )  # Maximum number of iterations for the sampling
@@ -403,7 +416,7 @@ class HarmonicMicmacSampler(SamplingFunctions):
         assert input_freq_maps.shape == (self.n_frequencies, self.nstokes, self.n_pix)
 
         # Wrapper for alm2map, to prepare the pure callback of JAX
-        def wrapper_alm2map(alm_, lmax=lmax, nside=nside):
+        def wrapper_alm2map(alm_, lmax=self.lmax, nside=self.nside):
             alm_np = jax.tree.map(np.asarray, alm_)
             return hp.alm2map(alm_np, nside, lmax=lmax)
 
@@ -419,7 +432,7 @@ class HarmonicMicmacSampler(SamplingFunctions):
             )  ## Adding empty temperature map
 
             all_maps = jnp.array(
-                pure_call_alm2map(input_alm_extended, lmax=self.lmax)
+                pure_call_alm2map(input_alm_extended, lmax=self.lmax, nside=self.nside)
             )  ## Getting alms for all stokes parameters
 
             return all_maps[3 - self.nstokes :, ...]  ## Removing the empty temperature alms
@@ -772,6 +785,11 @@ class HarmonicMicmacSampler(SamplingFunctions):
 
         # Saving the samples as attributes of the Sampler object
         self.update_samples_MH(posterior_samples)
+        self.last_sample = {
+            'r_sample': posterior_samples[-1, -1],
+            'params_mixing_matrix_sample': posterior_samples[-1, :-1],
+            'input_freq_alms': input_freq_alms,
+        }
         self.number_iterations_done = self.number_iterations_sampling
         self.last_PRNGKey = PRNGKey
 
