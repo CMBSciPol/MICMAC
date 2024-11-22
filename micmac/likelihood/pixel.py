@@ -599,7 +599,7 @@ class MicmacSampler(SamplingFunctions):
         assert (
             self.freq_inverse_noise is not None
         ), 'The inverse noise for the frequencies should be provided as an attribute of the MicmacSampler object'
-        assert freq_inverse_noise.shape == (
+        assert self.freq_inverse_noise.shape == (
             self.n_frequencies,
             self.n_frequencies,
             self.n_pix,
