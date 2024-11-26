@@ -177,6 +177,11 @@ class SamplingFunctions(MixingMatrix):
         return 12 * self.nside**2
 
     @property
+    def f_sky(self):
+        """Return fraction of the observed sky"""
+        return self.mask.sum() / self.mask.size
+
+    @property
     def number_bins(self):
         """Return number of bins"""
         return jnp.size(self.bin_ell_distribution) - 1
