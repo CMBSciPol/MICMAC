@@ -15,5 +15,6 @@
 # along with MICMAC. If not, see <https://www.gnu.org/licenses/>.
 
 from micmac.likelihood.harmonic import *
+from micmac.likelihood.initobjects import *
 from micmac.likelihood.pixel import *
 from micmac.likelihood.sampling import *

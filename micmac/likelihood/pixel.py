@@ -24,12 +24,9 @@ import jax.numpy as jnp
 import jax.random as random
 import jax.scipy as jsp
 import numpy as np
-import toml
 from jax import config
 from jax_tqdm import scan_tqdm
 
-from micmac.external.fgbuster import get_instrument
-from micmac.foregrounds.templates import get_nodes_b, tree_spv_config
 from micmac.likelihood.sampling import (
     SamplingFunctions,
     separate_single_MH_step_index_accelerated,
@@ -42,7 +39,6 @@ from micmac.noise.noisecovar import (
     get_BtinvN,
     get_inv_BtinvNB,
     get_inv_BtinvNB_c_ell,
-    get_noise_covar_extended,
     get_Wd,
 )
 from micmac.toolbox.tools import (
@@ -53,9 +49,9 @@ from micmac.toolbox.tools import (
     get_sqrt_reduced_matrix_from_matrix_jax,
     maps_x_red_covariance_cell_JAX,
 )
-from micmac.toolbox.utils import generate_power_spectra_CAMB, get_instr
+from micmac.toolbox.utils import generate_power_spectra_CAMB
 
-__all__ = ['MicmacSampler', 'create_MicmacSampler_from_dictionnary', 'create_MicmacSampler_from_toml_file']
+__all__ = ['MicmacSampler']
 
 config.update('jax_enable_x64', True)
 
@@ -1301,95 +1297,3 @@ class MicmacSampler(SamplingFunctions):
 
         ## Saving the last sample
         self.last_sample = last_sample
-
-
-def create_MicmacSampler_from_dictionnary(dictionary_parameters, path_file_spv=''):
-    """
-    Create a MicmacSampler object from:
-    * the path of a toml file: params for the sims and for the sampling
-    * the path of a spv file: params for addressing spatial variability
-
-    Parameters
-    ----------
-    dictionary_parameters : dictionary
-        dictionary for the main options of MicmacSampler
-    path_file_spv : str
-        path to the yaml file for the spatial variability options
-
-    Returns
-    -------
-    MICMAC_Sampler_obj: MicmacSampler
-        the MicmacSampler object created from the toml file with the spatial variability from the yaml file
-    """
-
-    ## Getting the instrument and the noise covariance
-    if dictionary_parameters['instrument_name'] != 'customized_instrument':  ## TODO: Improve a bit this part
-        instrument = get_instrument(dictionary_parameters['instrument_name'])
-
-    else:
-        instrument = get_instr(dictionary_parameters['frequency_array'], dictionary_parameters['depth_p'])
-        del dictionary_parameters['depth_p']
-
-    dictionary_parameters['frequency_array'] = jnp.array(instrument['frequency'])
-    dictionary_parameters['freq_inverse_noise'] = get_noise_covar_extended(
-        instrument['depth_p'], dictionary_parameters['nside']
-    )
-
-    ## Spatial variability (spv) params
-    n_fgs_comp = dictionary_parameters['n_components'] - 1
-    # total number of params in the mixing matrix for a specific pixel
-    n_betas = (
-        np.shape(dictionary_parameters['frequency_array'])[0] - len(dictionary_parameters['pos_special_freqs'])
-    ) * (n_fgs_comp)
-    # Read or create spv config
-    root_tree = tree_spv_config(path_file_spv, n_betas, n_fgs_comp, print_tree=True)
-    dictionary_parameters['spv_nodes_b'] = get_nodes_b(root_tree)
-
-    ## Getting the covariance of Bf from toml file
-    if 'step_size_Bf_1' in dictionary_parameters and 'step_size_Bf_2' in dictionary_parameters:
-        n_frequencies = len(dictionary_parameters['frequency_array'])
-        col_dim_Bf = n_frequencies - len(dictionary_parameters['pos_special_freqs'])
-
-        dictionary_parameters['covariance_Bf'] = np.zeros(
-            (col_dim_Bf * n_fgs_comp, col_dim_Bf * n_fgs_comp)
-        )  # Creating the covariance matrix for Bf
-
-        np.fill_diagonal(
-            dictionary_parameters['covariance_Bf'][:col_dim_Bf, :col_dim_Bf],
-            dictionary_parameters['step_size_Bf_1'] ** 2,
-        )  # Filling diagonal with step_size_Bf_1 for first foreground component
-        np.fill_diagonal(
-            dictionary_parameters['covariance_Bf'][col_dim_Bf : 2 * col_dim_Bf, col_dim_Bf : 2 * col_dim_Bf],
-            dictionary_parameters['step_size_Bf_2'] ** 2,
-        )  # Filling diagonal with step_size_Bf_2 for second foreground component
-
-        del dictionary_parameters['step_size_Bf_1']
-        del dictionary_parameters['step_size_Bf_2']
-
-    return MicmacSampler(**dictionary_parameters)
-
-
-def create_MicmacSampler_from_toml_file(path_toml_file, path_file_spv=''):
-    """
-    Create a MicmacSampler object from:
-    * the path of a toml file: params for the sims and for the sampling
-    * the path of a spv file: params for addressing spatial variability
-
-    Parameters
-    ----------
-    path_toml_file : str
-        path to the toml file for the main options of MicmacSampler
-    path_file_spv : str
-        path to the yaml file for the spatial variability options
-
-    Returns
-    -------
-    MICMAC_Sampler_obj: MicmacSampler
-        the MicmacSampler object created from the toml file with the spatial variability from the yaml file
-    """
-    ### Opening first the toml file for the simulations and sampling, to create the MicmacSampler object
-    with open(path_toml_file) as f:
-        dictionary_parameters = toml.load(f)
-    f.close()
-
-    return create_MicmacSampler_from_dictionnary(dictionary_parameters, path_file_spv=path_file_spv)
