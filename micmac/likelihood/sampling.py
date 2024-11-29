@@ -2120,7 +2120,7 @@ class SamplingFunctions(MixingMatrix):
             (2 * jnp.arange(self.lmin, self.lmax + 1) + 1) * jnp.log(jnp.abs(jnp.linalg.det(red_contribution)))
         ).sum()
 
-        return -(first_term_complete + second_term_complete + third_term) / 2
+        return -(first_term_complete + second_term_complete + third_term) * self.f_sky / 2
 
 
 def single_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_size, log_proba, **model_kwargs):
