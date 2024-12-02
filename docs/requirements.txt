@@ -2,15 +2,9 @@ sphinx
 sphinx-rtd-theme
 sphinx_copybutton
 nbsphinx_link
-sphinx.ext.autodoc
-sphinx.ext.napoleon
-sphinx.ext.mathjax
-sphinx.ext.githubpages
 sphinx_rtd_theme
 nbsphinx
-IPython.sphinxext.ipython_console_highlighting
 sphinx_tabs.tabs
 sphinx_git
-sphinxcontrib.texfigure
-sphinx.ext.autosectionlabel
-sphinxemoji.sphinxemoji
+sphinxcontrib_packages
+sphinxemoji
