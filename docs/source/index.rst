@@ -13,7 +13,7 @@ Tutorial
 
 .. toctree::
    :maxdepth: 1
-   :caption: API:
+   :caption: Tutorial:
 
    tutorials
 
@@ -21,9 +21,8 @@ Tutorial
 API
 --------
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: API:
-   :hidden:
 
    external
    foregrounds
