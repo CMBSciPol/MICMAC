@@ -24,7 +24,6 @@ extensions = [
     'nbsphinx',
     'sphinx_tabs.tabs',
     'sphinx_git',
-    'sphinxcontrib.texfigure',
     'sphinx.ext.autosectionlabel',
     'sphinxemoji.sphinxemoji',
 ]
