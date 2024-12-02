@@ -3,18 +3,30 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-MICMAC documentation
+MICMAC
 ====================
+Welcome to the documentation of the MICMAC package.
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
 
+Tutorial
+--------
 
 .. toctree::
+   :maxdepth: 1
+   :caption: API:
+
+   tutorials
+
+
+API
+--------
+.. toctree::
    :maxdepth: 2
-   :caption: Documentation:
+   :caption: API:
    :hidden:
 
-   api
-   tutorials
+   external
+   foregrounds
+   likelihood
+   noise
+   toolbox

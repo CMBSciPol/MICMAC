@@ -168,3 +168,6 @@ cython_debug/
 *.npy
 *.npz
 *.par
+*.doctree
+*.js
+*.css
