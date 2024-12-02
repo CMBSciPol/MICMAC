@@ -22,7 +22,6 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinx_rtd_theme',
     'nbsphinx',
-    'IPython.sphinxext.ipython_console_highlighting',
     'sphinx_tabs.tabs',
     'sphinx_git',
     'sphinxcontrib.texfigure',
