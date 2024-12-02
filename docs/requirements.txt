@@ -4,7 +4,7 @@ sphinx_copybutton
 nbsphinx_link
 sphinx_rtd_theme
 nbsphinx
-sphinx_tabs.tabs
+sphinx_tabs
 sphinx_git
 sphinxcontrib_packages
 sphinxemoji
