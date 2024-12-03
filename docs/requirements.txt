@@ -1,9 +1,10 @@
 sphinx
-sphinx-rtd-theme
+sphinx-book-theme
 sphinx_copybutton
-nbsphinx_link
-sphinx_rtd_theme
-nbsphinx
-sphinx_tabs
-sphinx_git
-sphinxemoji
+myst-nb
+myst-parser
+# nbsphinx_link
+# nbsphinx
+# sphinx_tabs
+# sphinx_git
+# sphinxemoji

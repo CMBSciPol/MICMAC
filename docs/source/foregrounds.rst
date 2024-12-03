@@ -8,10 +8,13 @@ The foreground related routines are in the :mod:`micmac.foregrounds` module. Thi
 - :mod:`micmac.foregrounds.models` to provide customized sky observations
 - :mod:`micmac.foregrounds.templates` to provide multipatch templates for the foregrounds
 
-.. autosummary::
-   :toctree: generated/
+Module contents
+---------------
 
-   initmixingmatrix
-   mixingmatrix
-   models
-   templates
+.. automodule::
+   micmac.foregrounds.initmixingmatrix
+   micmac.foregrounds.mixingmatrix
+   micmac.foregrounds.models
+   micmac.foregrounds.templates
+   :members:
+   :show-inheritance:

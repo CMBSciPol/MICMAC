@@ -3,29 +3,41 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-MICMAC
+Welcome to MICMAC's documentation!
 ====================
-Welcome to the documentation of the MICMAC package.
+Welcome to the MICMAC documentation main page.
 
+.. include:: ../../README.md
+   :start-after: inclusion-marker-do-not-remove
 
-Tutorial
+Tutorials
 --------
 
 .. toctree::
    :maxdepth: 1
-   :caption: Tutorial:
+   :hidden:
+   :caption: Tutorials
 
-   tutorials
+   tutorials.rst
 
 
 API
 --------
 .. toctree::
    :maxdepth: 3
-   :caption: API:
+   :hidden:
+   :caption: API modules
 
-   external
-   foregrounds
-   likelihood
-   noise
-   toolbox
+   external.rst
+   foregrounds.rst
+   likelihood.rst
+   noise.rst
+   toolbox.rst
+
+
+Indices and tables
+------------------
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`

@@ -10,9 +10,8 @@ Welcome to the tutorials for MICMAC. Currently three tutorials are available:
 - :ref:`tutorial_pixel_MICMAC_spv` for the sampling of the pixel likelihood with multipatch distribution
 
 .. toctree::
-   :glob:
    :maxdepth: 1
 
-   tutorials/tutorial_Harmonic_MH
-   tutorials/tutorial_pixel_MICMAC
-   tutorials/tutorial_pixel_MICMAC_spv
+   ../../tutorials/tutorial_Harmonic_MH.ipynb
+   ../../tutorials/tutorial_pixel_MICMAC.ipynb
+   ../../tutorials/tutorial_pixel_MICMAC_spv.ipynb
