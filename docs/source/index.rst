@@ -8,7 +8,7 @@ Welcome to MICMAC's documentation!
 Welcome to the MICMAC documentation main page.
 
 .. include:: ../../README.md
-   :start-after: inclusion-marker-do-not-remove
+   :parser: myst_parser.sphinx_
 
 Tutorials
 --------

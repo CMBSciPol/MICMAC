@@ -20,13 +20,13 @@ language = 'en'
 
 extensions = [
     'sphinx.ext.autodoc',
-    # 'sphinx.ext.autosummary',  # Create neat summary tables
+    'sphinx.ext.autosummary',  # Create neat summary tables
     'sphinx.ext.intersphinx',
     'sphinx.ext.napoleon',
     'sphinx.ext.mathjax',
     'sphinx_copybutton',
-    'myst_nb',
-    # 'myst_parser',
+    # 'myst_nb',
+    'myst_parser',
     # 'sphinx_copybutton',
     # 'nbsphinx_link',
     # 'sphinx.ext.autodoc',
@@ -48,9 +48,9 @@ master_doc = 'index'
 nbsphinx_execute = 'off'
 nb_execution_timeout = -1
 
-# autosummary_generate = True  # Turn on sphinx.ext.autosummary
-# autosummary_ignore_module_all = False
-# autosummary_imported_members = False
+autosummary_generate = True  # Turn on sphinx.ext.autosummary
+autosummary_ignore_module_all = False
+autosummary_imported_members = False
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

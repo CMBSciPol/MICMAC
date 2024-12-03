@@ -1,12 +1,11 @@
-***
-Noise
-***
+``Noise`` -- Noise related routines
+---------------
 
 The noise related routines are in the :mod:`micmac.noise` module. Currently, they only include pixel and harmonic related functions for uncorrelated Gaussian noise.
 
-Module contents
----------------
+.. autosummary::
+   :toctree: _autosummary
+   :template: custom-module-template.rst
+   :recursive:
 
-.. automodule:: micmac.noise.noisecovar
-   :members:
-   :show-inheritance:
+   micmac.noise

@@ -1,7 +1,7 @@
 sphinx
 sphinx-book-theme
 sphinx_copybutton
-myst-nb
+# myst-nb
 myst-parser
 # nbsphinx_link
 # nbsphinx
