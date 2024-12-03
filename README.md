@@ -58,7 +58,7 @@ Note:
 
 
 ## License
-This code is released under the GPLv3 license, which can be found in the [LICENSE](./LICENSE) file.
+This code is released under the GPLv3 license, which can be found in the [LICENSE](LICENSE) file.
 
 
 ## Contact
