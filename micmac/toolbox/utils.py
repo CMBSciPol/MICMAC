@@ -160,17 +160,24 @@ def loading_params(directory_save_file, file_ver, MICMAC_sampler_obj):
     dict_existing_params = MICMAC_sampler_obj.__dict__
 
     # Loading all files
-    initial_freq_maps_path = directory_save_file + file_ver + '_initial_data.npy'
-    initial_freq_maps = np.load(initial_freq_maps_path)
-    dict_all_params['initial_freq_maps'] = initial_freq_maps
+    if os.path.exists(directory_save_file + file_ver + '_initial_data.npy'):
+        initial_freq_maps_path = directory_save_file + file_ver + '_initial_data.npy'
+        initial_freq_maps = np.load(initial_freq_maps_path)
+        dict_all_params['initial_freq_maps'] = initial_freq_maps
 
-    initial_cmb_maps_path = directory_save_file + file_ver + '_initial_cmb_data.npy'
-    input_cmb_maps = np.load(initial_cmb_maps_path)
-    dict_all_params['input_cmb_maps'] = input_cmb_maps
+        initial_cmb_maps_path = directory_save_file + file_ver + '_initial_cmb_data.npy'
+        input_cmb_maps = np.load(initial_cmb_maps_path)
+        dict_all_params['input_cmb_maps'] = input_cmb_maps
 
-    initial_noise_map_path = directory_save_file + file_ver + '_initial_noise_data.npy'
-    initial_noise_map = np.load(initial_noise_map_path)
-    dict_all_params['input_noise_map'] = initial_noise_map
+        initial_noise_map_path = directory_save_file + file_ver + '_initial_noise_data.npy'
+        initial_noise_map = np.load(initial_noise_map_path)
+        dict_all_params['input_noise_map'] = initial_noise_map
+    elif os.path.exists(directory_save_file + file_ver + '_input_maps.npz'):
+        input_maps_path = directory_save_file + file_ver + '_input_maps.npz'
+        input_maps = np.load(input_maps_path)
+        dict_all_params['input_freq_maps'] = input_maps['input_freq_maps']
+        dict_all_params['input_cmb_maps'] = input_maps['input_cmb_maps']
+        dict_all_params['input_noise_map'] = input_maps['input_noise_map']
 
     if 'save_eta_chain_maps' in dict_existing_params and MICMAC_sampler_obj.save_eta_chain_maps:
         all_eta_maps_path = directory_save_file + file_ver + '_all_eta_maps.npy'
