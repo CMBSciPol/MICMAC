@@ -7,7 +7,11 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath('../..'))
-sys.path.insert(0, os.path.abspath('../../micmac'))
+sys.path.append(os.path.abspath('../../micmac'))
+sys.path.append(os.path.abspath('../../micmac/foregrounds'))
+sys.path.append(os.path.abspath('../../micmac/likelihood'))
+sys.path.append(os.path.abspath('../../micmac/external'))
+sys.path.append(os.path.abspath('../../micmac/toolbox'))
 
 
 # -- Project information -----------------------------------------------------
