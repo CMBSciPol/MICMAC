@@ -61,6 +61,11 @@ html_show_sourcelink = True
 html_sourcelink_suffix = ''
 html_title = project
 html_static_path = ['_static']
+html_logo = '../../MICMAC-2.png'
+html_theme_options = {
+    'logo_only': True,
+    'display_version': False,
+}
 
 napoleon_include_init_with_doc = True
 napoleon_numpy_docstring = True
