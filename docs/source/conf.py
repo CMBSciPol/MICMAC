@@ -76,6 +76,8 @@ for missing in [
     'lineax',
     'jaxopt',
     'toml',
+    'pandas',
+    'astropy',
 ]:
     autodoc_mock_imports.append(missing)
 
