@@ -10,4 +10,4 @@ Module contents
    :template: custom-module-template.rst
    :recursive:
 
-   micmac/external
+   micmac.external

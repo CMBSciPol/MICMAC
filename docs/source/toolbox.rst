@@ -8,4 +8,4 @@ The toolbox module contains a collection of utility functions related to simple 
    :template: custom-module-template.rst
    :recursive:
 
-   micmac/toolbox
+   micmac.toolbox

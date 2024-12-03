@@ -10,7 +10,7 @@ Welcome to the MICMAC documentation main page.
 .. include:: ../../README.md
    :parser: myst_parser.sphinx_
 
-Tutorials
+Getting started
 --------
 
 .. toctree::
@@ -24,9 +24,9 @@ Tutorials
 API
 --------
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 1
    :hidden:
-   :caption: API modules
+   :caption: Modules
 
    external.rst
    foregrounds.rst

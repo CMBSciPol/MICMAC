@@ -25,7 +25,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',  # Create neat summary tables
     'sphinx.ext.intersphinx',
-    # 'sphinx.ext.napoleon',
+    'sphinx.ext.napoleon',
     'sphinx.ext.mathjax',
     'sphinx_copybutton',
     # 'myst_nb',
@@ -75,9 +75,9 @@ html_theme_options = {
     'display_version': False,
 }
 
-# napoleon_include_init_with_doc = True
-# napoleon_numpy_docstring = True
-# napoleon_google_docstring = False
+napoleon_include_init_with_doc = True
+napoleon_numpy_docstring = True
+napoleon_google_docstring = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
