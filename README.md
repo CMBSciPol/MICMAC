@@ -1,6 +1,6 @@
 # Minimally Informed CMB MAp Constructor: MICMAC
 
-<img src="./MICMAC-2.png" alt="drawing" width="200">
+<img src="MICMAC-2.png" alt="drawing" width="200">
 
 _MICMAC Logo, credits: Ema Tsang King Sang_
 
@@ -40,14 +40,14 @@ The tutorials and tests make use of additional Python libraries not installed by
 ```bash
 python -m pip install .[full]
 ```
-    
+
 **Note:** this package uses the [JAX library](https://jax.readthedocs.io), hence can be run on GPUs. If you run on GPUs or TPUs install JAX by following the official [installation guide](https://jax.readthedocs.io/en/latest/installation.html).
 
 
 ## How to use `micmac`
 You will find in the `tutorials` directory notebooks showcasing how to use `micmac`.
 
-Note: 
+Note:
 * The package performs highly expensive computations, we advice to allow for a sufficiently large number of cores.
 * If you fork the repository and want to commit some changes, you may want to use pre-commit:
     ```bash
@@ -68,13 +68,18 @@ For any solicitation, please contact `morshed at apc.in2p3.fr` or `rizzieri at a
 ## Citation
 If you use `micmac`, please consider citing:
 ```
-@misc{morshed2024pixel,
-      title={Pixel domain implementation of the Minimally Informed CMB MAp foreground Cleaning (MICMAC) method},
-      author={Magdy Morshed and Arianna Rizzieri and Cl\'ement Leloup and Josquin Errard and Radek Stompor},
-      year={2024},
-      eprint={2405.18365},
-      archivePrefix={arXiv},
-      primaryClass={astro-ph.CO}
+@article{Morshed:2024fow,
+    author = "Morshed, Magdy and Rizzieri, Arianna and Leloup, Cl\'ement and Errard, Josquin and Stompor, Radek",
+    title = "{Pixel domain implementation of the minimally informed CMB map foreground cleaning method}",
+    eprint = "2405.18365",
+    archivePrefix = "arXiv",
+    primaryClass = "astro-ph.CO",
+    doi = "10.1103/PhysRevD.110.103521",
+    journal = "Phys. Rev. D",
+    volume = "110",
+    number = "10",
+    pages = "103521",
+    year = "2024"
 }
 @article{Leloup:2023vkb,
     author = "Leloup, Cl\'ement and Errard, Josquin and Stompor, Radek",
