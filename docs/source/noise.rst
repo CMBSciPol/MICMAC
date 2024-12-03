@@ -8,4 +8,4 @@ The noise related routines are in the :mod:`micmac.noise` module. Currently, the
    :template: custom-module-template.rst
    :recursive:
 
-   micmac.noise
+   micmac/noise
