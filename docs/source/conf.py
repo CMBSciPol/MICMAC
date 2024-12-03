@@ -57,8 +57,28 @@ autosummary_imported_members = False
 
 # Modules to mock for the purposes of doc build.
 autodoc_mock_imports = []
-for missing in ['scipy', 'matplotlib', 'healpy']:
+for missing in [
+    'scipy',
+    'matplotlib',
+    'healpy',
+    'jax',
+    'numpy',
+    'scipy',
+    'pysm3',
+    'cmbdb',
+    'jaxlib',
+    'jax-tqdm',
+    'jax-healpy',
+    'numpyro',
+    'chex',
+    'anytree',
+    'camb',
+    'lineax',
+    'jaxopt',
+    'toml',
+]:
     autodoc_mock_imports.append(missing)
+
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
