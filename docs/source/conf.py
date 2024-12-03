@@ -7,6 +7,9 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath('../..'))
+sys.path.insert(0, os.path.abspath('../../micmac'))
+
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
@@ -14,6 +17,7 @@ project = 'MICMAC'
 copyright = '2024, Magdy Morshed, Arianna Rizzieri, Clément Leloup, Josquin Errard, Radek Stompor'
 author = 'Magdy Morshed, Arianna Rizzieri, Clément Leloup, Josquin Errard, Radek Stompor'
 language = 'en'
+version = 1.0
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -22,7 +26,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',  # Create neat summary tables
     'sphinx.ext.intersphinx',
-    'sphinx.ext.napoleon',
+    # 'sphinx.ext.napoleon',
     'sphinx.ext.mathjax',
     'sphinx_copybutton',
     # 'myst_nb',
@@ -52,6 +56,11 @@ autosummary_generate = True  # Turn on sphinx.ext.autosummary
 autosummary_ignore_module_all = False
 autosummary_imported_members = False
 
+# Modules to mock for the purposes of doc build.
+autodoc_mock_imports = []
+for missing in ['scipy', 'matplotlib', 'healpy']:
+    autodoc_mock_imports.append(missing)
+
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 html_theme = 'sphinx_book_theme'
@@ -67,9 +76,9 @@ html_theme_options = {
     'display_version': False,
 }
 
-napoleon_include_init_with_doc = True
-napoleon_numpy_docstring = True
-napoleon_google_docstring = False
+# napoleon_include_init_with_doc = True
+# napoleon_numpy_docstring = True
+# napoleon_google_docstring = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
