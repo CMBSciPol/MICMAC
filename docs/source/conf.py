@@ -26,7 +26,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx_copybutton',
     'myst_nb',
-    'myst_parser',
+    # 'myst_parser',
     # 'sphinx_copybutton',
     # 'nbsphinx_link',
     # 'sphinx.ext.autodoc',
@@ -42,7 +42,7 @@ extensions = [
 ]
 
 myst_enable_extensions = ['dollarmath', 'colon_fence']
-source_suffix = '.rst'
+# source_suffix = '.rst'
 master_doc = 'index'
 
 nbsphinx_execute = 'off'
@@ -68,5 +68,5 @@ napoleon_google_docstring = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
-source_suffix = ['.rst', '.ipynb']
+source_suffix = ['.rst', '.ipynb', '.md']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
