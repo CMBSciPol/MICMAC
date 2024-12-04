@@ -34,6 +34,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.mathjax',
     'sphinx_copybutton',
+    'sphinx_immaterial',
     # 'IPython.sphinxext.ipython_console_highlighting'
     # 'autoapi.extension',
     # 'myst_nb',
@@ -102,7 +103,7 @@ add_module_names = False  # Remove namespaces from class/method signatures
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
-html_theme = 'sphinx_book_theme'
+html_theme = 'sphinx_immaterial'  #'sphinx_book_theme'
 html_extra_path = ['latex']
 html_copy_source = True
 html_show_sourcelink = True

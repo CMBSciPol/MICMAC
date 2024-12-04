@@ -17,3 +17,4 @@ jupytext
 jupyter
 # scipy
 # numpy
+sphinx_immaterial
