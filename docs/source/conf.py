@@ -136,11 +136,7 @@ html_theme_options = {
     ],
 }
 object_description_options = [
-    ('Class', dict(include_fields_in_toc=False)),
-    ('Exception', dict(include_fields_in_toc=False)),
-    ('Function', dict(include_fields_in_toc=False)),
-    ('Method', dict(include_fields_in_toc=False)),
-    ('Module', dict(include_fields_in_toc=False)),
+    ('py:.*', dict(include_fields_in_toc=False)),
 ]
 
 napoleon_include_init_with_doc = True
