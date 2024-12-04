@@ -18,4 +18,5 @@ jupyter
 # scipy
 # numpy
 sphinx_immaterial
+sphinx_design
 sphinx_last_updated_by_git
