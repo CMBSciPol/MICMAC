@@ -35,6 +35,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx_copybutton',
     'sphinx_immaterial',
+    'sphinx_design',
     # 'IPython.sphinxext.ipython_console_highlighting'
     # 'autoapi.extension',
     # 'myst_nb',
@@ -114,7 +115,33 @@ html_logo = '../../MICMAC-2.png'
 html_theme_options = {
     'logo_only': True,
     'display_version': False,
+    'site_url': 'https://minimally-informed-cmb-map-constructor-micmac.readthedocs.io/en/latest/index.html',
+    'repo_url': 'https://github.com/CMBSciPol/MICMAC',
+    'repo_name': 'MICMAC',
+    'icon': {'repo': 'fontawesome/brands/git-alt'},
+    'globaltoc_collapse': False,
+    'features': [
+        # "navigation.expand",
+        'navigation.tabs',
+        # "toc.integrate",
+        # "navigation.sections",
+        # "navigation.instant",
+        # "header.autohide",
+        'navigation.top',
+        'navigation.tracking',
+        'toc.follow',
+        'toc.sticky',
+        'content.tabs.link',
+        'announce.dismiss',
+    ],
 }
+object_description_options = [
+    ('Class', dict(include_fields_in_toc=False)),
+    ('Exception', dict(include_fields_in_toc=False)),
+    ('Function', dict(include_fields_in_toc=False)),
+    ('Method', dict(include_fields_in_toc=False)),
+    ('Module', dict(include_fields_in_toc=False)),
+]
 
 napoleon_include_init_with_doc = True
 napoleon_numpy_docstring = True
