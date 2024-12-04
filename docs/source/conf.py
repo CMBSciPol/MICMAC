@@ -123,16 +123,41 @@ html_theme_options = {
     'features': [
         # "navigation.expand",
         'navigation.tabs',
+        'navigation.tabs.sticky'
         # "toc.integrate",
         # "navigation.sections",
         # "navigation.instant",
         # "header.autohide",
-        # 'navigation.top',
-        # 'navigation.tracking',
+        'navigation.top',
+        'navigation.tracking',
+        'search.highlight',
+        'search.share',
         'toc.follow',
-        'toc.sticky',
+        # 'toc.sticky',
         'content.tabs.link',
         'announce.dismiss',
+    ],
+    'palette': [
+        {
+            'media': '(prefers-color-scheme: light)',
+            'scheme': 'default',
+            'primary': 'teal',
+            'accent': 'deep-orange',
+            'toggle': {
+                'icon': 'material/weather-night',
+                'name': 'Switch to dark mode',
+            },
+        },
+        {
+            'media': '(prefers-color-scheme: dark)',
+            'scheme': 'slate',
+            'primary': 'blue-grey',
+            'accent': 'amber',
+            'toggle': {
+                'icon': 'material/weather-sunny',
+                'name': 'Switch to light mode',
+            },
+        },
     ],
 }
 object_description_options = [
