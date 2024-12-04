@@ -5,7 +5,6 @@ The toolbox module contains a collection of utility functions related to simple 
 
 .. autosummary::
    :toctree: _autosummary
-   :template: custom-module-template.rst
-   :recursive:
+   :maxdepth: 2
 
-   micmac.toolbox
+   micmac/toolbox/*

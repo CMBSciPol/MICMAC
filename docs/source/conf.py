@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, os.path.abspath('../..'))
 sys.path.append(os.path.abspath('../../micmac'))
 
-import micmac
+# import micmac
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -30,6 +30,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.mathjax',
     'sphinx_copybutton',
+    # 'autoapi.extension',
     # 'myst_nb',
     'myst_parser',
     # 'sphinx_copybutton',
@@ -55,7 +56,7 @@ nb_execution_timeout = -1
 
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
 autosummary_ignore_module_all = False
-autosummary_imported_members = False
+autosummary_imported_members = True
 
 # Modules to mock for the purposes of doc build.
 autodoc_mock_imports = []

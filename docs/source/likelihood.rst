@@ -6,7 +6,6 @@ The `MICMAC` package relies on the sampling of likelihood, either in pixel domai
 
 .. autosummary::
    :toctree: _autosummary
-   :template: custom-module-template.rst
-   :recursive:
+   :maxdepth: 2
 
-   micmac.likelihood
+   micmac/likelihood/*
