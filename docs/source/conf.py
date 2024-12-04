@@ -34,7 +34,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.mathjax',
     'sphinx_copybutton',
-    'IPython.sphinxext.ipython_console_highlighting'
+    # 'IPython.sphinxext.ipython_console_highlighting'
     # 'autoapi.extension',
     # 'myst_nb',
     'myst_parser',

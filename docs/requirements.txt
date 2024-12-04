@@ -11,6 +11,6 @@ nbsphinx
 # sphinx-autoapi
 pydata-sphinx-theme
 sphinx-autodoc-typehints
-ipython
+# ipython
 jupytext
 jupyter
