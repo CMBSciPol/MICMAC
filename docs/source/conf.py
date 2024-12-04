@@ -62,7 +62,7 @@ myst_enable_extensions = ['dollarmath', 'colon_fence']
 # source_suffix = '.rst'
 master_doc = 'index'
 
-nbsphinx_execute = 'off'
+nbsphinx_execute = 'never'
 nb_execution_timeout = -1
 
 # autosummary_generate = True  # Turn on sphinx.ext.autosummary
