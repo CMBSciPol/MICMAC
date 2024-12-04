@@ -8,5 +8,4 @@ The `MICMAC` package relies on the sampling of likelihood, either in pixel domai
    :toctree: micmac/likelihood
    :template: custom-module-template.rst
    :recursive:
-
-   micmac.likelihood
+   :module: micmac.likelihood

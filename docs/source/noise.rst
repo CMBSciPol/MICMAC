@@ -7,5 +7,4 @@ The noise related routines are in the :mod:`micmac.noise` module. Currently, the
    :toctree: micmac/noise
    :template: custom-module-template.rst
    :recursive:
-
-   micmac.noise
+   :module: micmac.noise

@@ -9,5 +9,4 @@ Module contents
    :toctree: micmac/external
    :template: custom-module-template.rst
    :recursive:
-
-   micmac.external
+   :module: micmac.external

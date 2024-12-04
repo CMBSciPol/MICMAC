@@ -7,5 +7,4 @@ The toolbox module contains a collection of utility functions related to simple 
    :toctree: micmac/toolbox
    :template: custom-module-template.rst
    :recursive:
-
-   micmac.toolbox
+   :module: micmac.toolbox
