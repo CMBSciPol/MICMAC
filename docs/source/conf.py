@@ -3,13 +3,13 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-import os
-import sys
+# import os
+# import sys
 
-sys.path.insert(0, os.path.abspath('../..'))
-sys.path.append(os.path.abspath('../../micmac'))
+# sys.path.insert(0, os.path.abspath('../..'))
+# sys.path.append(os.path.abspath('../../micmac'))
 
-# import micmac
+# # import micmac
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -27,7 +27,7 @@ release = '1.0'
 
 extensions = [
     'sphinx.ext.autodoc',  # Core Sphinx library for auto html doc generation from docstrings
-    'sphinx.ext.autosummary',  # Create neat summary tables for modules/classes/methods etc
+    # 'sphinx.ext.autosummary',  # Create neat summary tables for modules/classes/methods etc
     'sphinx.ext.intersphinx',  # Link to other project's documentation (see mapping below)
     'sphinx.ext.viewcode',  # Add a link to the Python source code for classes, functions etc.
     'sphinx_autodoc_typehints',  # Automatically document param types (less noise in class signature)
@@ -65,9 +65,9 @@ master_doc = 'index'
 nbsphinx_execute = 'off'
 nb_execution_timeout = -1
 
-autosummary_generate = True  # Turn on sphinx.ext.autosummary
-autosummary_ignore_module_all = False
-autosummary_imported_members = False
+# autosummary_generate = True  # Turn on sphinx.ext.autosummary
+# autosummary_ignore_module_all = False
+# autosummary_imported_members = False
 autoclass_content = 'both'  # Add __init__ doc (ie. params) to class summaries
 html_show_sourcelink = False  # Remove 'view source code' from top of page (for html, not python)
 autodoc_inherit_docstrings = True  # If no docstring, inherit from base class
@@ -77,30 +77,27 @@ nbsphinx_allow_errors = True  # Continue through Jupyter errors
 add_module_names = False  # Remove namespaces from class/method signatures
 
 # Modules to mock for the purposes of doc build.
-autodoc_mock_imports = []
-for missing in [
-    'scipy',
-    'matplotlib',
-    'healpy',
-    'jax',
-    'numpy',
-    'scipy',
-    'pysm3',
-    'cmbdb',
-    'jaxlib',
-    'jax-tqdm',
-    'jax-healpy',
-    'numpyro',
-    'chex',
-    'anytree',
-    'camb',
-    'lineax',
-    'jaxopt',
-    'toml',
-    'pandas',
-    'astropy',
-]:
-    autodoc_mock_imports.append(missing)
+# autodoc_mock_imports = []
+# for missing in [
+#     'matplotlib',
+#     'healpy',
+#     'jax',
+#     'pysm3',
+#     'cmbdb',
+#     'jaxlib',
+#     'jax-tqdm',
+#     'jax-healpy',
+#     'numpyro',
+#     'chex',
+#     'anytree',
+#     'camb',
+#     'lineax',
+#     'jaxopt',
+#     'toml',
+#     'pandas',
+#     'astropy',
+# ]:
+#     autodoc_mock_imports.append(missing)
 
 
 # -- Options for HTML output -------------------------------------------------

@@ -1,5 +1,5 @@
 ``Foregrounds`` -- Foreground module
----------------
+==============================
 
 The foreground related routines are in the :mod:`micmac.foregrounds` module. This includes:
 - :mod:`micmac.foregrounds.initmixingmatrix` for routines related to the construction of the mixing matrix if the initial foreground parameters are known
@@ -8,8 +8,34 @@ The foreground related routines are in the :mod:`micmac.foregrounds` module. Thi
 - :mod:`micmac.foregrounds.templates` to provide multipatch templates for the foregrounds
 
 
-.. autosummary::
-   :toctree: micmac/foregrounds
-   :template: custom-module-template.rst
-   :recursive:
-   :module: micmac.foregrounds
+micmac.foregrounds.initmixingmatrix module
+------------------------------------------
+
+.. automodule:: micmac.foregrounds.initmixingmatrix
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+micmac.foregrounds.mixingmatrix module
+--------------------------------------
+
+.. automodule:: micmac.foregrounds.mixingmatrix
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+micmac.foregrounds.models module
+--------------------------------
+
+.. automodule:: micmac.foregrounds.models
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+micmac.foregrounds.templates module
+-----------------------------------
+
+.. automodule:: micmac.foregrounds.templates
+   :members:
+   :undoc-members:
+   :show-inheritance:
