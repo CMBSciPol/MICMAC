@@ -127,8 +127,8 @@ html_theme_options = {
         # "navigation.sections",
         # "navigation.instant",
         # "header.autohide",
-        'navigation.top',
-        'navigation.tracking',
+        # 'navigation.top',
+        # 'navigation.tracking',
         'toc.follow',
         'toc.sticky',
         'content.tabs.link',
@@ -137,6 +137,7 @@ html_theme_options = {
 }
 object_description_options = [
     ('py:.*', dict(include_fields_in_toc=False)),
+    ('py:.*Param', dict(include_in_toc=False)),
 ]
 
 napoleon_include_init_with_doc = True
