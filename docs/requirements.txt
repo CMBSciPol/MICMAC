@@ -4,7 +4,7 @@ sphinx-book-theme
 sphinx_copybutton
 # myst-nb
 myst-parser
-# nbsphinx_link
+nbsphinx_link
 nbsphinx
 # sphinx_tabs
 # sphinx_git

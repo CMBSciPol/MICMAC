@@ -39,7 +39,7 @@ extensions = [
     # 'myst_nb',
     'myst_parser',
     # 'sphinx_copybutton',
-    # 'nbsphinx_link',
+    'nbsphinx_link',
     # 'sphinx.ext.autodoc',
     # 'sphinx.ext.napoleon',
     # 'sphinx.ext.mathjax',

@@ -49,7 +49,7 @@ python -m pip install .[full]
 You will find in the `tutorials` directory notebooks showcasing how to use `micmac`.
 
 Note:
-* The package performs highly expensive computations, we advice to allow for a sufficiently large number of cores.
+* The package performs highly expensive computations, we advise to allow for a sufficiently large number of cores.
 * If you fork the repository and want to commit some changes, you may want to use pre-commit:
     ```bash
     pip install pre-commit

@@ -8,34 +8,16 @@ The foreground related routines are in the :mod:`micmac.foregrounds` module. Thi
 - :mod:`micmac.foregrounds.templates` to provide multipatch templates for the foregrounds
 
 
-micmac.foregrounds.initmixingmatrix module
-------------------------------------------
 
-.. automodule:: micmac.foregrounds.initmixingmatrix
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
-micmac.foregrounds.mixingmatrix module
---------------------------------------
 
-.. automodule:: micmac.foregrounds.mixingmatrix
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
-micmac.foregrounds.models module
---------------------------------
+Module contents
+---------------
+.. toctree::
+   :maxdepth: 2
 
-.. automodule:: micmac.foregrounds.models
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-micmac.foregrounds.templates module
------------------------------------
-
-.. automodule:: micmac.foregrounds.templates
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   foregrounds/initmixingmatrix.rst
+   foregrounds/mixingmatrix.rst
+   foregrounds/models.rst
+   foregrounds/templates.rst
