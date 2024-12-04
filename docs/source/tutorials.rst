@@ -8,6 +8,6 @@ Welcome to the tutorials for MICMAC. Currently three tutorials are available:
 .. toctree::
    :maxdepth: 3
 
-   ../../tutorials/tutorial_Harmonic_MH.ipynb
-   ../../tutorials/tutorial_pixel_MICMAC.ipynb
-   ../../tutorials/tutorial_pixel_MICMAC_spv.ipynb
+   tutorials/tutorial_Harmonic_MH.ipynb
+   tutorials/tutorial_pixel_MICMAC.ipynb
+   tutorials/tutorial_pixel_MICMAC_spv.ipynb

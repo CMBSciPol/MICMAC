@@ -14,7 +14,6 @@ API reference
 --------
 .. toctree::
    :maxdepth: 1
-   :hidden:
    :caption: Modules
 
    external.rst
@@ -28,7 +27,6 @@ Getting started
 
 .. toctree::
    :maxdepth: 1
-   :hidden:
    :caption: Getting started
 
    tutorials.rst
