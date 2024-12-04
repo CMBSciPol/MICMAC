@@ -6,5 +6,8 @@
 Module contents
 
 .. autosummary::
-   :toctree: micmac/external/
+   :toctree: _autosummary
+   :template: custom-module-template.rst
    :recursive:
+
+   micmac/external

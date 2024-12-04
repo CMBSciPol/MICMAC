@@ -4,8 +4,13 @@ sphinx_copybutton
 # myst-nb
 myst-parser
 # nbsphinx_link
-# nbsphinx
+nbsphinx
 # sphinx_tabs
 # sphinx_git
 # sphinxemoji
 # sphinx-autoapi
+pydata-sphinx-theme
+sphinx-autodoc-typehints
+ipython
+jupytext
+jupyter

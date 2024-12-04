@@ -20,16 +20,21 @@ author = 'Magdy Morshed, Arianna Rizzieri, Clément Leloup, Josquin Errard, Rade
 language = 'en'
 # version = micmac.__version__
 
+release = '1.0'
+
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',  # Create neat summary tables
-    'sphinx.ext.intersphinx',
+    'sphinx.ext.autodoc',  # Core Sphinx library for auto html doc generation from docstrings
+    'sphinx.ext.autosummary',  # Create neat summary tables for modules/classes/methods etc
+    'sphinx.ext.intersphinx',  # Link to other project's documentation (see mapping below)
+    'sphinx.ext.viewcode',  # Add a link to the Python source code for classes, functions etc.
+    'sphinx_autodoc_typehints',  # Automatically document param types (less noise in class signature)
     'sphinx.ext.napoleon',
     'sphinx.ext.mathjax',
     'sphinx_copybutton',
+    'IPython.sphinxext.ipython_console_highlighting'
     # 'autoapi.extension',
     # 'myst_nb',
     'myst_parser',
@@ -40,12 +45,18 @@ extensions = [
     # 'sphinx.ext.mathjax',
     # 'sphinx.ext.githubpages',
     # 'sphinx_rtd_theme',
-    # 'nbsphinx',
+    'nbsphinx',  # Integrate Jupyter Notebooks and Sphinx
     # 'sphinx_tabs.tabs',
     # 'sphinx_git',
     # 'sphinx.ext.autosectionlabel',
     # 'sphinxemoji.sphinxemoji',
 ]
+
+# Mappings for sphinx.ext.intersphinx. Projects have to have Sphinx-generated doc! (.inv file)
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3/', None),
+}
+
 
 myst_enable_extensions = ['dollarmath', 'colon_fence']
 # source_suffix = '.rst'
@@ -57,6 +68,13 @@ nb_execution_timeout = -1
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
 autosummary_ignore_module_all = False
 autosummary_imported_members = False
+autoclass_content = 'both'  # Add __init__ doc (ie. params) to class summaries
+html_show_sourcelink = False  # Remove 'view source code' from top of page (for html, not python)
+autodoc_inherit_docstrings = True  # If no docstring, inherit from base class
+set_type_checking_flag = True  # Enable 'expensive' imports for sphinx_autodoc_typehints
+nbsphinx_allow_errors = True  # Continue through Jupyter errors
+# autodoc_typehints = "description" # Sphinx-native method. Not as good as sphinx_autodoc_typehints
+add_module_names = False  # Remove namespaces from class/method signatures
 
 # Modules to mock for the purposes of doc build.
 autodoc_mock_imports = []
