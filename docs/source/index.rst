@@ -32,9 +32,11 @@ Getting started
    tutorials.rst
 
 
-Indices and tables
+Index
 ------------------
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. toctree::
+   :caption: Index
+   :hidden:
+
+   genindex

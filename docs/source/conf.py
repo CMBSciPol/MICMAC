@@ -14,7 +14,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'MICMAC'
+project = 'MICMAC: Minimally Informed CMB Map Constructor'
 copyright = '2024, Magdy Morshed, Arianna Rizzieri, Clément Leloup, Josquin Errard, Radek Stompor'
 author = 'Magdy Morshed, Arianna Rizzieri, Clément Leloup, Josquin Errard, Radek Stompor'
 language = 'en'
@@ -151,7 +151,7 @@ html_theme_options = {
         {
             'media': '(prefers-color-scheme: dark)',
             'scheme': 'slate',
-            'primary': 'blue-grey',
+            'primary': 'deep-orange',
             'accent': 'amber',
             'toggle': {
                 'icon': 'material/weather-sunny',
