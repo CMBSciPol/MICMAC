@@ -56,7 +56,7 @@ nb_execution_timeout = -1
 
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
 autosummary_ignore_module_all = False
-autosummary_imported_members = True
+autosummary_imported_members = False
 
 # Modules to mock for the purposes of doc build.
 autodoc_mock_imports = []

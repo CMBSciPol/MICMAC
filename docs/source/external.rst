@@ -6,7 +6,7 @@
 Module contents
 
 .. autosummary::
-   :toctree: _autosummary
-   :maxdepth: 2
+   :toctree: micmac/external/
+   :recursive:
 
-   micmac/external/*
+   external/*

@@ -4,7 +4,7 @@
 The noise related routines are in the :mod:`micmac.noise` module. Currently, they only include pixel and harmonic related functions for uncorrelated Gaussian noise.
 
 .. autosummary::
-   :toctree: _autosummary
-   :maxdepth: 2
+   :toctree: micmac/noise/
+   :recursive:
 
-   micmac/noise/*
+   noise/*
