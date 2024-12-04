@@ -6,5 +6,3 @@ The noise related routines are in the :mod:`micmac.noise` module. Currently, the
 .. autosummary::
    :toctree: micmac/noise/
    :recursive:
-
-   noise/*

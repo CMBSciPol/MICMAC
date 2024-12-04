@@ -6,5 +6,3 @@ The toolbox module contains a collection of utility functions related to simple 
 .. autosummary::
    :toctree: micmac/toolbox/
    :maxdepth: 3
-
-   toolbox/*

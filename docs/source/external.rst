@@ -8,5 +8,3 @@ Module contents
 .. autosummary::
    :toctree: micmac/external/
    :recursive:
-
-   external/*

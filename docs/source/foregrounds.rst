@@ -11,5 +11,3 @@ The foreground related routines are in the :mod:`micmac.foregrounds` module. Thi
 .. autosummary::
    :toctree: micmac/foregrounds/
    :recursive:
-
-   foregrounds/*
