@@ -16,7 +16,7 @@ maintainers = [
     {name = 'Magdy Morshed', email = 'morshed@apc.in2p3.fr'},
     {name = 'Arianna Rizzieri', email = 'rizzieri@apc.in2p3.fr'},
 ]
-description = 'Minimally Informed CMB MAp Constructor (MICMAC) for CMB polarization data'
+description = 'Minimally Informed CMB MAp foreground Cleaning (MICMAC) for CMB polarization data'
 readme = 'README.md'
 keywords = [
     'scientific computing',

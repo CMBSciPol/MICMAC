@@ -1,4 +1,4 @@
-# Minimally Informed CMB MAp Constructor: MICMAC
+# Minimally Informed CMB MAp foreground Cleaning: MICMAC
 
 Documentation: https://minimally-informed-cmb-map-constructor-micmac.readthedocs.io/en/latest/index.html
 <img src="MICMAC-2.png" alt="drawing" width="200">
