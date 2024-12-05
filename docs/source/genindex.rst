@@ -1,2 +1,3 @@
 Index
 =====
+* :ref:`genindex`

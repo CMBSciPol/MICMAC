@@ -10,8 +10,26 @@ Welcome to the MICMAC documentation main page.
 .. include:: ../../README.md
    :parser: myst_parser.sphinx_
 
+
+Getting started
+---------------
+.. toctree::
+   :maxdepth: 1
+   :caption: Getting started
+
+   getting-started.rst
+
+Tutorials
+---------
+
+.. toctree::
+   :maxdepth: 1
+   :caption: How to use MICMAC
+
+   tutorials.rst
+
 API reference
---------
+-------------
 .. toctree::
    :maxdepth: 1
    :caption: Modules
@@ -22,18 +40,10 @@ API reference
    noise.rst
    toolbox.rst
 
-Getting started
---------
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Getting started
-
-   tutorials.rst
 
 
 Index
-------------------
+-----
 
 .. toctree::
    :caption: Index
