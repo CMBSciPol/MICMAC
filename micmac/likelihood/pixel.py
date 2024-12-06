@@ -41,6 +41,7 @@ from micmac.noise.noisecovar import (
     get_inv_BtinvNB_c_ell,
     get_Wd,
 )
+from micmac.toolbox.statistics import get_1d_recursive_empirical_covariance
 from micmac.toolbox.tools import (
     get_c_ells_from_red_covariance_matrix,
     get_cell_from_map_jax,
@@ -93,6 +94,11 @@ class MicmacSampler(SamplingFunctions):
         acceptance_posdef=False,
         step_size_r=1e-4,
         covariance_Bf=None,
+        use_scam_step_size=False,
+        burn_in_scam=50,
+        s_param_scam=(2.4) ** 2,
+        epsilon_param_scam_r=1e-10,
+        epsilon_param_scam_Bf=1e-11,
         indexes_free_Bf=False,
         number_iterations_sampling=100,
         number_iterations_done=0,
@@ -178,6 +184,10 @@ class MicmacSampler(SamplingFunctions):
             step size for the Metropolis-Hastings sampling of r, default 1e-4
         covariance_Bf: None or array[float] of dimensions [(n_frequencies-len(pos_special_freqs))*(n_components-1), (n_frequencies-len(pos_special_freqs))*(n_components-1)] (optional)
             covariance for the Metropolis-Hastings sampling of Bf ; will be repeated if multiresoltion case, default None
+        use_scam_step_size: bool (optional)
+            use the SCAM step size for the Metropolis-Hastings sampling of Bf and r (Haario et al. 2005), default False
+        burn_in_scam: int (optional)
+            number of burn-in iterations before using adaptive step-size (SCAM), not used if use_scam_steps_size is False, default 50
         indexes_free_Bf: bool or array[int] (optional)
             indexes of the free Bf parameters to actually sample and leave the rest of the indices fixed, array of integers, default False to sample all Bf
 
@@ -257,6 +267,27 @@ class MicmacSampler(SamplingFunctions):
         # Metropolis-Hastings parameters
         self.covariance_Bf = covariance_Bf  # Covariance for the Metropolis-Hastings step sampling of Bf
         self.step_size_r = step_size_r  # Step size for the Metropolis-Hastings step sampling of r
+        self.use_scam_step_size = bool(
+            use_scam_step_size
+        )  # Use the SCAM (Single Component Adaptive Metropolis) step size for the Metropolis-Hastings step sampling of Bf and r (Haario et al. 2005)
+        self.burn_in_scam = int(burn_in_scam)  # Number of burn-in iterations before using adaptive step-size (SCAM)
+        self.s_param_scam = float(s_param_scam)  # s parameter for the SCAM step size
+        self.epsilon_param_scam_r = float(epsilon_param_scam_r)  # epsilon parameter for the SCAM step size for r
+        self.epsilon_param_scam_Bf = float(epsilon_param_scam_Bf)  # epsilon parameter for the SCAM step size for Bf
+        if number_iterations_done > 0:
+            self.burn_in_scam = 0
+        if self.use_scam_step_size:
+            print(
+                'Using SCAM step size for the Metropolis-Hastings step sampling of Bf and r after',
+                self.burn_in_scam,
+                'iterations, with parameters s',
+                self.s_param_scam,
+                'epsilon_r',
+                self.epsilon_param_scam_r,
+                'epsilon_Bf',
+                self.epsilon_param_scam_Bf,
+                flush=True,
+            )
 
         # Sampling parameters
         if indexes_free_Bf is False:
@@ -461,7 +492,7 @@ class MicmacSampler(SamplingFunctions):
                 all_samples_CMB_c_ell = jnp.array(
                     [
                         get_c_ells_from_red_covariance_matrix(all_samples['red_cov_matrix_sample'][iteration])
-                        for iteration in range(self.number_iterations_sampling - self.number_iterations_done)
+                        for iteration in range(self.number_iterations_sampling)  # - self.number_iterations_done)
                     ]
                 )
             else:
@@ -523,6 +554,41 @@ class MicmacSampler(SamplingFunctions):
                 jnp.expand_dims(one_sample['params_mixing_matrix_sample'], axis=0),
             )
 
+    def update_scam_step_size(self, carry, new_carry, iteration):
+        """
+        Update the SCAM step size for the Metropolis-Hastings step sampling of Bf and r
+
+        Parameters
+        ----------
+        carry: dictionary
+            dictionary carry from all_sampling_steps function
+        new_carry: dictionary
+            updated dictionary from all_sampling_steps function
+        iteration: int
+            current iteration number
+        """
+        total_number_iterations = iteration + self.number_iterations_done + 1
+
+        # Update the SCAM step size for the Metropolis-Hastings step sampling of r
+        new_carry['empirical_variance_r'] = get_1d_recursive_empirical_covariance(
+            total_number_iterations, carry['r_sample'], carry['mean_r'], carry['empirical_variance_r']
+        ).squeeze()
+        new_carry['mean_r'] = (total_number_iterations * carry['mean_r'] + carry['r_sample']) / (
+            total_number_iterations + 1
+        )
+
+        # Update the SCAM step size for the Metropolis-Hastings step sampling of Bf
+        new_carry['empirical_variance_Bf'] = get_1d_recursive_empirical_covariance(
+            total_number_iterations,
+            carry['params_mixing_matrix_sample'],
+            carry['mean_Bf'],
+            carry['empirical_variance_Bf'],
+        )
+        new_carry['mean_Bf'] = (total_number_iterations * carry['mean_Bf'] + carry['params_mixing_matrix_sample']) / (
+            total_number_iterations + 1
+        )
+        return new_carry
+
     def perform_Gibbs_sampling(
         self,
         input_freq_maps,
@@ -530,10 +596,11 @@ class MicmacSampler(SamplingFunctions):
         CMB_c_ell,
         init_params_mixing_matrix,
         initial_guess_r=1e-8,
-        initial_wiener_filter_term=jnp.empty(0),
-        initial_fluctuation_maps=jnp.empty(0),
-        theoretical_r0_total=jnp.empty(0),
-        theoretical_r1_tensor=jnp.empty(0),
+        initial_wiener_filter_term=None,
+        initial_fluctuation_maps=None,
+        theoretical_r0_total=None,
+        theoretical_r1_tensor=None,
+        **dictionnary_additional_parameters,
     ):
         r"""
         Perform sampling steps with:
@@ -573,6 +640,8 @@ class MicmacSampler(SamplingFunctions):
             theoretical reduced covariance matrix for the CMB scalar modes, default empty array
         theoretical_r1_tensor: array[float] of dimensions [number_correlations, lmax+1-lmin] (optional)
             theoretical reduced covariance matrix for the CMB tensor modes, default empty array
+        dictionnary_additional_parameters: dictionary
+            additional parameters to give to the function, currently only the ones related to the SCAM step size
         """
 
         time_test = time.time()
@@ -602,7 +671,7 @@ class MicmacSampler(SamplingFunctions):
         ), 'The inverse noise for the frequencies should have dimensions [n_frequencies,n_frequencies,n_pix]'
 
         ## Testing the initial WF term, or initialize it properly
-        if len(initial_wiener_filter_term) == 0:
+        if initial_wiener_filter_term is None:
             wiener_filter_term = jnp.zeros((self.nstokes, self.n_pix))
         else:
             assert len(initial_wiener_filter_term.shape) == 2
@@ -610,7 +679,7 @@ class MicmacSampler(SamplingFunctions):
             wiener_filter_term = initial_wiener_filter_term
 
         ## Testing the initial fluctuation term, or initialize it properly
-        if len(initial_fluctuation_maps) == 0:
+        if initial_fluctuation_maps is None:
             fluctuation_maps = jnp.zeros((self.nstokes, self.n_pix))
         else:
             assert len(initial_fluctuation_maps.shape) == 2
@@ -768,7 +837,7 @@ class MicmacSampler(SamplingFunctions):
             raise ValueError('Seed should be either a scalar or a 2D array interpreted as a JAX PRNG Key!')
 
         ## Computing the number of iterations to perform
-        actual_number_of_iterations = self.number_iterations_sampling - self.number_iterations_done
+        actual_number_of_iterations = self.number_iterations_sampling  # - self.number_iterations_done
 
         if not (self.classical_Gibbs):
             ## Preparing the step-size for Metropolis-within-Gibbs of Bf sampling
@@ -825,7 +894,6 @@ class MicmacSampler(SamplingFunctions):
             print('Using non-centered moves for C sampling !', flush=True)
             if self.save_intermediary_centered_moves:
                 print('Saving intermediary centered moves for C sampling !', flush=True)
-
         else:
             print('Sample for C with inverse Wishart !', flush=True)
 
@@ -852,7 +920,7 @@ class MicmacSampler(SamplingFunctions):
 
         ## Finally starting the Gibbs sampling !!!
         print(
-            f'Starting {self.number_iterations_sampling} iterations from {self.number_iterations_done} iterations done',
+            f'Starting {self.number_iterations_sampling} iterations in addition to {self.number_iterations_done} iterations done',
             flush=True,
         )
 
@@ -1084,10 +1152,21 @@ class MicmacSampler(SamplingFunctions):
 
             elif self.sample_r_Metropolis:
                 # Sampling r which will parametrize C(r) = C_scalar + r*C_tensor
+
+                step_size_r = self.step_size_r
+
+                if self.use_scam_step_size:
+                    # step_size_r = jnp.where(iteration > self.burn_in_scam, jnp.sqrt(self.s_param_scam*(carry['empirical_variance_r'] + self.epsilon_param_scam_r)), self.step_size_r)
+                    step_size_r = jnp.where(
+                        iteration > self.burn_in_scam, jnp.sqrt(carry['empirical_variance_r']), self.step_size_r
+                    )
+                    all_samples['empirical_variance_r'] = step_size_r**2
+                    all_samples['mean_r'] = carry['mean_r']
+
                 new_carry['r_sample'] = r_sampling_MH(
                     random_PRNGKey=new_subPRNGKey_2,
                     old_sample=carry['r_sample'],
-                    step_size=self.step_size_r,
+                    step_size=step_size_r,
                     log_proba=log_proba_r,
                     red_sigma_ell=red_c_ells_Wishart_modified,
                     theoretical_red_cov_r1_tensor=theoretical_red_cov_r1_tensor,
@@ -1174,6 +1253,15 @@ class MicmacSampler(SamplingFunctions):
                 # Preparing the step-size
                 step_size_Bf = initial_step_size_Bf
 
+                if self.use_scam_step_size:
+                    # step_size_Bf = jnp.where(iteration > self.burn_in_scam, jnp.sqrt(self.s_param_scam *(carry['empirical_variance_Bf'] + self.epsilon_param_scam_Bf)), initial_step_size_Bf)
+                    step_size_Bf = jnp.where(
+                        iteration > self.burn_in_scam, jnp.sqrt(carry['empirical_variance_Bf']), initial_step_size_Bf
+                    )
+                    # all_samples['empirical_variance_Bf'] = step_size_Bf
+                    all_samples['empirical_variance_Bf'] = carry['empirical_variance_Bf']
+                    all_samples['mean_Bf'] = carry['mean_Bf']
+
                 # Sampling Bf
                 if self.perturbation_eta_covariance or self.biased_version:
                     ## Preparing the parameters to provide for the sampling of Bf
@@ -1243,6 +1331,38 @@ class MicmacSampler(SamplingFunctions):
             ## Saving the Bf obtained
             all_samples['params_mixing_matrix_sample'] = new_carry['params_mixing_matrix_sample']
 
+            # Updating the step-size in case of SCAM for the Metropolis-Hastings step
+            if self.use_scam_step_size:
+                ## Using the SCAM step-size for the Metropolis-Hasting step
+                # new_carry = self.update_scam_step_size(carry, new_carry, iteration)
+                total_number_iterations = iteration + self.number_iterations_done + 1
+
+                # Update the SCAM step size for the Metropolis-Hastings step sampling of r
+                new_carry['empirical_variance_r'] = get_1d_recursive_empirical_covariance(
+                    total_number_iterations,
+                    new_carry['r_sample'],
+                    carry['mean_r'],
+                    carry['empirical_variance_r'],
+                    s_param=self.s_param_scam,
+                    epsilon_param=self.epsilon_param_scam_r,
+                ).squeeze()
+                new_carry['mean_r'] = (total_number_iterations * carry['mean_r'] + carry['r_sample']) / (
+                    total_number_iterations + 1
+                )
+
+                # Update the SCAM step size for the Metropolis-Hastings step sampling of Bf
+                new_carry['empirical_variance_Bf'] = get_1d_recursive_empirical_covariance(
+                    total_number_iterations,
+                    new_carry['params_mixing_matrix_sample'],
+                    carry['mean_Bf'],
+                    carry['empirical_variance_Bf'],
+                    s_param=self.s_param_scam,
+                    epsilon_param=self.epsilon_param_scam_Bf,
+                )
+                new_carry['mean_Bf'] = (
+                    total_number_iterations * carry['mean_Bf'] + carry['params_mixing_matrix_sample']
+                ) / (total_number_iterations + 1)
+
             ## Passing as well the PRNGKey to the next iteration
             new_carry['PRNGKey'] = PRNGKey
             return new_carry, all_samples
@@ -1278,6 +1398,33 @@ class MicmacSampler(SamplingFunctions):
             flush=True,
         )
 
+        if self.use_scam_step_size:
+            initial_carry['empirical_variance_r'] = jnp.array(self.step_size_r) ** 2
+            initial_carry['empirical_variance_Bf'] = initial_step_size_Bf**2
+            initial_carry['mean_r'] = jnp.array(initial_guess_r)
+            initial_carry['mean_Bf'] = jnp.array(params_mixing_matrix_init_sample)
+
+            if 'empirical_variance_r' in dictionnary_additional_parameters:
+                print(
+                    'Setting the empirical variance for r to the one provided in the additional parameters!', flush=True
+                )
+                initial_carry['empirical_variance_r'] = dictionnary_additional_parameters['empirical_variance_r']
+            if 'empirical_variance_Bf' in dictionnary_additional_parameters:
+                print(
+                    'Setting the empirical variance for Bf to the one provided in the additional parameters!',
+                    flush=True,
+                )
+                initial_carry['empirical_variance_Bf'] = dictionnary_additional_parameters['empirical_variance_Bf']
+            if 'mean_r' in dictionnary_additional_parameters:
+                print('Setting the mean value for r to the one provided in the additional parameters!', flush=True)
+                initial_carry['mean_r'] = dictionnary_additional_parameters['mean_r']
+            if 'mean_Bf' in dictionnary_additional_parameters:
+                print('Setting the mean value for Bf to the one provided in the additional parameters!', flush=True)
+                initial_carry['mean_Bf'] = dictionnary_additional_parameters['mean_Bf']
+
+            assert (initial_carry['empirical_variance_r'] > 0).all()
+            assert (initial_carry['empirical_variance_Bf'] > 0).all()
+
         ## Starting the Gibbs sampling !!!!
         time_start_sampling = time.time()
         # Start sampling !!!
@@ -1290,7 +1437,19 @@ class MicmacSampler(SamplingFunctions):
         self.update_samples(all_samples)
         time_end_updating = (time.time() - time_start_updating) / 60
         print(f'End of updating in {time_end_updating} minutes', flush=True)
+
+        # Saving step-sizes if SCAM is used
+        if self.use_scam_step_size:
+            self.all_empirical_variance_Bf = all_samples['empirical_variance_Bf']
+            self.all_empirical_variance_r = all_samples['empirical_variance_r']
+
+            # Saving the corresponding mean values for testing purposes
+            self.all_mean_r = all_samples['mean_r']
+            self.all_mean_Bf = all_samples['mean_Bf']
+
         self.number_iterations_done = self.number_iterations_sampling
+
+        last_sample['number_iterations_done'] = self.number_iterations_done
 
         print('Last key PRNG', last_sample['PRNGKey'], flush=True)
         self.last_PRNGKey = last_sample['PRNGKey']

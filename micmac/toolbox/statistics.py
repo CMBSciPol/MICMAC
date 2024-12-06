@@ -17,7 +17,7 @@
 import jax.numpy as jnp
 import numpy as np
 
-__all__ = ['get_Gelman_Rubin_statistics']
+__all__ = ['get_Gelman_Rubin_statistics', 'get_1d_recursive_empirical_covariance']
 
 
 def get_MCMC_batch_error(sample_single_chain, batch_size):
@@ -46,6 +46,45 @@ def get_empirical_covariance_JAX(samples):
         jnp.einsum('ti,tj->tij', samples, samples).sum(axis=0)
         - number_samples * jnp.einsum('i,j->ij', mean_samples, mean_samples)
     ) / (number_samples - 1)
+
+
+def get_1d_recursive_empirical_covariance(
+    iteration_number, last_sample, last_mean_samples, last_empirical_covariance, s_param=(2.4) ** 2, epsilon_param=1e-10
+):
+    """
+    Compute the 1D empirical covariance recursively, from last sample computed and mean samples
+
+    Parameters
+    ----------
+    iteration_number: int
+        number of iterations corresponding to the last sample
+    last_sample: float or array
+        last sample computed
+    last_mean_samples: float or array
+        mean samples computed from the previous iteration_number samples
+    last_empirical_covariance: float or array
+        empirical covariance computed from the previous iteration_number samples
+
+    Returns
+    -------
+    empirical_covariance: array
+        empirical covariance computed from the iteration_number+1 samples
+    """
+    new_mean_samples = (iteration_number * last_mean_samples + last_sample) / (iteration_number + 1)
+    # return (iteration_number - 1) / iteration_number * last_empirical_covariance + last_mean_samples ** 2 + last_sample ** 2 / iteration_number - (iteration_number + 1) * new_mean_samples ** 2 / iteration_number
+
+    return (
+        (iteration_number - 1) / iteration_number * last_empirical_covariance
+        + s_param
+        * (
+            last_mean_samples**2
+            + last_sample**2 / iteration_number
+            - (iteration_number + 1) * new_mean_samples**2 / iteration_number
+        )
+        + s_param * epsilon_param
+    )
+
+    # return s_param * ((iteration_number - 1) / iteration_number * last_empirical_covariance + last_mean_samples ** 2 + last_sample ** 2 / iteration_number - (iteration_number + 1) * new_mean_samples ** 2 / iteration_number) + s_param * epsilon_param
 
 
 def get_Gelman_Rubin_statistics(all_chain_samples):

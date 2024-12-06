@@ -178,6 +178,8 @@ def loading_params(directory_save_file, file_ver, MICMAC_sampler_obj):
         dict_all_params['input_freq_maps'] = input_maps['input_freq_maps']
         dict_all_params['input_cmb_maps'] = input_maps['input_cmb_maps']
         dict_all_params['input_noise_map'] = input_maps['input_noise_map']
+        if 'input_fgs_map' in input_maps:
+            dict_all_params['input_fgs_map'] = input_maps['input_fgs_map']
 
     if 'save_eta_chain_maps' in dict_existing_params and MICMAC_sampler_obj.save_eta_chain_maps:
         all_eta_maps_path = directory_save_file + file_ver + '_all_eta_maps.npy'
