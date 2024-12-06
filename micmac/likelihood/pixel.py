@@ -188,6 +188,12 @@ class MicmacSampler(SamplingFunctions):
             use the SCAM step size for the Metropolis-Hastings sampling of Bf and r (Haario et al. 2005), default False
         burn_in_scam: int (optional)
             number of burn-in iterations before using adaptive step-size (SCAM), not used if use_scam_steps_size is False, default 50
+        s_param_scam: float (optional)
+            s parameter for the SCAM step size (see Haario et al. 2001, Haario et al. 2005), default (2.4)**2
+        epsilon_param_scam_r: float (optional)
+            epsilon parameter for the SCAM step size for r (see Haario et al. 2001, Haario et al. 2005), default 1e-10
+        epsilon_param_scam_Bf: float (optional)
+            epsilon parameter for the SCAM step size for Bf (see Haario et al. 2001, Haario et al. 2005), default 1e-11
         indexes_free_Bf: bool or array[int] (optional)
             indexes of the free Bf parameters to actually sample and leave the rest of the indices fixed, array of integers, default False to sample all Bf
 
