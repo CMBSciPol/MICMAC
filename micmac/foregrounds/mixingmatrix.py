@@ -366,11 +366,11 @@ class MixingMatrix:
         n_unknown_freqs = self.n_frequencies - self.n_components + 1
         n_comp_fgs = self.n_components - 1
 
-        if self.multipatch_bool:  # No multipatch
-            return jnp.broadcast_to(
-                jnp.arange(self.len_params).reshape((n_comp_fgs, n_unknown_freqs), order='F').T,
-                (self.n_pix, n_unknown_freqs, n_comp_fgs),
-            ).T
+        # if not self.multipatch_bool:  # No multipatch
+        #     return jnp.broadcast_to(
+        #         jnp.arange(self.len_params).reshape((n_comp_fgs, n_unknown_freqs), order='F').T,
+        #         (self.n_pix, n_unknown_freqs, n_comp_fgs),
+        #     ).T
 
         ## Creating all the templates
         def create_all_templates_indexed_freq(idx_freq):
