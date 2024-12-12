@@ -99,12 +99,14 @@ class MicmacSampler(SamplingFunctions):
         s_param_scam=(2.4) ** 2,
         epsilon_param_scam_r=1e-10,
         epsilon_param_scam_Bf=1e-11,
+        # scam_iteration_updates=100,
         indexes_free_Bf=False,
         number_iterations_sampling=100,
         number_iterations_done=0,
         seed=0,
         disable_chex=True,
         instrument_name='SO_SAT',
+        # fwhm=None,
         spv_nodes_b=[],
     ):
         """
@@ -210,6 +212,8 @@ class MicmacSampler(SamplingFunctions):
         instrument_name: str (optional)
             name of the instrument as expected by cmbdb or given as 'customized_instrument' if redefined by user, default 'SO_SAT'
             see https://github.com/dpole/cmbdb/blob/master/cmbdb/experiments.yaml
+        fwhm: float (optional)
+            FWHM of the beam in arcmin, default None (no beam) ; not implemented yet
         spv_nodes_b: list[dictionaries] (optional)
             tree for the spatial variability, to generate from a yaml file, default []
             in principle set up by get_nodes_b
@@ -323,8 +327,14 @@ class MicmacSampler(SamplingFunctions):
         self.save_all_Bf_params = bool(save_all_Bf_params)  # Save all the Bf chains
         self.save_s_c_spectra = bool(save_s_c_spectra)  # Save the s_c spectra
 
-        # Optional parameters
+        # Instrument parameters
         self.instrument_name = instrument_name  # Name of the instrument
+        # if fwhm is not None:
+        #     self.fwhm = float(fwhm)  # FWHM of the beam in arcmin
+        # else:
+        #     self.fwhm = None # No beam
+
+        # Check related parameters
         self.disable_chex = disable_chex  # Disable chex tests (to improve speed)
 
         # Samples preparation
@@ -648,6 +658,10 @@ class MicmacSampler(SamplingFunctions):
             theoretical reduced covariance matrix for the CMB tensor modes, default empty array
         dictionnary_additional_parameters: dictionary
             additional parameters to give to the function, currently only the ones related to the SCAM step size
+
+        Notes
+        -----
+        The formalism relies on the ability to have an inverse for C_approx (even though it is never computed effectively in the code), and may lead to numerical instabilities if the C_approx matrix is not well-conditioned.
         """
 
         time_test = time.time()
@@ -714,6 +728,10 @@ class MicmacSampler(SamplingFunctions):
         assert CMB_c_ell.shape[1] == self.lmax + 1
         assert len(c_ell_approx.shape) == 2
         assert c_ell_approx.shape[1] == self.lmax + 1
+        red_cov_approx_matrix = jnp.array(get_reduced_matrix_from_c_ell(c_ell_approx)[self.lmin :, ...])
+        assert (
+            jnp.linalg.det(red_cov_approx_matrix) != 0
+        ).any(), 'The approximate covariance matrix should be invertible ; if you and to put it to zero, please put it instead to a very small value'
 
         ## Testing the initial mixing matrix
         if self.n_components != 1:
@@ -733,6 +751,13 @@ class MicmacSampler(SamplingFunctions):
         # Preparing for the full Gibbs sampling
         len_pos_special_freqs = len(self.pos_special_freqs)
 
+        # if self.fwhm is not None:
+        #     ell_range = jnp.arange(self.lmin, self.lmax + 1)
+        #     spin = 2
+        #     self.beam_harmonic = jnp.exp(-0.5 * (ell_range * (ell_range + 1) - spin**2)* self.fwhm**2 / (8 * np.log(2)))
+        # else:
+        #     self.beam_harmonic = jnp.ones(self.lmax + 1 - self.lmin)
+
         if self.use_binning:
             print('Using binning for the sampling of CMB covariance !!!', flush=True)
             print('Binning distribution:', self.bin_ell_distribution, flush=True)
@@ -742,7 +767,7 @@ class MicmacSampler(SamplingFunctions):
         ## eta
         initial_eta = jnp.zeros((self.nstokes, self.n_pix))
         ## CMB covariance preparation in the format [lmax,nstokes,nstokes]
-        red_cov_approx_matrix = jnp.array(get_reduced_matrix_from_c_ell(c_ell_approx)[self.lmin :, ...])
+
         red_cov_matrix = get_reduced_matrix_from_c_ell(CMB_c_ell)[self.lmin :, ...]
         ## parameters of the mixing matrix
         params_mixing_matrix_init_sample = jnp.array(init_params_mixing_matrix, copy=True)

@@ -402,9 +402,9 @@ def maps_x_red_covariance_cell_JAX(maps_input, red_matrix_sqrt, nside, lmin, n_i
     def scan_func(carry, nstokes_j):
         val_alms_j, nstokes_i = carry
 
-        result_callback = JAX_almxfl(alms_input[nstokes_j], red_decomp[:, nstokes_i, nstokes_j], lmax)
-        new_carry = (val_alms_j + result_callback, nstokes_i)
-        return new_carry, val_alms_j + result_callback
+        result_almxfl = JAX_almxfl(alms_input[nstokes_j], red_decomp[:, nstokes_i, nstokes_j], lmax)
+        new_carry = (val_alms_j + result_almxfl, nstokes_i)
+        return new_carry, val_alms_j + result_almxfl
 
     # Multiplying the nstokes's ith alms with the covariance matrix
     def fmap(nstokes_i):
@@ -467,10 +467,10 @@ def alms_x_red_covariance_cell_JAX(alm_Stokes_input, red_matrix, lmin):
         """
         val_alms_j, nstokes_i = carry
 
-        result_callback = JAX_almxfl(alm_input[nstokes_j], red_decomp[:, nstokes_i, nstokes_j], lmax)
+        result_almxfl = JAX_almxfl(alm_input[nstokes_j], red_decomp[:, nstokes_i, nstokes_j], lmax)
 
-        new_carry = (val_alms_j + result_callback, nstokes_i)
-        return new_carry, val_alms_j + result_callback
+        new_carry = (val_alms_j + result_almxfl, nstokes_i)
+        return new_carry, val_alms_j + result_almxfl
 
     # Multiplying the ie alms with the covariance matrix
     def fmap(nstokes_i):
@@ -534,11 +534,11 @@ def frequency_alms_x_obj_red_covariance_cell_JAX(freq_alm_Stokes_input, freq_red
         For a given frequency_j, returns the alms convolved with the frequency covariance matrix to be summed up for all nstokes_i
         """
         val_alms_j, idx_i = carry
-        result_callback = alms_x_red_covariance_cell_JAX(
+        result_almxfl = alms_x_red_covariance_cell_JAX(
             freq_alm_input[frequency_j], freq_red_matrix[idx_i, frequency_j, ...], lmin=lmin
         )
-        new_carry = (val_alms_j + result_callback, idx_i)
-        return new_carry, val_alms_j + result_callback
+        new_carry = (val_alms_j + result_almxfl, idx_i)
+        return new_carry, val_alms_j + result_almxfl
 
     # Multiplying the ie alms with the covariance matrix
     def fmap(idx_i):
