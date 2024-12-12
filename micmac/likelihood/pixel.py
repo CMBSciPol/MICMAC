@@ -99,7 +99,7 @@ class MicmacSampler(SamplingFunctions):
         s_param_scam=(2.4) ** 2,
         epsilon_param_scam_r=1e-10,
         epsilon_param_scam_Bf=1e-11,
-        # scam_iteration_updates=100,
+        scam_iteration_updates=50,
         indexes_free_Bf=False,
         number_iterations_sampling=100,
         number_iterations_done=0,
@@ -196,6 +196,9 @@ class MicmacSampler(SamplingFunctions):
             epsilon parameter for the SCAM step size for r (see Haario et al. 2001, Haario et al. 2005), default 1e-10
         epsilon_param_scam_Bf: float (optional)
             epsilon parameter for the SCAM step size for Bf (see Haario et al. 2001, Haario et al. 2005), default 1e-11
+        scam_iteration_updates: int (optional)
+            number of iterations for which the SCAM step size will be updated (the variance is updated successively for every scam_iteration_updates iterations), default 100
+
         indexes_free_Bf: bool or array[int] (optional)
             indexes of the free Bf parameters to actually sample and leave the rest of the indices fixed, array of integers, default False to sample all Bf
 
@@ -284,8 +287,9 @@ class MicmacSampler(SamplingFunctions):
         self.s_param_scam = float(s_param_scam)  # s parameter for the SCAM step size
         self.epsilon_param_scam_r = float(epsilon_param_scam_r)  # epsilon parameter for the SCAM step size for r
         self.epsilon_param_scam_Bf = float(epsilon_param_scam_Bf)  # epsilon parameter for the SCAM step size for Bf
-        if number_iterations_done > 0:
-            self.burn_in_scam = 0
+        self.scam_iteration_updates = int(scam_iteration_updates)
+        # if number_iterations_done > 0:
+        #     self.burn_in_scam = 0
         if self.use_scam_step_size:
             print(
                 'Using SCAM step size for the Metropolis-Hastings step sampling of Bf and r after',
@@ -296,6 +300,9 @@ class MicmacSampler(SamplingFunctions):
                 self.epsilon_param_scam_r,
                 'epsilon_Bf',
                 self.epsilon_param_scam_Bf,
+                'and updates every',
+                self.scam_iteration_updates,
+                'iterations',
                 flush=True,
             )
 
@@ -570,40 +577,46 @@ class MicmacSampler(SamplingFunctions):
                 jnp.expand_dims(one_sample['params_mixing_matrix_sample'], axis=0),
             )
 
-    def update_scam_step_size(self, carry, new_carry, iteration):
-        """
-        Update the SCAM step size for the Metropolis-Hastings step sampling of Bf and r
+    # def update_scam_step_size(self, carry, new_carry, iteration):
+    #     """
+    #     Update the SCAM step size for the Metropolis-Hastings step sampling of Bf and r
 
-        Parameters
-        ----------
-        carry: dictionary
-            dictionary carry from all_sampling_steps function
-        new_carry: dictionary
-            updated dictionary from all_sampling_steps function
-        iteration: int
-            current iteration number
-        """
-        total_number_iterations = iteration + self.number_iterations_done + 1
+    #     Parameters
+    #     ----------
+    #     carry: dictionary
+    #         dictionary carry from all_sampling_steps function
+    #     new_carry: dictionary
+    #         updated dictionary from all_sampling_steps function
+    #     iteration: int
+    #         current iteration number
+    #     """
+    #     total_number_iterations = iteration + self.number_iterations_done + 1
 
-        # Update the SCAM step size for the Metropolis-Hastings step sampling of r
-        new_carry['empirical_variance_r'] = get_1d_recursive_empirical_covariance(
-            total_number_iterations, carry['r_sample'], carry['mean_r'], carry['empirical_variance_r']
-        ).squeeze()
-        new_carry['mean_r'] = (total_number_iterations * carry['mean_r'] + carry['r_sample']) / (
-            total_number_iterations + 1
-        )
+    #     # Update the SCAM step size for the Metropolis-Hastings step sampling of r
+    #     new_carry['empirical_variance_r'] = get_1d_recursive_empirical_covariance(
+    #         total_number_iterations,
+    #         new_carry['r_sample'],
+    #         carry['mean_r'],
+    #         carry['empirical_variance_r'],
+    #         s_param=self.s_param_scam,
+    #         epsilon_param=self.epsilon_param_scam_r,
+    #     ).squeeze()
+    #     new_carry['mean_r'] = (total_number_iterations * carry['mean_r'] + new_carry['r_sample']) / (
+    #         total_number_iterations + 1
+    #     )
 
-        # Update the SCAM step size for the Metropolis-Hastings step sampling of Bf
-        new_carry['empirical_variance_Bf'] = get_1d_recursive_empirical_covariance(
-            total_number_iterations,
-            carry['params_mixing_matrix_sample'],
-            carry['mean_Bf'],
-            carry['empirical_variance_Bf'],
-        )
-        new_carry['mean_Bf'] = (total_number_iterations * carry['mean_Bf'] + carry['params_mixing_matrix_sample']) / (
-            total_number_iterations + 1
-        )
-        return new_carry
+    #     # Update the SCAM step size for the Metropolis-Hastings step sampling of Bf
+    #     new_carry['empirical_variance_Bf'] = get_1d_recursive_empirical_covariance(
+    #         total_number_iterations,
+    #         new_carry['params_mixing_matrix_sample'],
+    #         carry['mean_Bf'],
+    #         carry['empirical_variance_Bf'],
+    #         s_param=self.s_param_scam,
+    #         epsilon_param=self.epsilon_param_scam_Bf,
+    #     )
+    #     new_carry['mean_Bf'] = (total_number_iterations * carry['mean_Bf'] + new_carry['params_mixing_matrix_sample']) / (
+    #         total_number_iterations + 1
+    #     )
 
     def perform_Gibbs_sampling(
         self,
@@ -1188,9 +1201,12 @@ class MicmacSampler(SamplingFunctions):
 
                 if self.use_scam_step_size:
                     # step_size_r = jnp.where(iteration > self.burn_in_scam, jnp.sqrt(self.s_param_scam*(carry['empirical_variance_r'] + self.epsilon_param_scam_r)), self.step_size_r)
-                    step_size_r = jnp.where(
-                        iteration > self.burn_in_scam, jnp.sqrt(carry['empirical_variance_r']), self.step_size_r
-                    )
+                    # step_size_r = jnp.where(
+                    #     iteration > self.burn_in_scam, jnp.sqrt(carry['empirical_variance_r']), self.step_size_r
+                    # )
+
+                    step_size_r = jnp.sqrt(carry['empirical_variance_r'])
+
                     all_samples['empirical_variance_r'] = step_size_r**2
                     all_samples['mean_r'] = carry['mean_r']
 
@@ -1286,9 +1302,11 @@ class MicmacSampler(SamplingFunctions):
 
                 if self.use_scam_step_size:
                     # step_size_Bf = jnp.where(iteration > self.burn_in_scam, jnp.sqrt(self.s_param_scam *(carry['empirical_variance_Bf'] + self.epsilon_param_scam_Bf)), initial_step_size_Bf)
-                    step_size_Bf = jnp.where(
-                        iteration > self.burn_in_scam, jnp.sqrt(carry['empirical_variance_Bf']), initial_step_size_Bf
-                    )
+                    # step_size_Bf = jnp.where(
+                    #     iteration > self.burn_in_scam, jnp.sqrt(carry['empirical_variance_Bf']), initial_step_size_Bf
+                    # )
+                    step_size_Bf = jnp.sqrt(carry['empirical_variance_Bf'])
+
                     # all_samples['empirical_variance_Bf'] = step_size_Bf
                     all_samples['empirical_variance_Bf'] = carry['empirical_variance_Bf']
                     all_samples['mean_Bf'] = carry['mean_Bf']
@@ -1366,33 +1384,79 @@ class MicmacSampler(SamplingFunctions):
             if self.use_scam_step_size:
                 ## Using the SCAM step-size for the Metropolis-Hasting step
                 # new_carry = self.update_scam_step_size(carry, new_carry, iteration)
-                total_number_iterations = iteration + self.number_iterations_done + 1
+                total_number_iterations = (
+                    iteration + self.number_iterations_done + 1 - self.burn_in_scam // self.scam_iteration_updates
+                )
+
+                update_scam_step_size = jnp.logical_and(
+                    total_number_iterations > 0, total_number_iterations % self.scam_iteration_updates == 0
+                )
 
                 # Update the SCAM step size for the Metropolis-Hastings step sampling of r
-                new_carry['empirical_variance_r'] = get_1d_recursive_empirical_covariance(
-                    total_number_iterations,
-                    new_carry['r_sample'],
-                    carry['mean_r'],
+                # new_carry['empirical_variance_r'] = get_1d_recursive_empirical_covariance(
+                #     total_number_iterations,
+                #     new_carry['r_sample'],
+                #     carry['mean_r'],
+                #     carry['empirical_variance_r'],
+                #     s_param=self.s_param_scam,
+                #     epsilon_param=self.epsilon_param_scam_r,
+                # ).squeeze()
+                # new_carry['mean_r'] = (total_number_iterations * carry['mean_r'] + carry['r_sample']) / (
+                #     total_number_iterations + 1
+                # )
+
+                new_carry['empirical_variance_r'] = jax.lax.cond(
+                    update_scam_step_size,
+                    lambda x: get_1d_recursive_empirical_covariance(
+                        total_number_iterations,
+                        new_carry['r_sample'],
+                        carry['mean_r'],
+                        x,
+                        s_param=self.s_param_scam,
+                        epsilon_param=self.epsilon_param_scam_r,
+                    ).squeeze(),
+                    lambda x: x,
                     carry['empirical_variance_r'],
-                    s_param=self.s_param_scam,
-                    epsilon_param=self.epsilon_param_scam_r,
-                ).squeeze()
-                new_carry['mean_r'] = (total_number_iterations * carry['mean_r'] + carry['r_sample']) / (
-                    total_number_iterations + 1
+                )
+                new_carry['mean_r'] = jax.lax.cond(
+                    update_scam_step_size,
+                    lambda x: (total_number_iterations * carry['mean_r'] + x) / (total_number_iterations + 1),
+                    lambda x: x,
+                    new_carry['r_sample'],
                 )
 
                 # Update the SCAM step size for the Metropolis-Hastings step sampling of Bf
-                new_carry['empirical_variance_Bf'] = get_1d_recursive_empirical_covariance(
-                    total_number_iterations,
-                    new_carry['params_mixing_matrix_sample'],
-                    carry['mean_Bf'],
+                # new_carry['empirical_variance_Bf'] = get_1d_recursive_empirical_covariance(
+                #     total_number_iterations,
+                #     new_carry['params_mixing_matrix_sample'],
+                #     carry['mean_Bf'],
+                #     carry['empirical_variance_Bf'],
+                #     s_param=self.s_param_scam,
+                #     epsilon_param=self.epsilon_param_scam_Bf,
+                # )
+                # new_carry['mean_Bf'] = (
+                #     total_number_iterations * carry['mean_Bf'] + carry['params_mixing_matrix_sample']
+                # ) / (total_number_iterations + 1)
+
+                new_carry['empirical_variance_Bf'] = jax.lax.cond(
+                    update_scam_step_size,
+                    lambda x: get_1d_recursive_empirical_covariance(
+                        total_number_iterations,
+                        new_carry['params_mixing_matrix_sample'],
+                        carry['mean_Bf'],
+                        x,
+                        s_param=self.s_param_scam,
+                        epsilon_param=self.epsilon_param_scam_Bf,
+                    ),
+                    lambda x: x,
                     carry['empirical_variance_Bf'],
-                    s_param=self.s_param_scam,
-                    epsilon_param=self.epsilon_param_scam_Bf,
                 )
-                new_carry['mean_Bf'] = (
-                    total_number_iterations * carry['mean_Bf'] + carry['params_mixing_matrix_sample']
-                ) / (total_number_iterations + 1)
+                new_carry['mean_Bf'] = jax.lax.cond(
+                    update_scam_step_size,
+                    lambda x: (total_number_iterations * carry['mean_Bf'] + x) / (total_number_iterations + 1),
+                    lambda x: x,
+                    new_carry['params_mixing_matrix_sample'],
+                )
 
             ## Passing as well the PRNGKey to the next iteration
             new_carry['PRNGKey'] = PRNGKey
