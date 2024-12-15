@@ -1512,7 +1512,7 @@ class MicmacSampler(SamplingFunctions):
                 initial_carry['empirical_variance_Bf'] = dictionnary_additional_parameters['empirical_variance_Bf']
             if 'mean_r' in dictionnary_additional_parameters:
                 print('Setting the mean value for r to the one provided in the additional parameters!', flush=True)
-                initial_carry['mean_r'] = jnp.array(dictionnary_additional_parameters['mean_r'])
+                initial_carry['mean_r'] = jnp.array(dictionnary_additional_parameters['mean_r']).squeeze()
             if 'mean_Bf' in dictionnary_additional_parameters:
                 print('Setting the mean value for Bf to the one provided in the additional parameters!', flush=True)
                 initial_carry['mean_Bf'] = dictionnary_additional_parameters['mean_Bf']
