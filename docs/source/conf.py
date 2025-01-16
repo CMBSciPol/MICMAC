@@ -57,6 +57,8 @@ extensions = [
 # Mappings for sphinx.ext.intersphinx. Projects have to have Sphinx-generated doc! (.inv file)
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
+    'pandas': ('https://pandas.pydata.org/docs/', None),
+    'pysm3': ('https://pysm3.readthedocs.io/en/stable/', None),
 }
 
 
