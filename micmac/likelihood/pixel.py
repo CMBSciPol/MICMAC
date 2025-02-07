@@ -15,6 +15,7 @@
 # along with MICMAC. If not, see <https://www.gnu.org/licenses/>.
 
 import time
+from functools import partial
 
 import chex as chx
 import healpy as hp
@@ -50,7 +51,7 @@ from micmac.toolbox.tools import (
     get_sqrt_reduced_matrix_from_matrix_jax,
     maps_x_red_covariance_cell_JAX,
 )
-from micmac.toolbox.utils import generate_power_spectra_CAMB
+from micmac.toolbox.utils import generate_CMB
 
 __all__ = ['MicmacSampler']
 
@@ -87,8 +88,14 @@ class MicmacSampler(SamplingFunctions):
         save_intermediary_centered_moves=False,
         limit_r_value=False,
         min_r_value=0,
+        use_alm_sampling_r=False,
+        use_alm_sampling_r_wEE=False,
+        lmin_BB=None,
         biased_version=False,
         classical_Gibbs=False,
+        use_alternative_Bf_sampling=False,
+        suppress_low_modes=True,
+        use_mask_contribution_eta=False,
         use_binning=False,
         bin_ell_distribution=None,
         acceptance_posdef=False,
@@ -165,6 +172,10 @@ class MicmacSampler(SamplingFunctions):
             limit r value being sampled with the minmum r value given by min_r_value, default False
         min_r_value: float (optional)
             minimum r value accepted for r sample if limit_r_value is True, default 0
+        use_alm_sampling_r: bool (optional)
+            use the alms sampling for r, default False
+        use_alm_sampling_r_wEE: bool (optional)
+            use the alms sampling for r with the EE power spectrum, default False
 
         perturbation_eta_covariance: bool (optional)
             approach to compute difference between CMB noise component for eta log proba instead of repeating the CG for each Bf sampling, default True
@@ -175,6 +186,10 @@ class MicmacSampler(SamplingFunctions):
             use the biased version of the likelihood, so no computation of the correction term, default False
         classical_Gibbs: bool (optional)
             sampling only for s_c and the CMB covariance, and neither Bf or eta, default False
+        use_alternative_Bf_sampling: bool (optional)
+            use the alternative Bf sampling, default False
+        suppress_low_modes: bool (optional)
+            make eta band-limited
 
         use_binning: bool (optional)
             use binning for the sampling of inverse Wishart CMB covariance, if False bin_ell_distribution will not be used, default False
@@ -260,6 +275,9 @@ class MicmacSampler(SamplingFunctions):
         self.simultaneous_accept_rate = bool(
             simultaneous_accept_rate
         )  # To use the simultaneous accept rate for the patches of the Bf sampling
+        self.use_alternative_Bf_sampling = bool(use_alternative_Bf_sampling)  # To use the alternative Bf sampling
+        self.lmin_BB = lmin_BB  # Minimum multipole for the BB power spectrum
+        assert self.lmin_BB is None or (self.lmin_BB >= self.lmin and self.lmin_BB <= self.lmax)
         assert ((sample_r_Metropolis and sample_C_inv_Wishart) == False) and (
             (sample_r_Metropolis or not (sample_C_inv_Wishart)) or (not (sample_r_Metropolis) or sample_C_inv_Wishart)
         )
@@ -273,7 +291,13 @@ class MicmacSampler(SamplingFunctions):
         )  # To save intermediary r values in case of non-centered moves in the sampling
         self.limit_r_value = bool(limit_r_value)  # To limit the r value to be positive
         self.min_r_value = float(min_r_value)  # Minimum value for r
+        self.use_alm_sampling_r = bool(use_alm_sampling_r)  # To use the alms sampling for r
+        self.use_alm_sampling_r_wEE = bool(
+            use_alm_sampling_r_wEE
+        )  # To use the alms sampling for r with the EE power spectrum
 
+        self.suppress_low_modes = suppress_low_modes
+        self.use_mask_contribution_eta = bool(use_mask_contribution_eta)  # To use the mask in the contribution of eta
         # Harmonic noise parameter
         self.freq_noise_c_ell = freq_noise_c_ell  # Noise power spectra for each frequency, in uK^2, dimensions [frequencies, frequencies, lmax+1-lmin] or [frequencies, frequencies, lmax] (in which case it will be cut to lmax+1-lmin)
 
@@ -360,51 +384,8 @@ class MicmacSampler(SamplingFunctions):
         """
         return self.all_samples_wiener_filter_maps + self.all_samples_fluctuation_maps
 
-    def generate_CMB(self, return_spectra=True):
-        """
-        Returns CMB spectra of scalar modes only and tensor modes only (with r=1)
-        Both CMB spectra are either returned in the usual form [number_correlations,lmax+1],
-        or in the red_cov form if return_spectra == False
-        """
-
-        # Selecting the relevant auto- and cross-correlations from CAMB spectra
-        if self.nstokes == 2:
-            # EE, BB
-            partial_indices_polar = np.array([1, 2])
-        elif self.nstokes == 1:
-            # TT
-            partial_indices_polar = np.array([0])
-        else:
-            # TT, EE, BB, EB
-            partial_indices_polar = np.arange(4)
-
-        # Generating the CMB power spectra
-        all_spectra_r0 = generate_power_spectra_CAMB(self.nside * 2, r=0, typeless_bool=True)
-        all_spectra_r1 = generate_power_spectra_CAMB(self.nside * 2, r=1, typeless_bool=True)
-
-        # Retrieve the scalar mode spectrum
-        camb_cls_r0 = all_spectra_r0['total'][: self.lmax + 1, partial_indices_polar]
-
-        # Retrieve the tensor mode spectrum
-        tensor_spectra_r1 = all_spectra_r1['tensor'][: self.lmax + 1, partial_indices_polar]
-
-        theoretical_r1_tensor = np.zeros((self.n_correlations, self.lmax + 1))
-        theoretical_r0_total = np.zeros_like(theoretical_r1_tensor)
-
-        theoretical_r1_tensor[: self.nstokes, ...] = tensor_spectra_r1.T
-        theoretical_r0_total[: self.nstokes, ...] = camb_cls_r0.T
-
-        if return_spectra:
-            # Return spectra in the form [number_correlations,lmax+1]
-            return theoretical_r0_total, theoretical_r1_tensor
-
-        # Return spectra in the form of the reduced covariance matrix, [lmax+1-lmin,number_correlations,number_correlations]
-        theoretical_red_cov_r1_tensor = get_reduced_matrix_from_c_ell(theoretical_r1_tensor)[self.lmin :]
-        theoretical_red_cov_r0_total = get_reduced_matrix_from_c_ell(theoretical_r0_total)[self.lmin :]
-        return theoretical_red_cov_r0_total, theoretical_red_cov_r1_tensor
-
     def generate_input_freq_maps_from_fgs(
-        self, freq_maps_fgs, r_true=0, return_only_freq_maps=True, return_only_maps=False
+        self, freq_maps_fgs, r_true=0, lmin_input=None, return_only_freq_maps=True, return_only_maps=False
     ):
         """
         Generate input frequency maps (CMB+foregrounds) from the input frequency foregrounds maps,
@@ -433,17 +414,29 @@ class MicmacSampler(SamplingFunctions):
         theoretical_red_cov_r1_tensor: array[float] of dimensions [lmax+1-lmin,nstokes,nstokes]
             theoretical reduced covariance matrix for the CMB tensor modes
         """
+
+        if lmin_input is None:
+            lmin_input = self.lmin
+
+        print('Setting lmin to ', lmin_input, flush=True)
+
+        # Define the indices to consider
         indices_polar = np.array([1, 2, 4])
 
         # Generate CMB from CAMB
-        theoretical_red_cov_r0_total, theoretical_red_cov_r1_tensor = self.generate_CMB(return_spectra=False)
+        theoretical_r0_total, theoretical_r1_tensor = generate_CMB(
+            nside=self.nside, lmax=self.lmax, nstokes=self.nstokes
+        )
+        # Return spectra in the form of the reduced covariance matrix, [lmax+1,number_correlations,number_correlations]
+        theoretical_red_cov_r1_tensor = get_reduced_matrix_from_c_ell(theoretical_r1_tensor)[lmin_input:]
+        theoretical_red_cov_r0_total = get_reduced_matrix_from_c_ell(theoretical_r0_total)[lmin_input:]
 
         # Retrieve fiducial CMB power spectra
         true_cmb_specra = get_c_ells_from_red_covariance_matrix(
             theoretical_red_cov_r0_total + r_true * theoretical_red_cov_r1_tensor
         )
         true_cmb_specra_extended = np.zeros((6, self.lmax + 1))
-        true_cmb_specra_extended[indices_polar, self.lmin :] = true_cmb_specra
+        true_cmb_specra_extended[indices_polar, lmin_input:] = true_cmb_specra
 
         # Generate input frequency maps
         input_cmb_maps_alt = hp.synfast(true_cmb_specra_extended, nside=self.nside, new=True, lmax=self.lmax)[1:, ...]
@@ -722,9 +715,12 @@ class MicmacSampler(SamplingFunctions):
         ## Testing the initial spectra given in case the sampling is done with r
         if self.sample_r_Metropolis:
             assert len(theoretical_r0_total.shape) == 2
-            assert theoretical_r0_total.shape[1] == self.lmax + 1 - self.lmin
-            assert len(theoretical_r1_tensor.shape) == 2
-            assert theoretical_r1_tensor.shape[1] == theoretical_r0_total.shape[1]
+            assert (
+                theoretical_r0_total.shape[1] == self.lmax + 1 - self.lmin
+            )  # thoertical_r0_total must cover multipoles [lmin,lmax]
+            assert (
+                theoretical_r1_tensor.shape == theoretical_r0_total.shape
+            )  # theoretical_r1_tensor must cover the same multipoles as theoretical_r0_total [lmin,lmax]
 
             # Transforming into the reduced (red) format [lmax+1-lmin,nstokes,nstokes]
             theoretical_red_cov_r0_total = get_reduced_matrix_from_c_ell(theoretical_r0_total)
@@ -733,33 +729,43 @@ class MicmacSampler(SamplingFunctions):
 
         ## Testing the initial CMB spectra and C_approx spectra given
         if self.nstokes == 2 and (CMB_c_ell.shape[0] != len(indices_to_consider)):
-            CMB_c_ell = CMB_c_ell[indices_to_consider, :]
+            CMB_c_ell = CMB_c_ell[
+                indices_to_consider, :
+            ]  # Selecting only the relevant auto- and cross-correlations for polarization
         if self.nstokes == 2 and (c_ell_approx.shape[0] != len(indices_to_consider)):
-            c_ell_approx = c_ell_approx[indices_to_consider, :]
+            c_ell_approx = c_ell_approx[
+                indices_to_consider, :
+            ]  # Selecting only the relevant auto- and cross-correlations for polarization
 
         assert len(CMB_c_ell.shape) == 2
         assert CMB_c_ell.shape[1] == self.lmax + 1
-        assert len(c_ell_approx.shape) == 2
-        assert c_ell_approx.shape[1] == self.lmax + 1
+        assert c_ell_approx.shape == CMB_c_ell.shape
         red_cov_approx_matrix = jnp.array(get_reduced_matrix_from_c_ell(c_ell_approx)[self.lmin :, ...])
         assert (
             jnp.linalg.det(red_cov_approx_matrix) != 0
-        ).any(), 'The approximate covariance matrix should be invertible ; if you and to put it to zero, please put it instead to a very small value'
+        ).any(), 'The approximate covariance matrix should be invertible ; if you want to put it to zero, please put it instead to a very small value'
 
         ## Testing the initial mixing matrix
         if self.n_components != 1:
-            assert init_params_mixing_matrix.shape == (self.len_params,)
+            assert init_params_mixing_matrix.shape == (
+                self.len_params,
+            ), 'The initial mixing matrix should have the same length as the number of parameters'
 
         ## Testing the input frequency maps
-        assert len(input_freq_maps.shape) == 3
-        assert input_freq_maps.shape == (self.n_frequencies, self.nstokes, self.n_pix)
+        assert input_freq_maps.shape == (
+            self.n_frequencies,
+            self.nstokes,
+            self.n_pix,
+        ), 'The input frequency maps should have dimensions [n_frequencies,nstokes,n_pix]'
 
         ## Testing the mask
-        assert np.abs(self.mask).sum() != 0
+        assert np.abs(self.mask).sum() != 0, 'The mask must not be entirely zero'
 
         ## Testing the initial guess for r
         assert np.size(initial_guess_r) == 1
-        # assert initial_guess_r >= 0 # Not allowing for first guess negative r values
+        assert (
+            initial_guess_r > self.min_r_value
+        ), f'Not allowing first guess for r {initial_guess_r} to have value lower than min_r_value {self.min_r_value}'
 
         # Preparing for the full Gibbs sampling
         len_pos_special_freqs = len(self.pos_special_freqs)
@@ -801,6 +807,12 @@ class MicmacSampler(SamplingFunctions):
         # r_sampling_MH = bounded_single_Metropolis_Hasting_step
         if self.sample_r_Metropolis:
             log_proba_r = self.get_conditional_proba_C_from_r_wBB
+            if self.use_alm_sampling_r or self.use_alm_sampling_r_wEE:
+                assert self.use_alm_sampling_r_wEE != self.use_alm_sampling_r
+            if self.use_alm_sampling_r:
+                log_proba_r = self.get_conditional_proba_C_walm_from_r_wBB
+            if self.use_alm_sampling_r_wEE:
+                log_proba_r = self.get_conditional_proba_C_walm_from_r
             if self.use_binning:
                 print('Using BB binning for the sampling of r !!!', flush=True)
                 log_proba_r = self.get_binned_conditional_proba_C_from_r_wBB
@@ -813,11 +825,24 @@ class MicmacSampler(SamplingFunctions):
 
         if self.biased_version or self.perturbation_eta_covariance:
             print('Using biased version or perturbation version of mixing matrix sampling !!!', flush=True)
+
+            assert (
+                self.biased_version != self.perturbation_eta_covariance
+            ), 'Cannot use both biased and perturbation version of mixing matrix sampling !!!'
+
             ## Function to sample the mixing matrix free parameters through the difference of the log-proba, to have only one CG done
             jitted_Bf_func_sampling = jax.jit(
-                self.get_conditional_proba_mixing_matrix_v3_JAX, static_argnames=['biased_bool']
+                self.get_conditional_proba_mixing_matrix_v3_JAX,
+                static_argnames=['biased_bool', 'use_mask_contribution_eta'],
             )
             sampling_func = separate_single_MH_step_index_v2b
+
+            if self.use_alternative_Bf_sampling:
+                print('Using alternative version of the Bf sampling !!!', flush=True)
+                jitted_Bf_func_sampling = jax.jit(
+                    self.get_conditional_proba_mixing_matrix_v4_JAX,
+                    static_argnames=['biased_bool'],
+                )
 
             if self.simultaneous_accept_rate:
                 ## More efficient version of the mixing matrix sampling
@@ -923,15 +948,19 @@ class MicmacSampler(SamplingFunctions):
                         initial_step_size_Bf = initial_step_size_Bf.at[extended_array[i] : extended_array[i + 1]].set(
                             previous_initial_Bf[i]
                         )
-                    initial_step_size_Bf = initial_step_size_Bf.at[extended_array[-1]].set(previous_initial_Bf[-1])
+                    initial_step_size_Bf = initial_step_size_Bf.at[extended_array[-1] :].set(previous_initial_Bf[-1])
 
                 print('New step-size Bf', initial_step_size_Bf, flush=True)
 
         ## Few prints to re-check the toml parameters chosen
         if self.classical_Gibbs:
-            print('Not sampling for eta and Bf, only for s_c and the CMB covariance !', flush=True)
+            print('Not sampling for eta and Bf, only for s_c and the CMB covariance!', flush=True)
         if self.sample_r_Metropolis:
-            print('Sample for r instead of C !', flush=True)
+            print('Sample for r instead of C!', flush=True)
+            if self.use_alm_sampling_r:
+                print('Sample for r with alms!', flush=True)
+            if self.use_alm_sampling_r_wEE:
+                print('Sample for r with alms and EE!', flush=True)
             if self.limit_r_value:
                 print(f'Limiting the r value to be superior to {self.min_r_value} !', flush=True)
         if self.non_centered_moves:
@@ -959,7 +988,7 @@ class MicmacSampler(SamplingFunctions):
                 self.freq_noise_c_ell = self.freq_noise_c_ell[..., self.lmin :]
             self.freq_noise_c_ell = jnp.array(self.freq_noise_c_ell)
 
-            print('Full sky case !', flush=True)
+            print('Full sky case, use_precond !', flush=True)
             use_precond = True
 
         ## Finally starting the Gibbs sampling !!!
@@ -967,6 +996,20 @@ class MicmacSampler(SamplingFunctions):
             f'Starting {self.number_iterations_sampling} iterations in addition to {self.number_iterations_done} iterations done',
             flush=True,
         )
+
+        def wrapper_map2alm(maps_, lmax=self.lmax, n_iter=self.n_iter, nside=self.nside):
+            maps_np = jax.tree.map(np.asarray, maps_).reshape((3, 12 * nside**2))
+            alm_T, alm_E, alm_B = hp.map2alm(maps_np, lmax=lmax, iter=n_iter)
+            return np.array([alm_T, alm_E, alm_B])
+
+        ## Preparing JAX pure call back for the Healpy map2alm function
+        @partial(jax.jit, static_argnums=(1))
+        def pure_call_map2alm(maps_, lmax):
+            shape_output = (
+                3,
+                (lmax + 1) * (lmax // 2 + 1),
+            )  ## Shape of the output alms : [3 for all Stokes params, (lmax+1)*(lmax+2)//2 for all alms in the Healpy convention]
+            return jax.pure_callback(wrapper_map2alm, jax.ShapeDtypeStruct(shape_output, np.complex128), maps_.ravel())
 
         @scan_tqdm(
             actual_number_of_iterations,
@@ -1036,7 +1079,7 @@ class MicmacSampler(SamplingFunctions):
                     subPRNGKey,
                     map_random_x=map_random_x,
                     map_random_y=map_random_y,
-                    suppress_low_modes=True,
+                    suppress_low_modes=self.suppress_low_modes,
                 )
 
                 # Checking shape of the resulting maps
@@ -1072,7 +1115,7 @@ class MicmacSampler(SamplingFunctions):
                 if self.perturbation_eta_covariance:
                     # Computing the inverse associated log proba term fixed correction covariance for the Bf sampling, in case of the perturbative approach
                     _, inverse_term = func_logproba_eta(
-                        invBtinvNB[0, 0],
+                        invBtinvNB[0, 0, ...],
                         new_carry['eta_maps'],
                         red_cov_approx_matrix_sqrt,
                         first_guess=carry['inverse_term'],
@@ -1210,16 +1253,45 @@ class MicmacSampler(SamplingFunctions):
                     all_samples['empirical_variance_r'] = step_size_r**2
                     all_samples['mean_r'] = carry['mean_r']
 
-                new_carry['r_sample'] = r_sampling_MH(
-                    random_PRNGKey=new_subPRNGKey_2,
-                    old_sample=carry['r_sample'],
-                    step_size=step_size_r,
-                    log_proba=log_proba_r,
-                    red_sigma_ell=red_c_ells_Wishart_modified,
-                    theoretical_red_cov_r1_tensor=theoretical_red_cov_r1_tensor,
-                    theoretical_red_cov_r0_total=theoretical_red_cov_r0_total,
-                )
-                #   min_value=self.min_r_to_sample)
+                dictionary_arguments_sampling_r = {
+                    'random_PRNGKey': new_subPRNGKey_2,
+                    'old_sample': carry['r_sample'],
+                    'step_size': step_size_r,
+                    'log_proba': log_proba_r,
+                    'theoretical_red_cov_r1_tensor': jnp.copy(theoretical_red_cov_r1_tensor),
+                    'theoretical_red_cov_r0_total': jnp.copy(theoretical_red_cov_r0_total),
+                }
+
+                if self.use_alm_sampling_r:
+                    s_c_sample_extended = jnp.vstack((jnp.zeros_like(s_c_sample[0]), s_c_sample))
+
+                    # alm_s_c = jnp.expand_dims(pure_call_map2alm(s_c_sample_extended, lmax=self.lmax)[2, ...], axis=0)
+                    alm_s_c = pure_call_map2alm(s_c_sample_extended, lmax=self.lmax)[2, ...]
+
+                    dictionary_arguments_sampling_r['alm_s_c'] = alm_s_c
+
+                elif self.use_alm_sampling_r_wEE:
+                    s_c_sample_extended = jnp.vstack((jnp.zeros_like(s_c_sample[0]), s_c_sample))
+
+                    alm_s_c = pure_call_map2alm(s_c_sample_extended, lmax=self.lmax)[1:, ...]
+
+                    dictionary_arguments_sampling_r['alm_s_c'] = alm_s_c
+                else:
+                    dictionary_arguments_sampling_r['lmin_BB'] = self.lmin_BB
+                    dictionary_arguments_sampling_r['red_sigma_ell'] = red_c_ells_Wishart_modified
+
+                    if self.lmin_BB is not None:
+                        dictionary_arguments_sampling_r[
+                            'theoretical_red_cov_r1_tensor'
+                        ] = theoretical_red_cov_r1_tensor[self.lmin_BB - self.lmin :, ...]
+                        dictionary_arguments_sampling_r['theoretical_red_cov_r0_total'] = theoretical_red_cov_r0_total[
+                            self.lmin_BB - self.lmin :, ...
+                        ]
+                        dictionary_arguments_sampling_r['red_sigma_ell'] = red_c_ells_Wishart_modified.at[
+                            self.lmin_BB - self.lmin :, ...
+                        ].get()
+
+                new_carry['r_sample'] = r_sampling_MH(**dictionary_arguments_sampling_r)
 
                 if self.limit_r_value:
                     new_carry['r_sample'] = jnp.where(
@@ -1287,9 +1359,12 @@ class MicmacSampler(SamplingFunctions):
             ## Preparation of sampling step 4
 
             ## First preparing the term: d - B_c s_c
+            # full_data_without_CMB = input_freq_maps - jnp.broadcast_to(
+            #     s_c_sample, (self.n_frequencies, self.nstokes, self.n_pix)
+            # )
             full_data_without_CMB = input_freq_maps - jnp.broadcast_to(
                 s_c_sample, (self.n_frequencies, self.nstokes, self.n_pix)
-            )
+            )  # TODO: Not removing CMB from the data at this stage
             chx.assert_shape(full_data_without_CMB, (self.n_frequencies, self.nstokes, self.n_pix))
 
             ## Preparing the new PRNGKey
@@ -1314,13 +1389,26 @@ class MicmacSampler(SamplingFunctions):
                 # Sampling Bf
                 if self.perturbation_eta_covariance or self.biased_version:
                     ## Preparing the parameters to provide for the sampling of Bf
-                    dict_parameters_sampling_Bf = {
-                        'indexes_Bf': self.indexes_free_Bf,
-                        'full_data_without_CMB': full_data_without_CMB,
-                        'red_cov_approx_matrix_sqrt': red_cov_approx_matrix_sqrt,
-                        'old_params_mixing_matrix': carry['params_mixing_matrix_sample'],
-                        'biased_bool': self.biased_version,
-                    }
+
+                    if not (self.use_alternative_Bf_sampling):
+                        dict_parameters_sampling_Bf = {
+                            'indexes_Bf': self.indexes_free_Bf,
+                            'full_data_without_CMB': full_data_without_CMB,
+                            'red_cov_approx_matrix_sqrt': red_cov_approx_matrix_sqrt,
+                            'old_params_mixing_matrix': carry['params_mixing_matrix_sample'],
+                            'biased_bool': self.biased_version,
+                            'use_mask_contribution_eta': self.use_mask_contribution_eta,
+                        }
+                    else:
+                        dict_parameters_sampling_Bf = {
+                            'indexes_Bf': self.indexes_free_Bf,
+                            'input_data': jnp.copy(input_freq_maps),
+                            's_c_sample': s_c_sample,
+                            'red_cov_approx_matrix_sqrt': red_cov_approx_matrix_sqrt,
+                            'old_params_mixing_matrix': carry['params_mixing_matrix_sample'],
+                            'biased_bool': self.biased_version,
+                            'use_mask_contribution_eta': self.use_mask_contribution_eta,
+                        }
                     if self.perturbation_eta_covariance:
                         ## Precomputing the term C_approx^{1/2} A^{-1} eta = C_approx^{1/2} ( Id + C_approx^{1/2} N_{c,old}^{-1} C_approx^{1/2} )^{-1} eta
                         inverse_term_x_Capprox_root = maps_x_red_covariance_cell_JAX(

@@ -55,7 +55,7 @@ def get_noise_covar(depth_p, nside):
     invN: array[float] of dimensions [nfreq, nfreq]
         inverse noise covariance matrix in uK^-2
     """
-    invN = np.linalg.inv(np.diag((depth_p / hp.nside2resol(nside, arcmin=True)) ** 2))
+    invN = np.linalg.pinv(np.diag((depth_p / hp.nside2resol(nside, arcmin=True)) ** 2))
 
     return invN
 
@@ -222,7 +222,7 @@ def get_Cl_noise(depth_p, A, lmax, jax_use=False):
 
     nl = (bl / np.radians(depth_p / 60.0)[:, np.newaxis]) ** 2
     AtNA = np.einsum('fi, fl, fj -> lij', A, nl, A)
-    inv_AtNA = np.linalg.inv(AtNA)
+    inv_AtNA = np.linalg.pinv(AtNA)
     return inv_AtNA.swapaxes(-3, -1)
 
 
@@ -254,7 +254,7 @@ def get_Cl_noise_JAX(depth_p, A, lmax):
 
     nl = (bl / jnp.radians(depth_p / 60.0)[:, jnp.newaxis]) ** 2
     AtNA = jnp.einsum('fi, fl, fj -> lij', A, nl, A)
-    inv_AtNA = jnp.linalg.inv(AtNA)
+    inv_AtNA = jnp.linalg.pinv(AtNA)
     return inv_AtNA.swapaxes(-3, -1)
 
 

@@ -29,6 +29,7 @@ import numpyro.distributions as dist
 from micmac.foregrounds.mixingmatrix import MixingMatrix
 from micmac.noise.noisecovar import get_BtinvN, get_inv_BtinvNB, get_inv_BtinvNB_c_ell
 from micmac.toolbox.tools import (
+    JAX_almxfl,
     alm_dot_product_JAX,
     alms_x_red_covariance_cell_JAX,
     frequency_alms_x_obj_red_covariance_cell_JAX,
@@ -482,7 +483,7 @@ class SamplingFunctions(MixingMatrix):
         """
 
         # Chex test for arguments
-        chx.assert_axis_dimension(red_cov_matrix_sqrt, 0, self.lmax + 1 - self.lmin)
+        chx.assert_shape(red_cov_matrix_sqrt, (self.lmax + 1 - self.lmin, self.nstokes, self.nstokes))
         chx.assert_axis_dimension(invBtinvNB, 2, self.n_pix)
         chx.assert_axis_dimension(BtinvN_sqrt, 1, self.n_frequencies)
         chx.assert_axis_dimension(BtinvN_sqrt, 2, self.n_pix)
@@ -596,20 +597,20 @@ class SamplingFunctions(MixingMatrix):
     ):
         """
         Solve Wiener filter term with CG:
-             (Id + C^{1/2} N_c^{-1} C^{1/2}) C^{-1/2} s_{c,WF} = C^{1/2} N_c^{-1} s_{c,ML}
+            $(Id + C^{1/2} N_c^{-1} C^{1/2}) C^{-1/2} s_{\rm c,WF} = C^{1/2} N_c^{-1} s_{\rm c,ML}$
 
         This ensures:
-            s_{c,WF} = (C^{-1} + N_c^{-1})^{-1} N_c^{-1} s_{c,ML}
-        Note C is assumed to be block diagonal
+            $s_{\rm c,WF} = (C^{-1} + N_c^{-1})^{-1} N_c^{-1} s_{\rm c,ML}$
+        Note $C$ is assumed to be block diagonal
 
         Parameters
         ----------
         s_cML: array[float] of dimensions [nstokes, n_pix]
             Maximum Likelihood solution of component separation from input frequency maps
         red_cov_matrix_sqrt: array[float] of dimension [lmin:lmax, nstokes, nstokes]
-            term C^{1/2}, matrix square root of CMB covariance matrices in harmonic domain
+            term $C^{1/2}$, matrix square root of CMB covariance matrices in harmonic domain
         invBtinvNB: array[float] of dimension [component, component, n_pix]
-            matrix (B^t N^{-1} B)^{-1}
+            matrix $(B^t N^{-1} B)^{-1}$
         initial_guess: array[float] of dimensions [nstokes, n_pix] (optional)
             initial guess for the CG, default jnp.empty(0) (then set to 0)
         precond_func: function (optional)
@@ -629,10 +630,10 @@ class SamplingFunctions(MixingMatrix):
         # Computation of the right side member of the CG: C^{1/2} N_c^{-1} s_c,ML
         ## First, computation of N_c^{-1} taking into account the mask
         N_c_repeat = jnp.broadcast_to(
-            invBtinvNB[0, 0] * jhp.nside2resol(self.nside) ** 2, (self.nstokes, self.n_pix)
+            invBtinvNB[0, 0, ...] * jhp.nside2resol(self.nside) ** 2, (self.nstokes, self.n_pix)
         ).ravel()
         ## Repeat N_c for each Stokes parameter, for speed-up afterwards
-        N_c_inv = jnp.copy(invBtinvNB[0, 0])
+        N_c_inv = jnp.copy(invBtinvNB[0, 0, ...])
         N_c_inv = N_c_inv.at[..., self.mask != 0].set(
             1 / invBtinvNB[0, 0, self.mask != 0] / jhp.nside2resol(self.nside) ** 2
         )
@@ -1181,7 +1182,12 @@ class SamplingFunctions(MixingMatrix):
         )  # -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
 
     def get_conditional_proba_C_from_r_wBB(
-        self, r_param, red_sigma_ell, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total
+        self,
+        r_param,
+        red_sigma_ell,
+        theoretical_red_cov_r1_tensor,
+        theoretical_red_cov_r0_total,
+        lmin_BB=None,
     ):
         """
         Compute log-proba of C parametrized by r_param only from the BB power spectrum.
@@ -1207,20 +1213,23 @@ class SamplingFunctions(MixingMatrix):
             log-proba of C parametrized by r_param
         """
 
-        chx.assert_shape(theoretical_red_cov_r1_tensor, (self.lmax + 1 - self.lmin, self.nstokes, self.nstokes))
+        # chx.assert_shape(theoretical_red_cov_r1_tensor, (self.lmax + 1 - self.lmin, self.nstokes, self.nstokes))
         chx.assert_equal_shape((red_sigma_ell, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total))
 
+        if lmin_BB is None:
+            lmin_BB = self.lmin
+
         # Getting the sigma_ell in the format [lmax,nstokes,nstokes] multiplied by 2 ell+1, to take into account the m
-        red_sigma_ell = jnp.einsum('lij,l->lij', red_sigma_ell, 2 * jnp.arange(self.lmin, self.lmax + 1) + 1)
+        red_sigma_ell_ = jnp.einsum('lij,l->lij', red_sigma_ell, 2 * jnp.arange(lmin_BB, self.lmax + 1) + 1)
 
         # Getting the CMB covariance matrix parametrized by r_param
         BB_cov_matrix_sampled = r_param * theoretical_red_cov_r1_tensor[:, 1, 1] + theoretical_red_cov_r0_total[:, 1, 1]
 
         # Getting determinant of the covariance matrix log det C(r) ; taking into account the factor 2ell+1 for the multiples m
-        sum_dets = ((2 * jnp.arange(self.lmin, self.lmax + 1) + 1) * jnp.log(jnp.abs(BB_cov_matrix_sampled))).sum()
+        sum_dets = ((2 * jnp.arange(lmin_BB, self.lmax + 1) + 1) * jnp.log(jnp.abs(BB_cov_matrix_sampled))).sum()
 
         return (
-            -((red_sigma_ell[:, 1, 1] / BB_cov_matrix_sampled).sum() + sum_dets) / 2
+            -((red_sigma_ell_[:, 1, 1] / BB_cov_matrix_sampled).sum() + sum_dets) / 2
         )  # -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
 
     def get_binned_conditional_proba_C_from_r_wBB(
@@ -1269,6 +1278,112 @@ class SamplingFunctions(MixingMatrix):
         return (
             -((reweighted_sigma_ell / binned_BB_cov_matrix_sampled).sum() + sum_dets) / 2
         )  # -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
+
+    def get_conditional_proba_C_walm_from_r_wBB(
+        self, r_param, alm_s_c, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total
+    ):
+        """
+        Compute log-proba of C parametrized by r_param only from the BB power spectrum.
+        The parametrisation is given by: C(r) = r * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
+
+        The associated log proba is:
+            -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
+
+        Parameters
+        ----------
+        r_param: float
+            parameter of the covariance C to be sampled
+        alm_s_c: array[float]
+            alm of the current CMB map s_c
+        theoretical_red_cov_r1_tensor: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            tensor mode covariance matrices in harmonic domain
+        theoretical_red_cov_r0_total: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            scalar mode covariance matrices in harmonic domain
+
+        Returns
+        -------
+        float
+            log-proba of C parametrized by r_param
+        """
+
+        chx.assert_shape(theoretical_red_cov_r1_tensor, (self.lmax + 1 - self.lmin, self.nstokes, self.nstokes))
+        # chx.assert_axis_dimension(alm_s_c, 0, 1)
+        chx.assert_axis_dimension(alm_s_c, 0, ((self.lmax + 1) * (self.lmax // 2 + 1)))
+        # chx.assert_equal_shape((red_sigma_ell, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total))
+
+        # Getting the sigma_ell in the format [lmax,nstokes,nstokes] multiplied by 2 ell+1, to take into account the m
+        # red_sigma_ell = jnp.einsum('lij,l->lij', red_sigma_ell, 2 * jnp.arange(self.lmin, self.lmax + 1) + 1)
+
+        # Getting the CMB covariance matrix parametrized by r_param
+        BB_cov_matrix_sampled = r_param * theoretical_red_cov_r1_tensor[:, 1, 1] + theoretical_red_cov_r0_total[:, 1, 1]
+
+        c_ell_theoretical = jnp.zeros(self.lmax + 1, dtype=BB_cov_matrix_sampled.dtype)  # .reshape((self.lmax + 1))
+        c_ell_theoretical = c_ell_theoretical.at[self.lmin :].set(1 / BB_cov_matrix_sampled)
+
+        first_term = JAX_almxfl(alm_s_c, c_ell_theoretical, lmax=self.lmax)
+
+        first_term_complete = alm_dot_product_JAX(alm_s_c, first_term, lmax=self.lmax)
+
+        # Getting determinant of the covariance matrix log det C(r) ; taking into account the factor 2ell+1 for the multiples m
+        sum_dets = ((2 * jnp.arange(self.lmin, self.lmax + 1) + 1) * jnp.log(jnp.abs(BB_cov_matrix_sampled))).sum()
+
+        return -(first_term_complete + sum_dets) / 2  # -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
+
+    def get_conditional_proba_C_walm_from_r(
+        self, r_param, alm_s_c, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total
+    ):
+        """
+        Compute log-proba of C parametrized by r_param only from the BB power spectrum.
+        The parametrisation is given by: C(r) = r * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
+
+        The associated log proba is:
+            -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
+
+        Parameters
+        ----------
+        r_param: float
+            parameter of the covariance C to be sampled
+        alm_s_c: array[float]
+            alm of the current CMB map s_c
+        theoretical_red_cov_r1_tensor: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            tensor mode covariance matrices in harmonic domain
+        theoretical_red_cov_r0_total: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            scalar mode covariance matrices in harmonic domain
+
+        Returns
+        -------
+        float
+            log-proba of C parametrized by r_param
+        """
+
+        chx.assert_shape(theoretical_red_cov_r1_tensor, (self.lmax + 1 - self.lmin, self.nstokes, self.nstokes))
+        chx.assert_axis_dimension(alm_s_c, 0, self.nstokes)
+        chx.assert_axis_dimension(alm_s_c, 1, (self.lmax + 1) * (self.lmax // 2 + 1))
+        # chx.assert_equal_shape((red_sigma_ell, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total))
+
+        # Getting the sigma_ell in the format [lmax,nstokes,nstokes] multiplied by 2 ell+1, to take into account the m
+        # red_sigma_ell = jnp.einsum('lij,l->lij', red_sigma_ell, 2 * jnp.arange(self.lmin, self.lmax + 1) + 1)
+
+        # Getting the CMB covariance matrix parametrized by r_param
+        red_theoretical_cov_matrix_sampled = r_param * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
+
+        red_c_ell_theoretical = jnp.zeros(
+            (self.lmax + 1, self.nstokes, self.nstokes), dtype=red_theoretical_cov_matrix_sampled.dtype
+        )  # .reshape((self.lmax + 1))
+        red_c_ell_theoretical = red_c_ell_theoretical.at[self.lmin :, ...].set(
+            jnp.linalg.pinv(red_theoretical_cov_matrix_sampled)
+        )
+
+        first_term = alms_x_red_covariance_cell_JAX(alm_s_c, red_c_ell_theoretical, lmin=0)
+
+        first_term_complete = alm_dot_product_JAX(alm_s_c, first_term, lmax=self.lmax)
+
+        # Getting determinant of the covariance matrix log det C(r) ; taking into account the factor 2ell+1 for the multiples m
+        sum_dets = (
+            (2 * jnp.arange(self.lmin, self.lmax + 1) + 1) * jnp.log(jnp.linalg.det(red_theoretical_cov_matrix_sampled))
+        ).sum()
+
+        return -(first_term_complete + sum_dets) / 2  # -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
 
     def get_log_proba_non_centered_move_C(
         self,
@@ -1382,6 +1497,64 @@ class SamplingFunctions(MixingMatrix):
         )
         return -(-first_term_complete + 0) / 2.0
 
+    def get_alternative_conditional_proba_spectral_likelihood_JAX(
+        self, complete_mixing_matrix, full_input_data, s_c_sample
+    ):
+        """
+        Get conditional probability of spectral likelihood from the full mixing matrix
+
+        The associated conditional probability is given by:
+        - d^t N^{-1} B (B^t N^{-1} B)^{-1} B^t N^{-1} d + (s_c - s_c,ML)^t N_c^-1 (s_c - s_c,ML)
+
+        with d = full_data_without_CMB, B_c = complete_mixing_matrix, B_f = complete_mixing_matrix[:,1:,:]
+        d is assumed to be band-limited
+
+        Parameters
+        ----------
+        complete_mixing_matrix: array[float] of dimensions [component, frequencies]
+            complete mixing matrix
+        full_input_data: array[float] of dimensions [frequencies, n_pix]
+            input data
+
+        Returns
+        -------
+        array[float] of dimensions [n_pix]
+            computation of spectral likelihood
+        """
+
+        # Building the spectral_likelihood: - d^t N^{-1} B (B^t N^{-1} B)^{-1} B^t N^{-1} d
+
+        chx.assert_shape(complete_mixing_matrix, (self.n_frequencies, self.n_components, self.n_pix))
+        chx.assert_shape(full_input_data, (self.n_frequencies, self.nstokes, self.n_pix))
+        chx.assert_shape(self.freq_inverse_noise, (self.n_frequencies, self.n_frequencies, self.n_pix))
+        chx.assert_shape(s_c_sample, (self.nstokes, self.n_pix))
+
+        # Computing (B^t N^{-1} B)^{-1}
+        invBtinvNB = get_inv_BtinvNB(self.freq_inverse_noise, complete_mixing_matrix, jax_use=True)
+
+        # Computing B^t N^{-1}
+        BtinvN = get_BtinvN(self.freq_inverse_noise, complete_mixing_matrix, jax_use=True)
+
+        # Computing B^t N^{-1} d
+        full_data_noise_weighted = jnp.einsum('cfp,fsp->csp', BtinvN, full_input_data)
+        chx.assert_shape(full_data_noise_weighted, (self.n_components, self.nstokes, self.n_pix))
+
+        ## Computation of the spectral likelihood: - d^t N^{-1} B (B^t N^{-1} B)^{-1} B^t N^{-1} d
+        first_term_complete = jnp.einsum('csp,cmp,msp', full_data_noise_weighted, invBtinvNB, full_data_noise_weighted)
+
+        # Computing (s_c - s_c,ML)^t N_c^-1 (s_c - s_c,ML)
+        s_c_ML = jnp.einsum('ckp,kfp,fsp->csp', invBtinvNB, BtinvN, full_input_data)[0, ...]
+
+        N_c_inv = jnp.zeros_like(invBtinvNB[0, 0])
+        N_c_inv = N_c_inv.at[..., self.mask != 0].set(
+            1 / invBtinvNB[0, 0, self.mask != 0]
+        )  # / jhp.nside2resol(self.nside) ** 2)
+        # TODO: Rechck for the factor jhp.nside2resol(self.nside) ** 2
+
+        second_term_complete = jnp.einsum('sp,p,sp', s_c_sample - s_c_ML, N_c_inv, s_c_sample - s_c_ML)
+
+        return -(-first_term_complete + second_term_complete) / 2.0
+
     def get_conditional_proba_spectral_likelihood_JAX_pixel(self, complete_mixing_matrix, full_data_without_CMB):
         """
         Get conditional probability of spectral likelihood from the full mixing matrix
@@ -1441,10 +1614,10 @@ class SamplingFunctions(MixingMatrix):
         """
         Get conditional probability of correction term in the likelihood from the full mixing matrix
 
-        Noting C_approx = \tilde{C}, the associated conditional probability is given by:
-            - (eta ^t ( Id + C_approx^{1/2} N_c^{-1} C_approx^{1/2} )^{-1} eta
+        Noting $C_{\rm approx} = \tilde{C}$, the associated conditional probability is given by:
+            $- (\\eta ^t ( Id + C_{\rm approx}^{1/2} N_c^{-1} C_{\rm approx}^{1/2} )^{-1} \\eta$
         Or, with the developped version:
-            - (eta^t ( Id + C_approx^{1/2} (E^t (B^t N^{-1} B)^{-1} E)^{-1} C_approx^{1/2}) \\eta
+            $- (\\eta^t ( Id + C_{\rm approx}^{1/2} (E^t (B^t N^{-1} B)^{-1} E)^{-1} C_{\rm approx}^{1/2}) \\eta$
 
         Parameters
         ----------
@@ -1466,6 +1639,13 @@ class SamplingFunctions(MixingMatrix):
         computation of log-proba correction term to the likelihood
         """
 
+        # Few assert tests
+        chx.assert_shape(component_eta_maps, (self.nstokes, self.n_pix))
+        chx.assert_shape(noise_CMB_component_, (self.n_pix,))
+        chx.assert_shape(red_cov_approx_matrix_sqrt, (self.lmax + 1 - self.lmin, self.nstokes, self.nstokes))
+        if first_guess is not None:
+            chx.assert_shape(first_guess, (self.nstokes, self.n_pix))
+
         # Building the correction term to the likelihood: - (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} \eta
 
         ## Preparing the mixing matrix and C_approx^{-1/2}
@@ -1478,6 +1658,7 @@ class SamplingFunctions(MixingMatrix):
             N_c, (self.nstokes, self.n_pix)
         ).ravel()  ## Repeat N_c for each Stokes parameter, for speed-up afterwards
 
+        # Building N_c^{-1} and padding 0 outside the obserevd area
         N_c_inv = jnp.zeros_like(N_c)
         N_c_inv = N_c_inv.at[..., self.mask != 0].set(1 / N_c[self.mask != 0])
         N_c_inv_repeat = jnp.broadcast_to(
@@ -1546,6 +1727,7 @@ class SamplingFunctions(MixingMatrix):
         component_eta_maps,
         red_cov_approx_matrix_sqrt,
         inverse_term_x_Capprox_root=None,
+        use_mask_contribution_eta=False,
     ):
         """Get conditional probability of correction term in the likelihood from the full mixing matrix,
         assuming the difference between the old and new mixing matrix is small
@@ -1641,15 +1823,22 @@ class SamplingFunctions(MixingMatrix):
                 n_iter=self.n_iter,
             ).ravel()
 
+        if use_mask_contribution_eta:
+            cut_sky_factor = self.mask
+        else:
+            cut_sky_factor = 1
+
         ## Applying the operator (N_{c,new}^{-1} - N_{c,old}^{-1}) to C_approx^{1/2} A^{-1} eta
         perturbation_term = func_to_apply(inverse_term_x_Capprox_root).reshape(self.nstokes, self.n_pix)
 
         ## Computing contribution of \eta A^{-1} \eta
-        first_order_term = jnp.einsum('sp,sp', component_eta_maps, inverse_term.reshape(self.nstokes, self.n_pix))
+        first_order_term = jnp.einsum(
+            'sp,sp', component_eta_maps * cut_sky_factor, inverse_term.reshape(self.nstokes, self.n_pix)
+        )
 
         ## Computing contribution of \eta A^{-1} C_approx^{1/2} (N_{c,new}^{-1} - N_{c,old}^{-1}) C_approx^{1/2} A^{-1} \eta
         perturbation_term = jnp.einsum(
-            'sp,sp', perturbation_term, inverse_term_x_Capprox_root.reshape(self.nstokes, self.n_pix)
+            'sp,sp', perturbation_term * cut_sky_factor, inverse_term_x_Capprox_root.reshape(self.nstokes, self.n_pix)
         )
 
         ## Assembling everything
@@ -1865,6 +2054,7 @@ class SamplingFunctions(MixingMatrix):
         first_guess=None,
         previous_inverse_x_Capprox_root=None,
         biased_bool=False,
+        use_mask_contribution_eta=False,
     ):
         """Get conditional probability of the conditional probability associated with the Bf parameters
 
@@ -1920,6 +2110,7 @@ class SamplingFunctions(MixingMatrix):
                 component_eta_maps,
                 red_cov_approx_matrix_sqrt,
                 inverse_term_x_Capprox_root=previous_inverse_x_Capprox_root,
+                use_mask_contribution_eta=use_mask_contribution_eta,
             )
 
         return log_proba_spectral_likelihood + log_proba_perturbation_likelihood
@@ -2004,6 +2195,80 @@ class SamplingFunctions(MixingMatrix):
 
         return jax.vmap(project_pixel_to_patches)(jnp.arange(self.max_len_patches_Bf))
 
+    def get_conditional_proba_mixing_matrix_v4_JAX(
+        self,
+        new_params_mixing_matrix,
+        old_params_mixing_matrix,
+        input_data,
+        s_c_sample,
+        red_cov_approx_matrix_sqrt=None,
+        component_eta_maps=None,
+        first_guess=None,
+        previous_inverse_x_Capprox_root=None,
+        biased_bool=False,
+        use_mask_contribution_eta=False,
+    ):
+        """Get conditional probability of the conditional probability associated with the Bf parameters
+
+        Note that the difference between the old and new mixing matrix is assumed to be small
+
+        With notation C_approx instead of \tilde{C}, the associated conditional probability is given by:
+            - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c) + eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta
+
+        Parameters
+        ----------
+        old_params_mixing_matrix: array[float] of dimensions [component, frequencies]
+            old mixing matrix B_{old} to generate N_{c,old}
+        new_params_mixing_matrix: array[float] of dimensions [component, frequencies]
+            new mixing matrix B_{new} to generate N_{c,new}
+        input_data: array[float] of dimensions [frequencies, n_pix]
+            data without from which the CMB (sample) was substracted, of dimension
+        s_c_sample: array[float] of dimensions [stokes, n_pix]
+            sample of the CMB to be substracted from the data
+        red_cov_approx_matrix: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            matrix square root of the covariance of the covariance matrice approx (C_approx) in harmonic domain
+        component_eta_maps: array[float] of dimensions [nstokes, n_pix]
+            set of eta maps
+        first_guess: array[float] of dimensions [component, n_pix] (optional)
+            previous inverse term computed with N_{c,old}, default is None to use maps of 0
+        previous_inverse_x_Capprox_root: array[float] of dimensions [component, n_pix] (optional)
+            C_approx^{1/2} A^{-1} eta, default None to have it recomputed
+        biased_bool: bool (optional)
+            indicate if the log-proba is biased, so computed without the correction, or not
+
+        Returns
+        -------
+        float
+            computation of the conditional probability of the mixing matrix
+        """
+
+        ## Updating parameters of the mixing matrix
+        # self.update_params(new_params_mixing_matrix,jax_use=True)
+        # new_mixing_matrix = self.get_B(jax_use=True)
+        new_mixing_matrix = self.get_B_from_params(new_params_mixing_matrix, jax_use=True)
+
+        # Compute spectral likelihood: (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
+        log_proba_likelihood_without_correction = self.get_alternative_conditional_proba_spectral_likelihood_JAX(
+            new_mixing_matrix, input_data, s_c_sample
+        )
+
+        if biased_bool:
+            # Computation chosen to be without the correction term
+            log_proba_perturbation_likelihood = 0
+        else:
+            # Compute correction term to the likelihood: (eta^t C_approx^{-1/2} ( C_approx^{-1} + N_c^{-1} )^{-1} C_approx^{-1/2} eta)
+            log_proba_perturbation_likelihood = self.get_conditional_proba_correction_likelihood_JAX_v2db(
+                old_params_mixing_matrix,
+                new_params_mixing_matrix,
+                first_guess,
+                component_eta_maps,
+                red_cov_approx_matrix_sqrt,
+                inverse_term_x_Capprox_root=previous_inverse_x_Capprox_root,
+                use_mask_contribution_eta=use_mask_contribution_eta,
+            )
+
+        return log_proba_likelihood_without_correction + log_proba_perturbation_likelihood
+
     def harmonic_marginal_probability(
         self,
         sample_Bf_r,
@@ -2033,7 +2298,7 @@ class SamplingFunctions(MixingMatrix):
         ----------
         sample_Bf_r: array[float] of dimensions [nfreq-len(pos_special_frequencies)*(ncomp-1) + 1]
             sample of the mixing matrix and r parameter
-        noise_weighted_alm_data: array[float] of dimensions [nfreq, nstokes]
+        noise_weighted_alm_data: array[float] of dimensions [nfreq, nstokes, dim_alm]
             noise weighted alms of the data, do N^{-1} d, given in harmonic domain
         theoretical_red_cov_r1_tensor: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
             tensor mode covariance matrices in harmonic domain
@@ -2052,7 +2317,7 @@ class SamplingFunctions(MixingMatrix):
         chx.assert_axis_dimension(sample_Bf_r, 0, 2 * (self.n_frequencies - jnp.size(self.pos_special_freqs)) + 1)
         chx.assert_axis_dimension(red_cov_approx_matrix, 0, self.lmax + 1 - self.lmin)
         chx.assert_axis_dimension(theoretical_red_cov_r1_tensor, 0, self.lmax + 1 - self.lmin)
-        chx.assert_equal_shape(theoretical_red_cov_r0_total, theoretical_red_cov_r1_tensor)
+        chx.assert_equal_shape((theoretical_red_cov_r0_total, theoretical_red_cov_r1_tensor))
         chx.assert_axis_dimension(noise_weighted_alm_data, 0, self.n_frequencies)
         chx.assert_axis_dimension(noise_weighted_alm_data, 1, self.nstokes)
 

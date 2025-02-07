@@ -37,7 +37,7 @@ from micmac.toolbox.tools import (
     get_reduced_matrix_from_c_ell,
     get_reduced_matrix_from_c_ell_jax,
 )
-from micmac.toolbox.utils import generate_power_spectra_CAMB
+from micmac.toolbox.utils import generate_CMB  # , generate_power_spectra_CAMB
 
 __all__ = [
     'HarmonicMicmacSampler',
@@ -206,51 +206,51 @@ class HarmonicMicmacSampler(SamplingFunctions):
         self.all_params_mixing_matrix_samples = jnp.empty(0)
         self.all_samples_r = jnp.empty(0)
 
-    def generate_CMB(self, return_spectra=True):
-        """
-        Returns CMB spectra of scalar modes only and tensor modes only (with r=1)
-        Both CMB spectra are either returned in the usual form [number_correlations,lmax+1],
-        or in the red_cov form if return_spectra == False
-        """
+    # def generate_CMB(self, return_spectra=True):
+    #     """
+    #     Returns CMB spectra of scalar modes only and tensor modes only (with r=1)
+    #     Both CMB spectra are either returned in the usual form [number_correlations,lmax+1],
+    #     or in the red_cov form if return_spectra == False
+    #     """
 
-        # Selecting the relevant auto- and cross-correlations from CAMB spectra
-        if self.nstokes == 2:
-            # EE, BB
-            partial_indices_polar = np.array([1, 2])
-        elif self.nstokes == 1:
-            # TT
-            partial_indices_polar = np.array([0])
-        else:
-            # TT, EE, BB, EB
-            partial_indices_polar = np.arange(4)
+    #     # Selecting the relevant auto- and cross-correlations from CAMB spectra
+    #     if self.nstokes == 2:
+    #         # EE, BB
+    #         partial_indices_polar = np.array([1, 2])
+    #     elif self.nstokes == 1:
+    #         # TT
+    #         partial_indices_polar = np.array([0])
+    #     else:
+    #         # TT, EE, BB, EB
+    #         partial_indices_polar = np.arange(4)
 
-        # Generating the CMB power spectra
-        all_spectra_r0 = generate_power_spectra_CAMB(self.nside * 2, r=0, typeless_bool=True)
-        all_spectra_r1 = generate_power_spectra_CAMB(self.nside * 2, r=1, typeless_bool=True)
+    #     # Generating the CMB power spectra
+    #     all_spectra_r0 = generate_power_spectra_CAMB(self.nside * 2, r=0, typeless_bool=True)
+    #     all_spectra_r1 = generate_power_spectra_CAMB(self.nside * 2, r=1, typeless_bool=True)
 
-        # Retrieve the scalar mode spectrum
-        camb_cls_r0 = all_spectra_r0['total'][: self.lmax + 1, partial_indices_polar]
+    #     # Retrieve the scalar mode spectrum
+    #     camb_cls_r0 = all_spectra_r0['total'][: self.lmax + 1, partial_indices_polar]
 
-        # Retrieve the tensor mode spectrum
-        tensor_spectra_r1 = all_spectra_r1['tensor'][: self.lmax + 1, partial_indices_polar]
+    #     # Retrieve the tensor mode spectrum
+    #     tensor_spectra_r1 = all_spectra_r1['tensor'][: self.lmax + 1, partial_indices_polar]
 
-        theoretical_r1_tensor = np.zeros((self.n_correlations, self.lmax + 1))
-        theoretical_r0_total = np.zeros_like(theoretical_r1_tensor)
+    #     theoretical_r1_tensor = np.zeros((self.n_correlations, self.lmax + 1))
+    #     theoretical_r0_total = np.zeros_like(theoretical_r1_tensor)
 
-        theoretical_r1_tensor[: self.nstokes, ...] = tensor_spectra_r1.T
-        theoretical_r0_total[: self.nstokes, ...] = camb_cls_r0.T
+    #     theoretical_r1_tensor[: self.nstokes, ...] = tensor_spectra_r1.T
+    #     theoretical_r0_total[: self.nstokes, ...] = camb_cls_r0.T
 
-        if return_spectra:
-            # Return spectra in the form [number_correlations,lmax+1]
-            return theoretical_r0_total, theoretical_r1_tensor
+    #     if return_spectra:
+    #         # Return spectra in the form [number_correlations,lmax+1]
+    #         return theoretical_r0_total, theoretical_r1_tensor
 
-        # Return spectra in the form of the reduced covariance matrix, [lmax+1-lmin,number_correlations,number_correlations]
-        theoretical_red_cov_r1_tensor = get_reduced_matrix_from_c_ell(theoretical_r1_tensor)[self.lmin :]
-        theoretical_red_cov_r0_total = get_reduced_matrix_from_c_ell(theoretical_r0_total)[self.lmin :]
-        return theoretical_red_cov_r0_total, theoretical_red_cov_r1_tensor
+    #     # Return spectra in the form of the reduced covariance matrix, [lmax+1-lmin,number_correlations,number_correlations]
+    #     theoretical_red_cov_r1_tensor = get_reduced_matrix_from_c_ell(theoretical_r1_tensor)[self.lmin :]
+    #     theoretical_red_cov_r0_total = get_reduced_matrix_from_c_ell(theoretical_r0_total)[self.lmin :]
+    #     return theoretical_red_cov_r0_total, theoretical_red_cov_r1_tensor
 
     def generate_input_freq_maps_from_fgs(
-        self, freq_maps_fgs, r_true=0, return_only_freq_maps=True, return_only_maps=False
+        self, freq_maps_fgs, r_true=0, lmin_input=None, return_only_freq_maps=True, return_only_maps=False
     ):
         """
         Generate input frequency maps (CMB+foregrounds) from the input frequency foregrounds maps,
@@ -277,17 +277,27 @@ class HarmonicMicmacSampler(SamplingFunctions):
         theoretical_red_cov_r1_tensor: array[float] of dimensions [lmax+1-lmin,nstokes,nstokes]
             theoretical reduced covariance matrix for the CMB tensor modes
         """
+
+        if lmin_input is None:
+            lmin_input = self.lmin
+
+        # Define the indices to consider
         indices_polar = np.array([1, 2, 4])
 
         # Generate CMB from CAMB
-        theoretical_red_cov_r0_total, theoretical_red_cov_r1_tensor = self.generate_CMB(return_spectra=False)
+        # theoretical_red_cov_r0_total, theoretical_red_cov_r1_tensor = self.generate_CMB(return_spectra=False)
+        theoretical_r0_total, theoretical_r1_tensor = generate_CMB(
+            nside=self.nside, lmax=self.lmax, nstokes=self.nstokes
+        )
+        theoretical_red_cov_r1_tensor = get_reduced_matrix_from_c_ell(theoretical_r1_tensor)[lmin_input:]
+        theoretical_red_cov_r0_total = get_reduced_matrix_from_c_ell(theoretical_r0_total)[lmin_input:]
 
         # Retrieve fiducial CMB power spectra
         true_cmb_specra = get_c_ells_from_red_covariance_matrix(
             theoretical_red_cov_r0_total + r_true * theoretical_red_cov_r1_tensor
         )
         true_cmb_specra_extended = np.zeros((6, self.lmax + 1))
-        true_cmb_specra_extended[indices_polar, self.lmin :] = true_cmb_specra
+        true_cmb_specra_extended[indices_polar, lmin_input:] = true_cmb_specra
 
         # Generate input frequency maps
         input_cmb_maps_alt = hp.synfast(true_cmb_specra_extended, nside=self.nside, new=True, lmax=self.lmax)[1:, ...]
@@ -388,166 +398,6 @@ class HarmonicMicmacSampler(SamplingFunctions):
             return all_alms[3 - self.nstokes :, ...]  ## Removing the empty temperature alms
 
         return jax.vmap(get_freq_alm)(jnp.arange(self.n_frequencies))  ## Getting alms for all frequencies
-
-    # def get_masked_alm_from_frequency_maps(self, input_freq_maps):
-    #     """
-    #     For simulation pruposes, get masked alms from input full sky frequency maps using JAX,
-    #     to avoid E->B leakage issues
-
-    #     Parameters
-    #     ----------
-    #     input_freq_maps : array[float] of dimensions [n_frequencies,nstokes,n_pix]
-    #         input frequency maps
-
-    #     Returns
-    #     -------
-    #     freq_alms_input_maps : array[float] of dimensions [n_frequencies,nstokes,(lmax+1)*(lmax+2)//2]
-    #         alms from the input frequency maps
-    #         the (lmax+1)*(lmax+2)//2 dimension is the flattened number of lm coefficients stored according to the Healpy convention
-
-    #     Notes
-    #     -------
-    #     The final alms will see their low multipoles below self.lmin set to zero to avoid mask coupling scales to low multipoles
-    #     """
-
-    #     assert input_freq_maps.shape == (self.n_frequencies, self.nstokes, self.n_pix)
-
-    #     # Wrapper for alm2map, to prepare the pure callback of JAX
-    #     def wrapper_alm2map(alm_, lmax=self.lmax, nside=self.nside):
-    #         alm_np = jax.tree.map(np.asarray, alm_)
-    #         return hp.alm2map(alm_np, nside, lmax=lmax)
-
-    #     ## Preparing JAX pure call back for the Healpy map2alm function
-    #     @partial(jax.jit, static_argnums=(1, 2))
-    #     def pure_call_alm2map(alm_, lmax, nside):
-    #         shape_output = (3, 12 * nside**2)
-    #         return jax.pure_callback(wrapper_alm2map, jax.ShapeDtypeStruct(shape_output, np.float64), alm_)
-
-    #     def get_freq_alm(num_frequency, JAX_input_freq_alms):
-    #         input_alm_extended = jnp.vstack(
-    #             (jnp.zeros_like(JAX_input_freq_alms[num_frequency, 0]), JAX_input_freq_alms[num_frequency, ...])
-    #         )  ## Adding empty temperature map
-
-    #         all_maps = jnp.array(
-    #             pure_call_alm2map(input_alm_extended, lmax=self.lmax, nside=self.nside)
-    #         )  ## Getting alms for all stokes parameters
-
-    #         return all_maps[3 - self.nstokes :, ...]  ## Removing the empty temperature alms
-
-    #     full_sky_alms = self.get_alm_from_frequency_maps(input_freq_maps)
-
-    #     E_modes_only_alms = jnp.zeros_like(full_sky_alms)
-    #     B_modes_only_alms = jnp.zeros_like(full_sky_alms)
-
-    #     E_modes_only_alms = E_modes_only_alms.at[:, -2, :].set(full_sky_alms[:, -2, :])
-    #     B_modes_only_alms = B_modes_only_alms.at[:, -1, :].set(full_sky_alms[:, -1, :])
-
-    #     freq_map_E_modes = jax.vmap(get_freq_alm, in_axes=(0, None))(
-    #         jnp.arange(self.n_frequencies), E_modes_only_alms
-    #     )  ## Getting alms for all frequencies with E modes only
-    #     freq_map_B_modes = jax.vmap(get_freq_alm, in_axes=(0, None))(
-    #         jnp.arange(self.n_frequencies), B_modes_only_alms
-    #     )  ## Getting alms for all frequencies with B modes only
-
-    #     f_sky = self.mask.sum() / self.mask.size
-
-    #     masked_alm_E_modes = self.get_alm_from_frequency_maps(freq_map_E_modes * self.mask)
-    #     masked_alm_B_modes = self.get_alm_from_frequency_maps(freq_map_B_modes * self.mask)
-
-    #     result_alms = jnp.zeros_like(masked_alm_B_modes)
-    #     result_alms = result_alms.at[:, -2, :].set(masked_alm_E_modes[:, -2, :])
-    #     result_alms = result_alms.at[:, -1, :].set(
-    #         masked_alm_B_modes[:, -1, :]
-    #     )  ## Keeping only the E and B modes separately
-
-    #     return result_alms
-    #     # freq_red_matrix = jnp.einsum(
-    #     #     'fq,l,ij->fqlij',
-    #     #     jnp.eye(self.n_frequencies),
-    #     #     jnp.ones(self.lmax + 1),
-    #     #     jnp.eye(self.nstokes),
-    #     # )
-    #     # freq_red_matrix = freq_red_matrix.at[:, :, : self.lmin, :, :].set(0)  # Avoiding mask leakage to low multipoles
-
-    #     # return frequency_alms_x_obj_red_covariance_cell_JAX(result_alms, freq_red_matrix, 0) #/ jnp.sqrt(f_sky)
-
-    # def get_masked_alm_from_maps(self, input_maps, seed=0):
-    #     """
-    #     For simulation pruposes, get masked alms from input full sky frequency maps using JAX,
-    #     to avoid E->B leakage issues
-
-    #     Parameters
-    #     ----------
-    #     input_maps : array[float] of dimensions [nstokes,n_pix]
-    #         input maps
-
-    #     Returns
-    #     -------
-    #     freq_alms_input_maps : array[float] of dimensions [n_frequencies,nstokes,(lmax+1)*(lmax+2)//2]
-    #         alms from the input frequency maps
-    #         the (lmax+1)*(lmax+2)//2 dimension is the flattened number of lm coefficients stored according to the Healpy convention
-
-    #     Notes
-    #     -------
-    #     The final alms will see their low multipoles below self.lmin set to zero to avoid mask coupling scales to low multipoles
-    #     """
-
-    #     assert input_maps.shape == (self.nstokes, self.n_pix)
-
-    #     extended_maps = np.vstack((np.zeros_like(input_maps[0]), input_maps))
-    #     c_ells = hp.anafast(extended_maps, lmax=self.lmax, iter=self.n_iter)
-
-    #     c_ell_ith_modes = [np.zeros_like(c_ells) for i in range(2)]
-
-    #     alm_list = []
-    #     for i in range(2):
-    #         np.random.seed(seed)
-    #         c_ell_ith_modes[i][i+1] = c_ells[i+1]
-    #         # c_ell_ith_modes[i][4] = c_ells[4]
-
-    #         # Generate input maps
-    #         input_cmb_maps_alt = hp.synfast(c_ell_ith_modes[i], nside=self.nside, new=True, lmax=self.lmax)
-
-    #         alm_list.append(hp.map2alm(input_cmb_maps_alt * self.mask, lmax=self.lmax, iter=self.n_iter)[i+1,...])
-
-    #     return np.array(alm_list)
-
-    # def get_masked_alm_from_c_ells(self, c_ells, seed=0):
-    #     """
-    #     For simulation pruposes, get masked alms from input full sky frequency maps using JAX,
-    #     to avoid E->B leakage issues
-
-    #     Parameters
-    #     ----------
-    #     input_maps : array[float] of dimensions [nstokes,n_pix]
-    #         input maps
-
-    #     Returns
-    #     -------
-    #     freq_alms_input_maps : array[float] of dimensions [n_frequencies,nstokes,(lmax+1)*(lmax+2)//2]
-    #         alms from the input frequency maps
-    #         the (lmax+1)*(lmax+2)//2 dimension is the flattened number of lm coefficients stored according to the Healpy convention
-
-    #     Notes
-    #     -------
-    #     The final alms will see their low multipoles below self.lmin set to zero to avoid mask coupling scales to low multipoles
-    #     """
-
-    #     assert c_ells.shape == (self.n_correlations, self.lmax + 1 - self.lmin)
-
-    #     alm_list = []
-    #     for i in range(2):
-    #         np.random.seed(seed)
-    #         c_ell_extended = np.zeros((6, self.lmax+1))
-    #         c_ell_extended[i+1, self.lmin:] = c_ells[i]
-    #         # c_ell_extended[4, self.lmin:] = c_ells[3]
-
-    #         # Generate input maps
-    #         input_cmb_maps_alt = hp.synfast(c_ell_extended, nside=self.nside, new=True, lmax=self.lmax)
-
-    #         alm_list.append(hp.map2alm(input_cmb_maps_alt * self.mask, lmax=self.lmax, iter=self.n_iter)[i+1,...])
-
-    #     return np.array(alm_list)
 
     def perform_harmonic_minimize(
         self,

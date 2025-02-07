@@ -18,7 +18,7 @@ import os
 
 import numpy as np
 
-__all__ = ['get_instr', 'generate_power_spectra_CAMB', 'loading_params']
+__all__ = ['get_instr', 'generate_power_spectra_CAMB', 'generate_CMB', 'loading_params']
 
 
 def get_instr(freqs, depth_p):
@@ -135,6 +135,45 @@ def generate_power_spectra_CAMB(
     if typeless_bool:
         return powers
     return powers[type_power]
+
+
+def generate_CMB(nside, lmax, nstokes=2):
+    """
+    Returns CMB spectra of scalar modes only and tensor modes only (with r=1)
+    Both CMB spectra are either returned in the usual form [number_correlations,lmax+1]
+    """
+
+    # Selecting the relevant auto- and cross-correlations from CAMB spectra
+    if nstokes == 2:
+        # EE, BB
+        partial_indices_polar = np.array([1, 2])
+    elif nstokes == 1:
+        # TT
+        partial_indices_polar = np.array([0])
+    else:
+        # TT, EE, BB, EB
+        partial_indices_polar = np.arange(4)
+
+    n_correlations = int(np.ceil(nstokes**2 / 2) + np.floor(nstokes / 2))
+
+    # Generating the CMB power spectra
+    all_spectra_r0 = generate_power_spectra_CAMB(nside * 2, r=0, typeless_bool=True)
+    all_spectra_r1 = generate_power_spectra_CAMB(nside * 2, r=1, typeless_bool=True)
+
+    # Retrieve the scalar mode spectrum
+    camb_cls_r0 = all_spectra_r0['total'][: lmax + 1, partial_indices_polar]
+
+    # Retrieve the tensor mode spectrum
+    tensor_spectra_r1 = all_spectra_r1['tensor'][: lmax + 1, partial_indices_polar]
+
+    theoretical_r1_tensor = np.zeros((n_correlations, lmax + 1))
+    theoretical_r0_total = np.zeros_like(theoretical_r1_tensor)
+
+    theoretical_r1_tensor[:nstokes, ...] = tensor_spectra_r1.T
+    theoretical_r0_total[:nstokes, ...] = camb_cls_r0.T
+
+    # Return spectra in the form [number_correlations,lmax+1]
+    return theoretical_r0_total, theoretical_r1_tensor
 
 
 def loading_params(directory_save_file, file_ver, MICMAC_sampler_obj):
