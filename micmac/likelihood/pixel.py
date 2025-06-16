@@ -87,7 +87,8 @@ class MicmacSampler(SamplingFunctions):
         non_centered_moves=False,
         save_intermediary_centered_moves=False,
         limit_r_value=False,
-        min_r_value=0,
+        below_0_min_r_value=False,
+        min_r_value=None,
         use_alm_sampling_r=False,
         use_alm_sampling_r_wEE=False,
         lmin_BB=None,
@@ -290,7 +291,14 @@ class MicmacSampler(SamplingFunctions):
             save_intermediary_centered_moves
         )  # To save intermediary r values in case of non-centered moves in the sampling
         self.limit_r_value = bool(limit_r_value)  # To limit the r value to be positive
-        self.min_r_value = float(min_r_value)  # Minimum value for r
+        self.min_r_value = min_r_value  # Minimum value for r
+        self.below_0_min_r_value = bool(
+            below_0_min_r_value
+        )  # To allow r to be below 0 while keeping C(r) positive definite
+        if limit_r_value:
+            assert (
+                self.min_r_value is not None or self.below_0_min_r_value
+            ), 'If limit_r_value is True, then min_r_value should be given or below_0_min_r_value should be True'
         self.use_alm_sampling_r = bool(use_alm_sampling_r)  # To use the alms sampling for r
         self.use_alm_sampling_r_wEE = bool(
             use_alm_sampling_r_wEE
@@ -763,6 +771,9 @@ class MicmacSampler(SamplingFunctions):
 
         ## Testing the initial guess for r
         assert np.size(initial_guess_r) == 1
+        if self.below_0_min_r_value and self.min_r_value is None:
+            print('Setting min_r_value so that C(r) is positive definite', flush=True)
+            self.min_r_value = -np.min(theoretical_red_cov_r0_total[:, 1, 1] / theoretical_red_cov_r1_tensor[:, 1, 1])
         assert (
             initial_guess_r > self.min_r_value
         ), f'Not allowing first guess for r {initial_guess_r} to have value lower than min_r_value {self.min_r_value}'

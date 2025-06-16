@@ -19,7 +19,22 @@ __all__ = [
 ]
 
 
-def create_MicmacSampler_from_dictionnary(dictionary_parameters, path_file_spv=''):
+def create_root_dictionary(dictionary):
+    """
+    Create a dictionary with all keys at the root of the dictionary
+    instead of having them in sub-dictionaries.
+    """
+
+    root_dict = {}
+    for key, value in dictionary.items():
+        if isinstance(value, dict):
+            root_dict.update(create_root_dictionary(value))
+        else:
+            root_dict[key] = value
+    return root_dict
+
+
+def create_MicmacSampler_from_dictionnary(dictionary_parameters, path_file_spv='', transform_to_root_dict=False):
     """
     Create a MicmacSampler object from:
     * the path of a toml file: params for the sims and for the sampling
@@ -37,6 +52,9 @@ def create_MicmacSampler_from_dictionnary(dictionary_parameters, path_file_spv='
     MICMAC_Sampler_obj: MicmacSampler
         the MicmacSampler object created from the toml file with the spatial variability from the yaml file
     """
+
+    if transform_to_root_dict:
+        dictionary_parameters = create_root_dictionary(dictionary_parameters)
 
     ## Getting the instrument and the noise covariance
     if dictionary_parameters['instrument_name'] != 'customized_instrument':  ## TODO: Improve a bit this part
@@ -85,7 +103,7 @@ def create_MicmacSampler_from_dictionnary(dictionary_parameters, path_file_spv='
     return MicmacSampler(**dictionary_parameters)
 
 
-def create_MicmacSampler_from_toml_file(path_toml_file, path_file_spv=''):
+def create_MicmacSampler_from_toml_file(path_toml_file, path_file_spv='', transform_to_root_dict=False):
     """
     Create a MicmacSampler object from:
     * the path of a toml file: params for the sims and for the sampling
@@ -97,6 +115,8 @@ def create_MicmacSampler_from_toml_file(path_toml_file, path_file_spv=''):
         path to the toml file for the main options of MicmacSampler
     path_file_spv : str
         path to the yaml file for the spatial variability options
+    transform_to_root_dict : bool
+        if True, transform the dictionary from the toml file to a root dictionary (all keys at the root level)
 
     Returns
     -------
@@ -108,10 +128,13 @@ def create_MicmacSampler_from_toml_file(path_toml_file, path_file_spv=''):
         dictionary_parameters = toml.load(f)
     f.close()
 
+    if transform_to_root_dict:
+        dictionary_parameters = create_root_dictionary(dictionary_parameters)
+
     return create_MicmacSampler_from_dictionnary(dictionary_parameters, path_file_spv=path_file_spv)
 
 
-def create_HarmonicMicmacSampler_from_dictionnary(dictionary_parameters, path_file_spv):
+def create_HarmonicMicmacSampler_from_dictionnary(dictionary_parameters, path_file_spv, transform_to_root_dict=False):
     """
     Create a HarmonicMicmacSampler object from the path of a toml file and the yaml file for spatial variability
 
@@ -127,6 +150,9 @@ def create_HarmonicMicmacSampler_from_dictionnary(dictionary_parameters, path_fi
     HarmonicMicmacSampler_obj : HarmonicMicmacSampler
         HarmonicMicmacSampler object
     """
+
+    if transform_to_root_dict:
+        dictionary_parameters = create_root_dictionary(dictionary_parameters)
 
     if dictionary_parameters['instrument_name'] != 'customized_instrument':
         instrument = get_instrument(dictionary_parameters['instrument_name'])
@@ -173,7 +199,7 @@ def create_HarmonicMicmacSampler_from_dictionnary(dictionary_parameters, path_fi
     return HarmonicMicmacSampler(**dictionary_parameters)
 
 
-def create_HarmonicMicmacSampler_from_toml_file(path_toml_file, path_file_spv=''):
+def create_HarmonicMicmacSampler_from_toml_file(path_toml_file, path_file_spv='', transform_to_root_dict=False):
     """
     Create a MicmacSampler object from:
     * the path of a toml file: params for the sims and for the sampling
@@ -185,6 +211,8 @@ def create_HarmonicMicmacSampler_from_toml_file(path_toml_file, path_file_spv=''
         path to the toml file for the main options of MicmacSampler
     path_file_spv : str
         path to the yaml file for the spatial variability options
+    transform_to_root_dict : bool
+        if True, transform the dictionary from the toml file to a root dictionary (all keys at the root level)
 
     Returns
     -------
@@ -195,6 +223,9 @@ def create_HarmonicMicmacSampler_from_toml_file(path_toml_file, path_file_spv=''
     with open(path_toml_file) as f:
         dictionary_parameters = toml.load(f)
     f.close()
+
+    if transform_to_root_dict:
+        dictionary_parameters = create_root_dictionary(dictionary_parameters)
 
     return create_HarmonicMicmacSampler_from_dictionnary(dictionary_parameters, path_file_spv=path_file_spv)
 
