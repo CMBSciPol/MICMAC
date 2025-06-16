@@ -28,6 +28,14 @@ micmac.toolbox.tools module
    :undoc-members:
    :show-inheritance:
 
+micmac.toolbox.beams module
+---------------------------
+
+.. automodule:: micmac.toolbox.beams
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 micmac.toolbox.utils module
 ---------------------------
 

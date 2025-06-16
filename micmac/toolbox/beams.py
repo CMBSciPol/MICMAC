@@ -14,8 +14,17 @@
 # You should have received a copy of the GNU General Public License
 # along with MICMAC. If not, see <https://www.gnu.org/licenses/>.
 
-from micmac.toolbox.beams import *
-from micmac.toolbox.fisher import *
-from micmac.toolbox.statistics import *
-from micmac.toolbox.tools import *
-from micmac.toolbox.utils import *
+import jax.numpy as jnp
+
+__all__ = ['get_beam_harmonic']
+
+
+def get_beam_harmonic(ell_range, sigma_fwhm, spin=2):
+    """
+    Compute the harmonic-space beam response for a given range of multipoles.
+    sigma_fwhm is the full-width at half-maximum of the Gaussian beam in radians.
+    """
+    sigma = sigma_fwhm / jnp.sqrt(8 * jnp.log(2))
+    if jnp.array(sigma).size > 1:
+        return jnp.exp(jnp.einsum('l,f->fl', -0.5 * (ell_range * (ell_range + 1) - spin**2), sigma**2))
+    return jnp.exp(-0.5 * (ell_range * (ell_range + 1) - spin**2) * sigma**2)
