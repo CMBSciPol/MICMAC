@@ -14,8 +14,8 @@
 
 # print("-------------Test get_all_templates", flush=True)
 # print("-1th test", MICMAC_obj.values_b.shape, MICMAC_obj.values_b)
-# print("0th test", MICMAC_obj.size_patches)
-# print("First test", MICMAC_obj.sum_size_patches_indexed_freq_comp)
+# print("0th test", MICMAC_obj.n_patches)
+# print("First test", MICMAC_obj.sum_n_patches_indexed_freq_comp)
 # all_templates = MICMAC_obj.get_all_templates()
 # print("Dims: ", all_templates.shape, flush=True)
 # for j in range(all_templates.shape[1]):

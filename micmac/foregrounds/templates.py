@@ -27,6 +27,9 @@ import yaml
 from anytree import Node, RenderTree
 
 __all__ = [
+    'get_n_patches_b',
+
+
     'read_spv_config',
     'build_tree_from_dict',
     'count_betas_in_tree',
@@ -37,11 +40,36 @@ __all__ = [
     'build_empty_tree_spv',
     'tree_spv_config',
     'get_nodes_b',
-    'get_n_patches_b',
     'get_values_b',
     'create_one_template_from_bdefaultvalue',
     'create_one_template',
 ]
+
+
+#### Updated functions
+
+
+def get_n_patches_b(template):
+    """
+    Returns the number of patches for a given template
+
+    Parameters
+    ----------
+    template: array[int]
+        template map of patch ids (for a given frequency and component)
+    
+    Returns
+    -------
+        number of patches for the given template
+    """
+    
+    return np.unique(template).size
+
+
+
+
+
+
 
 
 #### Lower level functions
@@ -347,43 +375,6 @@ def get_nodes_b(root_tree):
         if node.name.startswith('b'):
             nodes.append(node)
     return nodes
-
-
-def get_n_patches_b(node_b, jax_use=False):
-    """
-    Returns the number of patches for a given node b
-    TODO: generalize to arbitrary patches distribution
-
-    Parameters
-    ----------
-    node_b: anytree.Node
-        node b
-    jax_use: bool
-        whether to use jax or not
-
-    Returns
-    -------
-    n_patches_b: int
-        number of patches for the given node b
-    """
-    # TODO: genralize to pathces w kmeans
-    if jax_use:
-        # node_b expected to be list of default values of nodes n
-        n_patches_b = jnp.where(node_b == 0, 1, 12 * node_b**2)
-        return n_patches_b
-
-    # node_b expected to be list of the nodes b
-    patches_config = node_b.children[0].value
-    if patches_config == [0]:
-        n_patches_b = 1
-    elif len(patches_config) == 1:
-        # multires but not adaptive case
-        n_patches_b = 12 * patches_config[0] ** 2
-    else:
-        # adaptive multires case
-        NotImplementedError('Adaptive multires case not implemented yet')
-    return n_patches_b
-
 
 def get_values_b(nodes_b, n_frequencies, n_components):
     """

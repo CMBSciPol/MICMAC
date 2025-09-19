@@ -858,7 +858,7 @@ class MicmacSampler(SamplingFunctions):
                     static_argnames=['biased_bool'],
                 )
                 sampling_func = separate_single_MH_step_index_v4_pixel
-                if (self.size_patches != self.size_patches[0]).any():
+                if (self.n_patches != self.n_patches[0]).any():
                     sampling_func = separate_single_MH_step_index_v4b_pixel
                     # raise NotImplemented("All patches should have the same size for the simultaneous accept rate version of mixing matrix sampling for now !!!")
 
@@ -883,17 +883,17 @@ class MicmacSampler(SamplingFunctions):
                     """
                     return (
                         carry
-                        | ((index_Bf >= indexes_patches_Bf) & (index_Bf < indexes_patches_Bf + self.size_patches)),
+                        | ((index_Bf >= indexes_patches_Bf) & (index_Bf < indexes_patches_Bf + self.n_patches)),
                         index_Bf,
                     )
 
                 condition, _ = jlax.scan(
-                    which_interval, jnp.zeros_like(self.size_patches, dtype=bool), self.indexes_free_Bf
+                    which_interval, jnp.zeros_like(self.n_patches, dtype=bool), self.indexes_free_Bf
                 )
 
                 first_indices_patches_free_Bf = indexes_patches_Bf[condition]
-                max_len_patches_Bf = int(np.max(self.size_patches[condition]))
-                size_patches = self.size_patches[condition]
+                max_len_patches_Bf = int(np.max(self.n_patches[condition]))
+                n_patches = self.n_patches[condition]
 
         ## Preparing minmum value of r sampling
 
@@ -927,7 +927,7 @@ class MicmacSampler(SamplingFunctions):
                     )
 
                 if (
-                    self.size_patches is not None and (self.size_patches == self.size_patches[0]).all()
+                    self.n_patches is not None and (self.n_patches == self.n_patches[0]).all()
                 ):  # If all patches have the same size
                     initial_step_size_Bf = jnp.broadcast_to(  # Broadcasting the step-size for each patch size
                         initial_step_size_Bf,
@@ -940,10 +940,10 @@ class MicmacSampler(SamplingFunctions):
 
                     extended_array = np.zeros((number_free_Bf + 1), dtype=np.int64)
                     extended_array[0] = 0
-                    extended_array[1:] = self.sum_size_patches_indexed_freq_comp.ravel(order='F') + self.size_patches
+                    extended_array[1:] = self.sum_n_patches_indexed_freq_comp.ravel(order='F') + self.n_patches
 
                     for i in range(
-                        self.size_patches.size
+                        self.n_patches.size
                     ):  # Loop over the patches to update the step-size for each patch size
                         initial_step_size_Bf = initial_step_size_Bf.at[extended_array[i] : extended_array[i + 1]].set(
                             previous_initial_Bf[i]
@@ -1048,8 +1048,6 @@ class MicmacSampler(SamplingFunctions):
             PRNGKey, subPRNGKey = random.split(PRNGKey)
 
             # Extracting the mixing matrix parameters and initializing the new one
-            # self.update_params(carry['params_mixing_matrix_sample'])
-            # mixing_matrix_sampled = self.get_B(jax_use=True)
             mixing_matrix_sampled = self.get_B_from_params(carry['params_mixing_matrix_sample'], jax_use=True)
 
             # Few checks for the mixing matrix
@@ -1426,7 +1424,7 @@ class MicmacSampler(SamplingFunctions):
                         dict_parameters_sampling_Bf['component_eta_maps'] = new_carry['eta_maps']
                     if self.simultaneous_accept_rate:
                         ## Provide as well the indexes of the patches in case of the uncorrelated patches version
-                        dict_parameters_sampling_Bf['size_patches'] = size_patches
+                        dict_parameters_sampling_Bf['n_patches'] = n_patches
                         dict_parameters_sampling_Bf['max_len_patches_Bf'] = max_len_patches_Bf
                         dict_parameters_sampling_Bf['indexes_patches_Bf'] = first_indices_patches_free_Bf
                         dict_parameters_sampling_Bf['len_indexes_Bf'] = self.len_params

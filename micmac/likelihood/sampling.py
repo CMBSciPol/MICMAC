@@ -2121,7 +2121,7 @@ class SamplingFunctions(MixingMatrix):
         old_params_mixing_matrix,
         full_data_without_CMB,
         red_cov_approx_matrix_sqrt,
-        nside_patch,
+        nside_patch,  ## TODO: instead of this, pass freq, comp of the alpha that we want to change
         component_eta_maps=None,
         first_guess=None,
         previous_inverse_x_Capprox_root=None,
@@ -2764,7 +2764,7 @@ def separate_single_MH_step_index_v3(
     log_proba,
     indexes_Bf,
     indexes_patches_Bf,
-    size_patches,
+    n_patches,
     max_len_patches_Bf,
     len_indexes_Bf,
     **model_kwargs,
@@ -2786,7 +2786,7 @@ def separate_single_MH_step_index_v3(
         indexes of the parameters to be sampled
     indexes_patches_Bf: array[int]
         indexes of the first patch of each parameter to be updated
-    size_patches: array[int]
+    n_patches: array[int]
         size of all patches
     max_len_patches_Bf: int
         maximum length of the patches
@@ -2810,7 +2810,7 @@ def separate_single_MH_step_index_v3(
             jnp.isin(index_Bf + jnp.arange(max_len_patches_Bf, dtype=jnp.int32), indexes_Bf), 1, 0
         )
         mask_indexes_to_consider = jnp.where(
-            jnp.arange(max_len_patches_Bf) < size_patches[counter_i], mask_in_indexes_Bf, 0
+            jnp.arange(max_len_patches_Bf) < n_patches[counter_i], mask_in_indexes_Bf, 0
         )
 
         rng_key, key_proposal, key_accept = random.split(carry['PRNGKey'], 3)
@@ -2856,7 +2856,7 @@ def separate_single_MH_step_index_v4_pixel(
     log_proba,
     indexes_Bf,
     indexes_patches_Bf,
-    size_patches,
+    n_patches,
     max_len_patches_Bf,
     len_indexes_Bf,
     **model_kwargs,
@@ -2878,7 +2878,7 @@ def separate_single_MH_step_index_v4_pixel(
         indexes of the parameters to be sampled
     indexes_patches_Bf: array[int]
         indexes of the first patch of each parameter to be updated
-    size_patches: array[int]
+    n_patches: array[int]
         size of all patches
     max_len_patches_Bf: int
         maximum length of the patches
@@ -2902,7 +2902,7 @@ def separate_single_MH_step_index_v4_pixel(
             jnp.isin(index_Bf + jnp.arange(max_len_patches_Bf, dtype=jnp.int32), indexes_Bf), 1, 0
         )
         mask_indexes_to_consider = jnp.where(
-            jnp.arange(max_len_patches_Bf) < size_patches[counter_i], mask_in_indexes_Bf, 0
+            jnp.arange(max_len_patches_Bf) < n_patches[counter_i], mask_in_indexes_Bf, 0
         )
 
         rng_key, key_proposal, key_accept = random.split(carry['PRNGKey'], 3)
@@ -2914,7 +2914,7 @@ def separate_single_MH_step_index_v4_pixel(
         proposal_params = jnp.copy(carry['sample'])
         proposal_params = proposal_params.at[indexes_to_consider].set(sample_proposal)
 
-        nside_b = jnp.where(size_patches[counter_i] == 1, 0, jnp.sqrt(size_patches[counter_i] / 12))
+        nside_b = jnp.where(n_patches[counter_i] == 1, 0, jnp.sqrt(n_patches[counter_i] / 12))
         proposal_log_proba = log_proba(proposal_params, nside_patch=nside_b, **model_kwargs)
 
         accept_prob = -(carry['log_proba'] - proposal_log_proba)
@@ -2927,7 +2927,7 @@ def separate_single_MH_step_index_v4_pixel(
         new_carry = {'PRNGKey': rng_key, 'sample': proposal_params, 'log_proba': new_log_proba}
         return new_carry, new_param
 
-    nside_init = jnp.where(size_patches[0] == 1, 0, jnp.sqrt(size_patches[0] / 12))
+    nside_init = jnp.where(n_patches[0] == 1, 0, jnp.sqrt(n_patches[0] / 12))
     initial_carry = {
         'PRNGKey': random_PRNGKey,
         'sample': old_sample,
@@ -2950,7 +2950,7 @@ def separate_single_MH_step_index_v4b_pixel(
     log_proba,
     indexes_Bf,
     indexes_patches_Bf,
-    size_patches,
+    n_patches,
     max_len_patches_Bf,
     len_indexes_Bf,
     **model_kwargs,
@@ -2974,7 +2974,7 @@ def separate_single_MH_step_index_v4b_pixel(
         indexes of the parameters to be sampled
     indexes_patches_Bf: array[int]
         indexes of the first patch of each parameter to be updated
-    size_patches: array[int]
+    n_patches: array[int]
         size of all patches
     max_len_patches_Bf: int
         maximum length of the patches
@@ -2999,7 +2999,7 @@ def separate_single_MH_step_index_v4b_pixel(
             jnp.isin(index_Bf + jnp.arange(max_len_patches_Bf, dtype=jnp.int32), indexes_Bf), 1, 0
         )
         mask_indexes_to_consider = jnp.where(
-            jnp.arange(max_len_patches_Bf) < size_patches[counter_i], mask_in_indexes_Bf, 0
+            jnp.arange(max_len_patches_Bf) < n_patches[counter_i], mask_in_indexes_Bf, 0
         )
 
         rng_key, key_proposal, key_accept = random.split(carry['PRNGKey'], 3)
@@ -3011,11 +3011,11 @@ def separate_single_MH_step_index_v4b_pixel(
         proposal_params = jnp.copy(carry['sample'])
         proposal_params = proposal_params.at[indexes_to_consider].set(sample_proposal)
 
-        nside_b = jnp.where(size_patches[counter_i] == 1, 0, jnp.sqrt(size_patches[counter_i] / 12))
+        nside_b = jnp.where(n_patches[counter_i] == 1, 0, jnp.sqrt(n_patches[counter_i] / 12))
         proposal_log_proba = log_proba(proposal_params, nside_patch=nside_b, **model_kwargs)
 
         old_log_proba = jlax.cond(
-            carry['size_patch'] == size_patches[counter_i],
+            carry['size_patch'] == n_patches[counter_i],
             lambda x: carry['log_proba'],
             lambda x: log_proba(x, nside_patch=nside_b, **model_kwargs),
             operand=carry['sample'],
@@ -3032,16 +3032,16 @@ def separate_single_MH_step_index_v4b_pixel(
             'PRNGKey': rng_key,
             'sample': proposal_params,
             'log_proba': new_log_proba,
-            'size_patch': size_patches[counter_i],
+            'size_patch': n_patches[counter_i],
         }
         return new_carry, new_param
 
-    nside_init = jnp.where(size_patches[0] == 1, 0, jnp.sqrt(size_patches[0] / 12))
+    nside_init = jnp.where(n_patches[0] == 1, 0, jnp.sqrt(n_patches[0] / 12))
     initial_carry = {
         'PRNGKey': random_PRNGKey,
         'sample': old_sample,
         'log_proba': log_proba(old_sample, nside_patch=nside_init, **model_kwargs),
-        'size_patch': size_patches[0],
+        'size_patch': n_patches[0],
     }
 
     carry, new_params = jlax.scan(map_func, initial_carry, jnp.arange(indexes_patches_Bf.size))
