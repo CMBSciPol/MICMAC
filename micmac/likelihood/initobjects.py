@@ -3,11 +3,15 @@ import numpy as np
 import toml
 
 from micmac.external.fgbuster import get_instrument
-from micmac.foregrounds.templates import get_nodes_b, tree_spv_config
+from micmac.foregrounds.templates import (
+    get_healpix_templates_from_tree,
+    get_nodes_b,
+    tree_spv_config,
+)
 from micmac.likelihood.harmonic import HarmonicMicmacSampler
 from micmac.likelihood.pixel import MicmacSampler
 from micmac.noise.noisecovar import get_noise_covar_extended, get_true_Cl_noise
-from micmac.toolbox.utils import get_instr
+from micmac.toolbox.utils import get_instr, normalize_templates
 
 __all__ = [
     'create_MicmacSampler_from_dictionnary',
@@ -58,8 +62,22 @@ def create_MicmacSampler_from_dictionnary(dictionary_parameters, path_file_spv='
         np.shape(dictionary_parameters['frequency_array'])[0] - len(dictionary_parameters['pos_special_freqs'])
     ) * (n_fgs_comp)
     # Read or create spv config
-    root_tree = tree_spv_config(path_file_spv, n_betas, n_fgs_comp, print_tree=True)
-    dictionary_parameters['spv_nodes_b'] = get_nodes_b(root_tree)
+    if '.npy' in path_file_spv:
+        print('Loading the spv config from a numpy file')
+        templates = normalize_templates(np.load(path_file_spv))
+    else:
+        print('Loading or creating the spv config from a yaml file')
+
+        root_tree = get_nodes_b(
+            tree_spv_config(path_file_spv, n_betas, n_fgs_comp, print_tree=True)
+        )  # Getting the nodes_b from the tree
+        templates = get_healpix_templates_from_tree(
+            root_tree,
+            dictionary_parameters['nside'],
+            len(dictionary_parameters['frequency_array']),
+            dictionary_parameters['n_components'],
+        )
+    dictionary_parameters['templates'] = templates
 
     ## Getting the covariance of Bf from toml file
     if 'step_size_Bf_1' in dictionary_parameters and 'step_size_Bf_2' in dictionary_parameters:
@@ -146,8 +164,22 @@ def create_HarmonicMicmacSampler_from_dictionnary(dictionary_parameters, path_fi
         np.shape(dictionary_parameters['frequency_array'])[0] - len(dictionary_parameters['pos_special_freqs'])
     ) * (n_fgs_comp)
     # Read or create spv config
-    root_tree = tree_spv_config(path_file_spv, n_betas, n_fgs_comp, print_tree=True)
-    dictionary_parameters['spv_nodes_b'] = get_nodes_b(root_tree)
+    if '.npy' in path_file_spv:
+        print('Loading the spv config from a numpy file')
+        templates = normalize_templates(np.load(path_file_spv))
+    else:
+        print('Loading or creating the spv config from a yaml file')
+
+        root_tree = get_nodes_b(
+            tree_spv_config(path_file_spv, n_betas, n_fgs_comp, print_tree=True)
+        )  # Getting the nodes_b from the tree
+        templates = get_healpix_templates_from_tree(
+            root_tree,
+            dictionary_parameters['nside'],
+            len(dictionary_parameters['frequency_array']),
+            dictionary_parameters['n_components'],
+        )
+    dictionary_parameters['templates'] = templates
 
     ## Getting the covariance of Bf from toml file
     if 'step_size_Bf_1' in dictionary_parameters and 'step_size_Bf_2' in dictionary_parameters:

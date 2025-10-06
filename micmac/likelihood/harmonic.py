@@ -59,7 +59,7 @@ class HarmonicMicmacSampler(SamplingFunctions):
         lmin=2,
         n_iter=8,
         mask=None,
-        spv_nodes_b=[],
+        templates=None,
         biased_version=False,
         boundary_Bf=None,
         boundary_r=None,
@@ -101,9 +101,8 @@ class HarmonicMicmacSampler(SamplingFunctions):
             Note: the mask WILL NOT be applied to the input maps, it will be only used for the propagated noise covariance
             WARNING: Masked input are not currently supported, expect E-to-B leakage
 
-        spv_nodes_b: list[dictionaries] (optional)
-            tree for the spatial variability, to generate from a yaml file, default []
-            in principle set up by get_nodes_b
+        templates: array[int]
+            Array maps with patch ids ([freq, comp, pix])
             WARNING: The spatial variability is not currently supported, but will be passed to MicmacSampler obj when using create_Harmonic_MicmacSampler_from_MicmacSampler_obj
 
         biased_version: bool (optional)
@@ -146,7 +145,7 @@ class HarmonicMicmacSampler(SamplingFunctions):
             freq_noise_c_ell=freq_noise_c_ell,
             n_iter=n_iter,
             mask=mask,
-            spv_nodes_b=spv_nodes_b,
+            templates=templates,
         )
 
         # Run settings

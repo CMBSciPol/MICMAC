@@ -16,19 +16,13 @@
 
 import copy
 
-import chex as chx
 import jax
 import jax.numpy as jnp
 import numpy as np
 
-from micmac.foregrounds.templates import (
-    create_one_template,
-    create_one_template_from_bdefaultvalue,
-    get_n_patches_b,
-    get_values_b,
-)
+from micmac.foregrounds.templates import create_one_template, get_n_patches_b
 
-__all__ = ['get_indexes_b', 'get_len_params', 'MixingMatrix']
+__all__ = ['get_indexes_b', 'MixingMatrix']
 
 # Note:
 # the mixing matrix is supposed to be the same for Q and U Stokes params
@@ -62,6 +56,7 @@ def get_indexes_b(n_frequencies, n_components, templates):
 
     return indexes.ravel(order='F').cumsum().reshape((n_frequencies, n_components), order='F')
 
+
 class MixingMatrix:
     def __init__(self, frequency_array, n_components, templates, nside, params=None, pos_special_freqs=[0, -1]):
         """
@@ -73,7 +68,7 @@ class MixingMatrix:
             Array of frequencies
         n_components: int
             Number of components
-        templates: array
+        templates: array[int]
             Array maps with patch ids ([freq, comp, pix])
         nside: int
             Healpix nside of the expected input maps
@@ -82,18 +77,25 @@ class MixingMatrix:
         pos_special_freqs: list (optional)
             List of indexes of special frequencies (e.g. 0 for synchrotron, -1 for dust)
         """
+        self.nside = nside  # nside of the expected input maps
         self.frequency_array = np.array(frequency_array, dtype=int)  # all input freq bands
         self.n_frequencies = np.size(frequency_array)  # all input freq bands
         self.n_components = n_components  # all comps (also cmb)
+        if templates is None:
+            templates = np.zeros((self.n_frequencies, self.n_components, 12 * nside**2), dtype=int)
+            for f in range(self.n_frequencies):
+                for c in range(self.n_components - 1):
+                    templates[f, c] = create_one_template(self.nside) + f * (self.n_components - 1) + c
         self.templates = templates  # templates for all frequencies and components
-        self.nside = nside  # nside of the expected input maps
-        self.len_params = np.unique(self.templates).size  # total number of free parameters (summed for frequency, component, patch)
-        
+        self.len_params = np.unique(
+            self.templates
+        ).size  # total number of free parameters (summed for frequency, component, patch)
+
         if params is None:
             params = np.zeros(self.len_params)
         else:
             assert params.size == self.len_params, f'params must be of dimensions {self.len_params}'
-        
+
         self.params = params
 
         # Indexes frequency array without the special frequencies
@@ -115,8 +117,12 @@ class MixingMatrix:
             self.indexes_b = jnp.array(
                 get_indexes_b(self.n_frequencies - len(self.pos_special_freqs), self.n_components - 1, self.templates)
             )
-            self.n_patches = jnp.unique(self.templates, counts = True, axis = -1)[1].ravel()  ## TODO: check that it does what we want
-            self.sum_n_patches_indexed_freq_comp = (self.n_patches.cumsum() - self.n_patches).reshape(  ## TODO: check if necessary or can we replace with indexes_b
+            self.n_patches = jnp.unique(self.templates, counts=True, axis=-1)[
+                1
+            ].ravel()  ## TODO: check that it does what we want
+            self.sum_n_patches_indexed_freq_comp = (
+                self.n_patches.cumsum() - self.n_patches
+            ).reshape(  ## TODO: check if necessary or can we replace with indexes_b
                 (self.n_frequencies - len(self.pos_special_freqs), self.n_components - 1), order='F'
             )
             self.max_len_patches_Bf = int(self.n_patches.max())
@@ -138,8 +144,6 @@ class MixingMatrix:
         Number of pixels of one input freq map
         """
         return 12 * self.nside**2
-    
-
 
     # def get_params_long(self, jax_use=False):
     #     """
@@ -339,7 +343,9 @@ class MixingMatrix:
         B_mat = np.concatenate((self.get_B_cmb(), self.get_B_fgs_from_params(params)), axis=1)
         return B_mat
 
-    def get_template_B_fgs_from_params(self, freq, component, params, jax_use=False):  ## TODO: take as input freq, component instead of nside patch
+    def get_template_B_fgs_from_params(
+        self, freq, component, params, jax_use=False
+    ):  ## TODO: take as input freq, component instead of nside patch
         """
         Foreground (fgs) part of the mixing matrix and one patch distribution template
         obtained from nside_patch expected lower than nside of the input maps.
@@ -376,28 +382,9 @@ class MixingMatrix:
             # Retrieving freq and comp indices corresponding to idx_template
             # freq_idx_template, comp_idx_template = jnp.argwhere(self.indexes_b==idx_template)
 
-            return B_fgs, self.template[freq, component]
+            return B_fgs, self.templates[freq, component]
 
-        # if ncomp_fgs != 0:
-        #     assert params_long.shape == ((self.n_frequencies - len(self.pos_special_freqs)), ncomp_fgs, self.n_pix)
-        #     assert len(self.pos_special_freqs) <= ncomp_fgs
-
-        # params_long, template = self.get_idx_template_params_long_python(idx_template, params)
-        # B_fgs = np.zeros((self.n_frequencies, ncomp_fgs, self.n_pix))
-        # if len(self.pos_special_freqs) != 0:
-        #     # insert all the ones given by the pos_special_freqs
-        #     for c in range(len(self.pos_special_freqs)):
-        #         B_fgs[self.pos_special_freqs[c]][c] = 1
-        # # insert all the parameters values
-        # f = 0
-        # for i in range(self.n_frequencies):
-        #     if i not in self.pos_special_freqs:
-        #         B_fgs[i, :] = params_long[f, :, :]
-        #         f += 1
-
-        # return B_fgs, template
-
-    def get_patch_B_from_params(self, freq, component, params, jax_use=False): ## TODO: fix doc
+    def get_patch_B_from_params(self, freq, component, params, jax_use=False):  ## TODO: fix doc
         """
         Full mixing matrix, (n_frequencies*n_components) from params and one patch distribution template.
         cmb is given as the first component.

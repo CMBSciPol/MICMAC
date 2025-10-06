@@ -64,7 +64,7 @@ class SamplingFunctions(MixingMatrix):
         frequency_array,
         freq_inverse_noise,
         pos_special_freqs=[0, -1],
-        spv_nodes_b=None,
+        templates=None,
         freq_noise_c_ell=None,
         mask=None,
         n_components=3,
@@ -93,9 +93,8 @@ class SamplingFunctions(MixingMatrix):
             array of inverse noise for each frequency, in uK^-2
         pos_special_freqs: list[int] (optional)
             indexes of the special frequencies in the frequency array respectively for synchrotron and dust, default is [0,-1] for first and last frequencies
-        spv_nodes_b: list[dictionaries] (optional)
-            tree for the spatial variability, to generate from a yaml file, default None
-            in principle set up by get_nodes_b
+        templates: array[int]
+            Array maps with patch ids ([freq, comp, pix])
         freq_noise_c_ell: array[float] of dimensions [frequencies, frequencies, lmax+1-lmin] or [frequencies, frequencies, lmax] (in which case it will be cut to lmax+1-lmin) (optional)
             optional, noise power spectra for each frequency, in uK^2, dimensions, default None
         mask: None or array[float] of dimensions [n_pix] (optional)
@@ -126,7 +125,7 @@ class SamplingFunctions(MixingMatrix):
             n_components=n_components,
             params=None,
             pos_special_freqs=pos_special_freqs,
-            spv_nodes_b=spv_nodes_b,
+            templates=templates,
         )
 
         # Problem parameters

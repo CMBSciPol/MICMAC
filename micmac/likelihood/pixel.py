@@ -114,7 +114,7 @@ class MicmacSampler(SamplingFunctions):
         disable_chex=True,
         instrument_name='SO_SAT',
         # fwhm=None,
-        spv_nodes_b=[],
+        templates=[],
     ):
         """
         Main MICMAC pixel sampling object to initialize and launch the Gibbs sampling in pixel domain.
@@ -232,9 +232,8 @@ class MicmacSampler(SamplingFunctions):
             see https://github.com/dpole/cmbdb/blob/master/cmbdb/experiments.yaml
         fwhm: float (optional)
             FWHM of the beam in arcmin, default None (no beam) ; not implemented yet
-        spv_nodes_b: list[dictionaries] (optional)
-            tree for the spatial variability, to generate from a yaml file, default []
-            in principle set up by get_nodes_b
+        templates: array[int] (optional)
+            Array maps with patch ids ([freq, comp, pix])
         """
 
         ## Give the parameters to the parent class
@@ -245,7 +244,7 @@ class MicmacSampler(SamplingFunctions):
             lmin=lmin,
             frequency_array=frequency_array,
             freq_inverse_noise=freq_inverse_noise,
-            spv_nodes_b=spv_nodes_b,
+            templates=templates,
             pos_special_freqs=pos_special_freqs,
             n_components=n_components,
             n_iter=n_iter,
@@ -882,8 +881,7 @@ class MicmacSampler(SamplingFunctions):
                     Selecting the patches to be used for the Bf sampling by checking if the index_Bf is in the interval of the patches
                     """
                     return (
-                        carry
-                        | ((index_Bf >= indexes_patches_Bf) & (index_Bf < indexes_patches_Bf + self.n_patches)),
+                        carry | ((index_Bf >= indexes_patches_Bf) & (index_Bf < indexes_patches_Bf + self.n_patches)),
                         index_Bf,
                     )
 

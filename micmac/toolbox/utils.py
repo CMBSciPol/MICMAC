@@ -18,7 +18,7 @@ import os
 
 import numpy as np
 
-__all__ = ['get_instr', 'generate_power_spectra_CAMB', 'generate_CMB', 'loading_params']
+__all__ = ['get_instr', 'generate_power_spectra_CAMB', 'generate_CMB', 'loading_params', 'normalize_templates']
 
 
 def get_instr(freqs, depth_p):
@@ -272,3 +272,33 @@ def loading_params(directory_save_file, file_ver, MICMAC_sampler_obj):
         print('No input_freq_alms found', flush=True)
 
     return dict_all_params
+
+
+def normalize_templates(templates):
+    """
+    Normalize the templates to have successive indices
+
+    Parameters
+    ----------
+    templates: array[int]
+        Array maps with patch ids ([freq, comp, pix])
+
+    Returns
+    -------
+    templates_normalized: array[int]
+        Normalized array maps with patch ids ([freq, comp, pix])
+    """
+
+    assert templates.ndim == 3, 'Templates should be a 3D array [freq, comp, pix]'
+
+    templates_normalized = templates.copy()
+
+    count_parameter = 0
+    for freq in range(templates.shape[0]):
+        for comp in range(templates.shape[1]):
+            unique_ids = np.unique(templates[freq, comp, :])
+            for uid in unique_ids:
+                if uid != -1:  # Assuming -1 is used for pixels not belonging to any patch
+                    templates[freq, comp, templates[freq, comp, :] == uid] = count_parameter
+                    count_parameter += 1
+    return templates_normalized

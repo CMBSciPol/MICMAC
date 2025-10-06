@@ -28,8 +28,6 @@ from anytree import Node, RenderTree
 
 __all__ = [
     'get_n_patches_b',
-
-
     'read_spv_config',
     'build_tree_from_dict',
     'count_betas_in_tree',
@@ -57,19 +55,13 @@ def get_n_patches_b(template):
     ----------
     template: array[int]
         template map of patch ids (for a given frequency and component)
-    
+
     Returns
     -------
         number of patches for the given template
     """
-    
+
     return np.unique(template).size
-
-
-
-
-
-
 
 
 #### Lower level functions
@@ -376,6 +368,7 @@ def get_nodes_b(root_tree):
             nodes.append(node)
     return nodes
 
+
 def get_values_b(nodes_b, n_frequencies, n_components):
     """
     Get default values of b
@@ -464,19 +457,46 @@ def create_one_template(node, all_nsides, spv_templates, nside, print_bool=False
     return spv_template_b
 
 
-### Old functions
-### Correct but creating all the templates at once
-def create_templates_spv_old(node, nside_out, all_nsides=None, spv_templates=None, print_bool=False):
+def get_healpix_templates_from_tree(root_tree, nside, n_frequencies, n_components):
     """
-    Old function, not currently used although correct
+    Retrieve all templates maps whose values correspond to the indices of params,
+    and indexed per frequency and component
 
-    Create templates of spatial variability for all betas
-    (it creates all the templates at once and keep them in a list)"""
-    # loop over betas and create template maps for spv
-    if node.name.startswith('b'):
-        spv_template_b = create_one_template(node, all_nsides, spv_templates, nside_out, print_bool=print_bool)
-        spv_templates.append(spv_template_b)
-    for child in node.children:
-        create_templates_spv_old(child, nside_out, all_nsides, spv_templates)
+    Returns
+    -------
+    all_templates: array[int] of dimensions [n_frequencies - n_components + 1, n_components - 1, 12*nside**2]
+        All templates indexes maps whose values correspond to the indices of params
+        for all the patches distributions per frequency and component
+    """
+    n_unknown_freqs = n_frequencies - n_components + 1
+    n_comp_fgs = n_components - 1
 
-    return spv_templates
+    size_patches = jnp.array([get_n_patches_b(node) for node in root_tree])
+
+    sum_size_patches_indexed_freq_comp = (size_patches.cumsum() - size_patches).reshape(
+        (n_frequencies - n_comp_fgs, n_components - 1), order='F'
+    )
+    values_b = (
+        jnp.array(get_values_b(root_tree, n_frequencies - n_comp_fgs, n_components - 1))
+        .ravel(order='F')
+        .reshape((n_frequencies - n_comp_fgs, n_components - 1), order='F')
+    )
+
+    ## Creating all the templates
+    def create_all_templates_indexed_freq(idx_freq):
+        def create_all_templates_indexed_comp(idx_comp):
+            template_idx_comp = create_one_template_from_bdefaultvalue(
+                jnp.expand_dims(values_b[idx_freq, idx_comp], axis=0),
+                nside,
+                all_nsides=None,
+                spv_templates=None,
+                use_jax=True,
+                print_bool=False,
+            )
+            return template_idx_comp + sum_size_patches_indexed_freq_comp[idx_freq, idx_comp]
+
+        template_idx_freq_comp = jax.vmap(create_all_templates_indexed_comp)(jnp.arange(n_comp_fgs))
+        return template_idx_freq_comp
+
+    ## Maping over the functions to create the templates
+    return jax.vmap(create_all_templates_indexed_freq)(jnp.arange(n_unknown_freqs))
