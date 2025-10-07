@@ -38,7 +38,7 @@ class InitMixingMatrix:
         freqs,
         ncomp,
         pos_special_freqs,
-        spv_nodes_b,
+        templates,
         nside=None,
         non_param_fgs_mixing_matrix=None,
         beta_pl=-3.0,
@@ -65,9 +65,8 @@ class InitMixingMatrix:
             all comps (also cmb)
         pos_special_freqs: array
             indices of the freqs that are known
-        spv_nodes_b: array
-            tree containing info to build spv_templates
-            #TODO: adapt for any template (change dependency to ud_grade)
+        templates: array
+            Array maps with patch ids ([freq, comp, pix])
         nside: int
             nside of the map
         non_param_fgs_mixing_matrix: array
@@ -86,7 +85,7 @@ class InitMixingMatrix:
             if val_i < 0:
                 pos_special_freqs[i] = len(self.freqs) + pos_special_freqs[i]
         self.pos_special_freqs = pos_special_freqs
-        self.spv_nodes_b = spv_nodes_b  # tree containing info to build spv_templates
+        self.templates = templates  # tree containing info to build spv_templates
         self.nside = nside  # nside of the map
         self.non_param_fgs_mixing_matrix = non_param_fgs_mixing_matrix  # only the fgs part of mixing matrix
         self.beta_mbb = np.array(beta_mbb)
@@ -184,8 +183,8 @@ class InitMixingMatrix:
                 # TODO: extend the counting of the patches to adaptive multires
                 # (maybe easier to extend it by looking at the spv_templates
                 # or add a function in the templates_spv.py to get the number of patches for each b)
-                n_patches_b_s = get_n_patches_b(self.spv_nodes_b[ind_unknown_f, 0])
-                n_patches_b_d = get_n_patches_b(self.spv_nodes_b[ind_unknown_f, 1])
+                n_patches_b_s = get_n_patches_b(self.templates[ind_unknown_f, 0])
+                n_patches_b_d = get_n_patches_b(self.templates[ind_unknown_f, 1])
                 if params_.shape[2] == 1:
                     ### Synchrotron
                     for patch in range(n_patches_b_s):
