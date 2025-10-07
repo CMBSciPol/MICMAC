@@ -321,7 +321,7 @@ class SamplingFunctions(MixingMatrix):
         Get boolean condition on the free Bf indices corresponding to patches within the mask
         """
 
-        templates = self.get_all_templates()
+        templates = jnp.copy(self.templates)
         templates = templates.at[:, :, self.mask == 0].set(-1)
 
         def scan_isin(carry, frequency):
@@ -1857,6 +1857,7 @@ class SamplingFunctions(MixingMatrix):
         component_eta_maps,
         red_cov_approx_matrix_sqrt,
         inverse_term_x_Capprox_root=None,
+        use_mask_contribution_eta=False,
     ):
         """
         Get conditional probability of correction term in the likelihood from the full mixing matrix,
@@ -1953,15 +1954,24 @@ class SamplingFunctions(MixingMatrix):
                 n_iter=self.n_iter,
             ).ravel()
 
+        if use_mask_contribution_eta:
+            cut_sky_factor = self.mask
+        else:
+            cut_sky_factor = 1
+
         ## Applying the operator (N_{c,new}^{-1} - N_{c,old}^{-1}) to C_approx^{1/2} A^{-1} eta
         perturbation_term = func_to_apply(inverse_term_x_Capprox_root).reshape(self.nstokes, self.n_pix)
 
         ## Computing contribution of \eta A^{-1} \eta
-        first_order_term = jnp.einsum('sp,sp->p', component_eta_maps, inverse_term.reshape(self.nstokes, self.n_pix))
+        first_order_term = jnp.einsum(
+            'sp,sp->p', component_eta_maps * cut_sky_factor, inverse_term.reshape(self.nstokes, self.n_pix)
+        )
 
         ## Computing contribution of \eta A^{-1} C_approx^{1/2} (N_{c,new}^{-1} - N_{c,old}^{-1}) C_approx^{1/2} A^{-1} \eta
         perturbation_term = jnp.einsum(
-            'sp,sp->p', perturbation_term, inverse_term_x_Capprox_root.reshape(self.nstokes, self.n_pix)
+            'sp,sp->p',
+            perturbation_term * cut_sky_factor,
+            inverse_term_x_Capprox_root.reshape(self.nstokes, self.n_pix),
         )
 
         ## Assembling everything
@@ -2120,11 +2130,12 @@ class SamplingFunctions(MixingMatrix):
         old_params_mixing_matrix,
         full_data_without_CMB,
         red_cov_approx_matrix_sqrt,
-        nside_patch,  ## TODO: instead of this, pass freq, comp of the alpha that we want to change
+        index_patch,
         component_eta_maps=None,
         first_guess=None,
         previous_inverse_x_Capprox_root=None,
         biased_bool=False,
+        use_mask_contribution_eta=False,
     ):
         """Get conditional probability of the conditional probability associated with the Bf parameters
 
@@ -2143,8 +2154,8 @@ class SamplingFunctions(MixingMatrix):
             data without from which the CMB (sample) was substracted, of dimension
         red_cov_approx_matrix: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
             matrix square root of the covariance of the covariance matrice approx (C_approx) in harmonic domain
-        nside_patch: int
-            nside of the parameter patch to retrieve in params
+        index_patch: int
+            index of the template of the parameters being sampled
         component_eta_maps: array[float] of dimensions [nstokes, n_pix]
             set of eta maps
         first_guess: array[float] of dimensions [component, n_pix] (optional)
@@ -2165,7 +2176,13 @@ class SamplingFunctions(MixingMatrix):
         # new_mixing_matrix = self.get_B(jax_use=True)
         # new_mixing_matrix = self.get_B_from_params(new_params_mixing_matrix, jax_use=True)
 
-        new_mixing_matrix, template = self.get_patch_B_from_params(nside_patch, new_params_mixing_matrix, jax_use=True)
+        # new_mixing_matrix, template = self.get_patch_B_from_params(nside_patch, new_params_mixing_matrix, jax_use=True)
+        new_mixing_matrix = self.get_B_from_params(new_params_mixing_matrix, jax_use=True)
+
+        template = self.templates[
+            index_patch % (self.n_frequencies - self.n_components - 1),
+            index_patch // (self.n_frequencies - self.n_components - 1),
+        ]
 
         # Compute spectral likelihood: (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
         log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_pixel(
@@ -2184,6 +2201,7 @@ class SamplingFunctions(MixingMatrix):
                 component_eta_maps,
                 red_cov_approx_matrix_sqrt,
                 inverse_term_x_Capprox_root=previous_inverse_x_Capprox_root,
+                use_mask_contribution_eta=use_mask_contribution_eta,
             )
 
         full_log_proba_pixel = log_proba_spectral_likelihood + log_proba_perturbation_likelihood
@@ -2856,6 +2874,7 @@ def separate_single_MH_step_index_v4_pixel(
     indexes_Bf,
     indexes_patches_Bf,
     n_patches,
+    indices_templates_in_params_long,
     max_len_patches_Bf,
     len_indexes_Bf,
     **model_kwargs,
@@ -2865,6 +2884,8 @@ def separate_single_MH_step_index_v4_pixel(
 
     Assumes all patches have the same disposition on the sky
 
+    Parameters
+    ----------
     random_PRNGKey: array[jnp.uint32] of dimensions [2]
         JAX random key to be splitted to generate the proposal and uniform distribution sample
     old_sample: array
@@ -2896,6 +2917,7 @@ def separate_single_MH_step_index_v4_pixel(
 
     def map_func(carry, counter_i):
         index_Bf = indexes_patches_Bf[counter_i]
+        index_template_patch = indices_templates_in_params_long[counter_i]
         indexes_to_consider = (index_Bf + jnp.arange(max_len_patches_Bf, dtype=jnp.int32)) % len_indexes_Bf
         mask_in_indexes_Bf = jnp.where(
             jnp.isin(index_Bf + jnp.arange(max_len_patches_Bf, dtype=jnp.int32), indexes_Bf), 1, 0
@@ -2913,8 +2935,7 @@ def separate_single_MH_step_index_v4_pixel(
         proposal_params = jnp.copy(carry['sample'])
         proposal_params = proposal_params.at[indexes_to_consider].set(sample_proposal)
 
-        nside_b = jnp.where(n_patches[counter_i] == 1, 0, jnp.sqrt(n_patches[counter_i] / 12))
-        proposal_log_proba = log_proba(proposal_params, nside_patch=nside_b, **model_kwargs)
+        proposal_log_proba = log_proba(proposal_params, index_patch=index_template_patch, **model_kwargs)
 
         accept_prob = -(carry['log_proba'] - proposal_log_proba)
 
@@ -2926,11 +2947,10 @@ def separate_single_MH_step_index_v4_pixel(
         new_carry = {'PRNGKey': rng_key, 'sample': proposal_params, 'log_proba': new_log_proba}
         return new_carry, new_param
 
-    nside_init = jnp.where(n_patches[0] == 1, 0, jnp.sqrt(n_patches[0] / 12))
     initial_carry = {
         'PRNGKey': random_PRNGKey,
         'sample': old_sample,
-        'log_proba': log_proba(old_sample, nside_patch=nside_init, **model_kwargs),
+        'log_proba': log_proba(old_sample, index_patch=indices_templates_in_params_long[0], **model_kwargs),
     }
 
     carry, new_params = jlax.scan(map_func, initial_carry, jnp.arange(indexes_patches_Bf.size))
@@ -2950,6 +2970,7 @@ def separate_single_MH_step_index_v4b_pixel(
     indexes_Bf,
     indexes_patches_Bf,
     n_patches,
+    indices_templates_in_params_long,
     max_len_patches_Bf,
     len_indexes_Bf,
     **model_kwargs,
@@ -2993,6 +3014,7 @@ def separate_single_MH_step_index_v4b_pixel(
 
     def map_func(carry, counter_i):
         index_Bf = indexes_patches_Bf[counter_i]
+        index_template_patch = indices_templates_in_params_long[counter_i]
         indexes_to_consider = (index_Bf + jnp.arange(max_len_patches_Bf, dtype=jnp.int32)) % len_indexes_Bf
         mask_in_indexes_Bf = jnp.where(
             jnp.isin(index_Bf + jnp.arange(max_len_patches_Bf, dtype=jnp.int32), indexes_Bf), 1, 0
@@ -3010,13 +3032,12 @@ def separate_single_MH_step_index_v4b_pixel(
         proposal_params = jnp.copy(carry['sample'])
         proposal_params = proposal_params.at[indexes_to_consider].set(sample_proposal)
 
-        nside_b = jnp.where(n_patches[counter_i] == 1, 0, jnp.sqrt(n_patches[counter_i] / 12))
-        proposal_log_proba = log_proba(proposal_params, nside_patch=nside_b, **model_kwargs)
+        proposal_log_proba = log_proba(proposal_params, index_patch=index_template_patch, **model_kwargs)
 
         old_log_proba = jlax.cond(
-            carry['size_patch'] == n_patches[counter_i],
+            carry['index_template_patch'] == index_template_patch,
             lambda x: carry['log_proba'],
-            lambda x: log_proba(x, nside_patch=nside_b, **model_kwargs),
+            lambda x: log_proba(x, index_patch=index_template_patch, **model_kwargs),
             operand=carry['sample'],
         )
 
@@ -3031,16 +3052,15 @@ def separate_single_MH_step_index_v4b_pixel(
             'PRNGKey': rng_key,
             'sample': proposal_params,
             'log_proba': new_log_proba,
-            'size_patch': n_patches[counter_i],
+            'index_template_patch': index_template_patch,
         }
         return new_carry, new_param
 
-    nside_init = jnp.where(n_patches[0] == 1, 0, jnp.sqrt(n_patches[0] / 12))
     initial_carry = {
         'PRNGKey': random_PRNGKey,
         'sample': old_sample,
-        'log_proba': log_proba(old_sample, nside_patch=nside_init, **model_kwargs),
-        'size_patch': n_patches[0],
+        'log_proba': log_proba(old_sample, index_patch=indices_templates_in_params_long[0], **model_kwargs),
+        'index_template_patch': 0,
     }
 
     carry, new_params = jlax.scan(map_func, initial_carry, jnp.arange(indexes_patches_Bf.size))

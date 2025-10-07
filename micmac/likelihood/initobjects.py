@@ -95,6 +95,7 @@ def create_MicmacSampler_from_dictionnary(dictionary_parameters, path_file_spv='
             len(dictionary_parameters['frequency_array']),
             dictionary_parameters['n_components'],
         )
+        print('Templates created', templates)
     dictionary_parameters['templates'] = templates
 
     ## Getting the covariance of Bf from toml file

@@ -64,6 +64,23 @@ def get_n_patches_b(template):
     return np.unique(template).size
 
 
+def get_node_b(node_b):
+    """
+    Returns the number of patches for a given template
+
+    Parameters
+    ----------
+    node_b: int
+        node of the tree corresponding to a b parameter
+
+    Returns
+    -------
+        number of patches for the given template
+    """
+
+    return node_b.children[0].value
+
+
 #### Lower level functions
 def read_spv_config(yaml_file_path):
     """
@@ -471,15 +488,16 @@ def get_healpix_templates_from_tree(root_tree, nside, n_frequencies, n_component
     n_unknown_freqs = n_frequencies - n_components + 1
     n_comp_fgs = n_components - 1
 
-    size_patches = jnp.array([get_n_patches_b(node) for node in root_tree])
-
-    sum_size_patches_indexed_freq_comp = (size_patches.cumsum() - size_patches).reshape(
-        (n_frequencies - n_comp_fgs, n_components - 1), order='F'
-    )
     values_b = (
         jnp.array(get_values_b(root_tree, n_frequencies - n_comp_fgs, n_components - 1))
         .ravel(order='F')
         .reshape((n_frequencies - n_comp_fgs, n_components - 1), order='F')
+    )
+
+    size_patches = jnp.where(values_b == 0, 1, 12 * values_b**2)  # .ravel(order='F')
+
+    sum_size_patches_indexed_freq_comp = (
+        np.cumsum(size_patches.ravel(order='F')).reshape(size_patches.shape, order='F') - size_patches
     )
 
     ## Creating all the templates

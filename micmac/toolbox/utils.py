@@ -16,6 +16,7 @@
 
 import os
 
+import jax.numpy as jnp
 import numpy as np
 
 __all__ = ['get_instr', 'generate_power_spectra_CAMB', 'generate_CMB', 'loading_params', 'normalize_templates']
@@ -291,7 +292,7 @@ def normalize_templates(templates):
 
     assert templates.ndim == 3, 'Templates should be a 3D array [freq, comp, pix]'
 
-    templates_normalized = templates.copy()
+    templates_normalized = jnp.array(templates.copy())
 
     count_parameter = 0
     for freq in range(templates.shape[0]):
@@ -299,6 +300,8 @@ def normalize_templates(templates):
             unique_ids = np.unique(templates[freq, comp, :])
             for uid in unique_ids:
                 if uid != -1:  # Assuming -1 is used for pixels not belonging to any patch
-                    templates[freq, comp, templates[freq, comp, :] == uid] = count_parameter
+                    templates_normalized = templates_normalized.at[freq, comp, templates[freq, comp, :] == uid].set(
+                        count_parameter
+                    )
                     count_parameter += 1
     return templates_normalized

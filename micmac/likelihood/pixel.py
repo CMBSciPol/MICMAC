@@ -115,7 +115,7 @@ class MicmacSampler(SamplingFunctions):
         disable_chex=True,
         instrument_name='SO_SAT',
         # fwhm=None,
-        templates=[],
+        templates=None,
     ):
         """
         Main MICMAC pixel sampling object to initialize and launch the Gibbs sampling in pixel domain.
@@ -865,7 +865,7 @@ class MicmacSampler(SamplingFunctions):
                 )
                 jitted_Bf_func_sampling = jax.jit(
                     self.get_conditional_proba_mixing_matrix_v3_pixel_JAX,
-                    static_argnames=['biased_bool'],
+                    static_argnames=['biased_bool', 'use_mask_contribution_eta'],
                 )
                 sampling_func = separate_single_MH_step_index_v4_pixel
                 if (self.n_patches != self.n_patches[0]).any():
@@ -903,6 +903,21 @@ class MicmacSampler(SamplingFunctions):
                 first_indices_patches_free_Bf = indexes_patches_Bf[condition]
                 max_len_patches_Bf = int(np.max(self.n_patches[condition]))
                 n_patches = self.n_patches[condition]
+
+                print('First indices patches free Bf', first_indices_patches_free_Bf, flush=True)
+                print('Max length patches Bf', max_len_patches_Bf, flush=True)
+                print(
+                    'Number of patches to consider for the simultaneous accept rate Bf sampling',
+                    n_patches,
+                    flush=True,
+                )
+
+                indices_templates_in_params_long = jnp.zeros_like(self.indexes_free_Bf)
+                for i, index in enumerate(self.indexes_free_Bf):
+                    indices_templates_in_params_long = indices_templates_in_params_long.at[i].set(
+                        jnp.where(index >= first_indices_patches_free_Bf)[0][-1]
+                    )
+                print('Indices templates in params long', indices_templates_in_params_long, flush=True)
 
         ## Preparing minmum value of r sampling
 
@@ -949,7 +964,8 @@ class MicmacSampler(SamplingFunctions):
 
                     extended_array = np.zeros((number_free_Bf + 1), dtype=np.int64)
                     extended_array[0] = 0
-                    extended_array[1:] = self.sum_n_patches_indexed_freq_comp.ravel(order='F') + self.n_patches
+                    extended_array[1:-1] = self.indexes_b.ravel(order='F')[1:]
+                    extended_array[-1] = self.len_params
 
                     for i in range(
                         self.n_patches.size
@@ -1437,6 +1453,9 @@ class MicmacSampler(SamplingFunctions):
                         dict_parameters_sampling_Bf['max_len_patches_Bf'] = max_len_patches_Bf
                         dict_parameters_sampling_Bf['indexes_patches_Bf'] = first_indices_patches_free_Bf
                         dict_parameters_sampling_Bf['len_indexes_Bf'] = self.len_params
+                        dict_parameters_sampling_Bf[
+                            'indices_templates_in_params_long'
+                        ] = indices_templates_in_params_long
                         # TODO: Accelerate by removing indexes of indexes_patches_Bf if the corresponding patches are not in indexes_free_Bf, nor in the mask
                     ## Sampling Bf !
                     new_subPRNGKey_3, new_carry['params_mixing_matrix_sample'] = sampling_func(

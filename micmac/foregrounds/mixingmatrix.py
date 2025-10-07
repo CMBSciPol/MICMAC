@@ -20,7 +20,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from micmac.foregrounds.templates import create_one_template, get_n_patches_b
+from micmac.foregrounds.templates import create_one_template
 
 __all__ = ['get_indexes_b', 'MixingMatrix']
 
@@ -30,7 +30,7 @@ __all__ = ['get_indexes_b', 'MixingMatrix']
 # Mixing matrix dimensions: n_frequencies*n_components*number_pixels
 
 
-def get_indexes_b(n_frequencies, n_components, templates):
+def get_indexes_b(templates):
     """
     Return indexes of params for all frequencies and components
 
@@ -48,13 +48,8 @@ def get_indexes_b(n_frequencies, n_components, templates):
     indexes: array
         Indexes of params for all frequencies and components
     """
-    indexes = np.zeros((n_frequencies, n_components), dtype=int)
-    for freq in range(n_frequencies):
-        for comp in range(n_components):
-            indexes[freq, comp] = get_n_patches_b(templates[freq, comp])
-    indexes[0, 0] = 0
 
-    return indexes.ravel(order='F').cumsum().reshape((n_frequencies, n_components), order='F')
+    return templates.min(axis=-1)
 
 
 class MixingMatrix:
@@ -81,15 +76,43 @@ class MixingMatrix:
         self.frequency_array = np.array(frequency_array, dtype=int)  # all input freq bands
         self.n_frequencies = np.size(frequency_array)  # all input freq bands
         self.n_components = n_components  # all comps (also cmb)
+
         if templates is None:
             templates = np.zeros((self.n_frequencies, self.n_components, 12 * nside**2), dtype=int)
             for f in range(self.n_frequencies):
                 for c in range(self.n_components - 1):
                     templates[f, c] = create_one_template(self.nside) + f * (self.n_components - 1) + c
-        self.templates = templates  # templates for all frequencies and components
-        self.len_params = np.unique(
-            self.templates
-        ).size  # total number of free parameters (summed for frequency, component, patch)
+        else:
+            msg_error = f'templates must be of dimensions {(self.n_frequencies - self.n_components + 1, self.n_components - 1, 12 * nside**2)}'
+            assert templates.shape == (
+                self.n_frequencies - self.n_components + 1,
+                self.n_components - 1,
+                12 * nside**2,
+            ), msg_error
+
+            for j in range(n_components - 1):
+                j_idx = j
+
+                for i in range(self.n_frequencies - n_components + 1):
+                    if i == 0 and j == 0:
+                        assert templates[i, j].min() == 0, 'templates values must start at 0'
+                        continue
+                    i_idx = i
+                    if j != 0 and i == 0:
+                        j_idx = 0
+                        i_idx = -1
+                    assert (
+                        templates[i_idx, j_idx].min() > templates[i_idx - 1, j_idx].max()
+                    ), f'templates values must be unique and increasing'
+                    unique_template_sorted = np.sort(np.unique(templates[i, j]))
+                    assert np.all(
+                        unique_template_sorted[1:] - unique_template_sorted[:-1] == 1
+                    ), f'templates values must be contiguous without lacking indices'
+
+                    self.templates = templates  # templates for all frequencies and components
+                    self.len_params = np.unique(
+                        self.templates
+                    ).size  # total number of free parameters (summed for frequency, component, patch)
 
         if params is None:
             params = np.zeros(self.len_params)
@@ -114,17 +137,13 @@ class MixingMatrix:
 
         if self.n_components != 1:
             # Values of the first index of each Bf parameter in params
-            self.indexes_b = jnp.array(
-                get_indexes_b(self.n_frequencies - len(self.pos_special_freqs), self.n_components - 1, self.templates)
-            )
-            self.n_patches = jnp.unique(self.templates, counts=True, axis=-1)[
-                1
-            ].ravel()  ## TODO: check that it does what we want
-            self.sum_n_patches_indexed_freq_comp = (
-                self.n_patches.cumsum() - self.n_patches
-            ).reshape(  ## TODO: check if necessary or can we replace with indexes_b
-                (self.n_frequencies - len(self.pos_special_freqs), self.n_components - 1), order='F'
-            )
+            self.indexes_b = jnp.array(get_indexes_b(self.templates))
+            n_patches_array = np.zeros_like(self.indexes_b).ravel(order='F')
+            n_patches_array[:-1] = self.indexes_b.ravel(order='F')[1:] - self.indexes_b.ravel(order='F')[:-1]
+            n_patches_array[-1] = self.len_params - self.indexes_b[-1, -1]
+
+            self.n_patches = jnp.array(n_patches_array)
+
             self.max_len_patches_Bf = int(self.n_patches.max())
             n_unknown_freqs = self.n_frequencies - self.n_components + 1
             n_comp_fgs = self.n_components - 1
@@ -134,7 +153,7 @@ class MixingMatrix:
         else:
             self.indexes_b = jnp.array([[0]])  # Values of the first index of each Bf parameter in params
             self.n_patches = None  # Number of patches for each node
-            self.sum_n_patches_indexed_freq_comp = None  # Cumulative sum of the number of patches for each node
+            # self.sum_n_patches_indexed_freq_comp = None  # Cumulative sum of the number of patches for each node
             self.max_len_patches_Bf = None  # Maximum number of patches for each node
             self.multipatch_bool = False
 
@@ -213,7 +232,7 @@ class MixingMatrix:
 
     #     return B_fgs
 
-    def get_B_cmb(self, jax_use=False):
+    def get_B_cmb(self, jax_use=True):
         """
         CMB column of the mixing matrix.
 
@@ -262,7 +281,7 @@ class MixingMatrix:
     #         B_mat = self.get_B_cmb()
     #     return B_mat
 
-    def get_B_fgs_from_params(self, params, jax_use=False):
+    def get_B_fgs_from_params(self, params, jax_use=True):
         """
         Foreground part of the mixing matrix obtained from the parameters.
 
@@ -283,7 +302,7 @@ class MixingMatrix:
 
         if jax_use:
             # Get all templates
-            templates = self.get_all_templates()
+            templates = self.templates
 
             B_fgs = jnp.zeros((self.n_frequencies, ncomp_fgs, self.n_pix))
             # insert all the ones given by the pos_special_freqs
@@ -314,7 +333,7 @@ class MixingMatrix:
 
         return B_fgs
 
-    def get_B_from_params(self, params, jax_use=False):
+    def get_B_from_params(self, params, jax_use=True):
         """
         Full mixing matrix, (n_frequencies*n_components), obtained from the parameters.
         CMB is given as the first component.
@@ -344,7 +363,7 @@ class MixingMatrix:
         return B_mat
 
     def get_template_B_fgs_from_params(
-        self, freq, component, params, jax_use=False
+        self, freq, component, params, jax_use=True
     ):  ## TODO: take as input freq, component instead of nside patch
         """
         Foreground (fgs) part of the mixing matrix and one patch distribution template
@@ -384,7 +403,7 @@ class MixingMatrix:
 
             return B_fgs, self.templates[freq, component]
 
-    def get_patch_B_from_params(self, freq, component, params, jax_use=False):  ## TODO: fix doc
+    def get_patch_B_from_params(self, freq, component, params, jax_use=True):  ## TODO: fix doc
         """
         Full mixing matrix, (n_frequencies*n_components) from params and one patch distribution template.
         cmb is given as the first component.
@@ -415,7 +434,7 @@ class MixingMatrix:
         B_mat = np.concatenate((self.get_B_cmb(), B_fgs), axis=1)
         return B_mat, template
 
-    def get_params_db(self, jax_use=False):
+    def get_params_db(self, jax_use=True):
         # TODO: adjust with spv
         """
         STATUS: Not used currently, to be adjusted with spv
@@ -446,7 +465,7 @@ class MixingMatrix:
 
         return params_dB
 
-    def get_B_db(self, jax_use=False):
+    def get_B_db(self, jax_use=True):
         """
         STATUS: Not used currently, to be adjusted with spv
 
