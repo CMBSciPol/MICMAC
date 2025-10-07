@@ -38,7 +38,7 @@ class InitMixingMatrix:
         freqs,
         ncomp,
         pos_special_freqs,
-        templates,
+        spv_nodes_b,
         nside=None,
         non_param_fgs_mixing_matrix=None,
         beta_pl=-3.0,
@@ -67,6 +67,7 @@ class InitMixingMatrix:
             indices of the freqs that are known
         spv_nodes_b: array
             tree containing info to build spv_templates
+            #TODO: adapt for any template (change dependency to ud_grade)
         nside: int
             nside of the map
         non_param_fgs_mixing_matrix: array
@@ -183,8 +184,8 @@ class InitMixingMatrix:
                 # TODO: extend the counting of the patches to adaptive multires
                 # (maybe easier to extend it by looking at the spv_templates
                 # or add a function in the templates_spv.py to get the number of patches for each b)
-                n_patches_b_s = get_n_patches_b(self.templates[ind_unknown_f, 0])
-                n_patches_b_d = get_n_patches_b(self.templates[ind_unknown_f, 1])
+                n_patches_b_s = get_n_patches_b(self.spv_nodes_b[ind_unknown_f, 0])
+                n_patches_b_d = get_n_patches_b(self.spv_nodes_b[ind_unknown_f, 1])
                 if params_.shape[2] == 1:
                     ### Synchrotron
                     for patch in range(n_patches_b_s):
