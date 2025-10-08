@@ -2172,10 +2172,6 @@ class SamplingFunctions(MixingMatrix):
         """
 
         ## Updating parameters of the mixing matrix
-        # self.update_params(new_params_mixing_matrix,jax_use=True)
-        # new_mixing_matrix = self.get_B(jax_use=True)
-        # new_mixing_matrix = self.get_B_from_params(new_params_mixing_matrix, jax_use=True)
-
         # new_mixing_matrix, template = self.get_patch_B_from_params(nside_patch, new_params_mixing_matrix, jax_use=True)
         new_mixing_matrix = self.get_B_from_params(new_params_mixing_matrix, jax_use=True)
 
@@ -2183,6 +2179,7 @@ class SamplingFunctions(MixingMatrix):
             index_patch % (self.n_frequencies - self.n_components - 1),
             index_patch // (self.n_frequencies - self.n_components - 1),
         ]
+        template = template.at[:].set(template - template.min())  # Re-indexing from 0 to max_len_patch-1
 
         # Compute spectral likelihood: (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
         log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_pixel(

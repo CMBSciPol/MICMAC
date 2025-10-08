@@ -32,6 +32,7 @@ from micmac.likelihood.sampling import (
     SamplingFunctions,
     separate_single_MH_step_index_accelerated,
     separate_single_MH_step_index_v2b,
+    separate_single_MH_step_index_v4_pixel,
     separate_single_MH_step_index_v4b_pixel,
     single_Metropolis_Hasting_step,
 )
@@ -866,7 +867,7 @@ class MicmacSampler(SamplingFunctions):
                     self.get_conditional_proba_mixing_matrix_v3_pixel_JAX,
                     static_argnames=['biased_bool', 'use_mask_contribution_eta'],
                 )
-                sampling_func = separate_single_MH_step_index_v4b_pixel  # separate_single_MH_step_index_v4_pixel
+                sampling_func = separate_single_MH_step_index_v4_pixel  # separate_single_MH_step_index_v4b_pixel
                 if (self.n_patches != self.n_patches[0]).any():
                     sampling_func = separate_single_MH_step_index_v4b_pixel
                     # raise NotImplemented("All patches should have the same size for the simultaneous accept rate version of mixing matrix sampling for now !!!")
