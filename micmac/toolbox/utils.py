@@ -295,8 +295,8 @@ def normalize_templates(templates):
     templates_normalized = jnp.array(templates.copy())
 
     count_parameter = 0
-    for freq in range(templates.shape[0]):
-        for comp in range(templates.shape[1]):
+    for comp in range(templates.shape[1]):
+        for freq in range(templates.shape[0]):
             unique_ids = np.unique(templates[freq, comp, :])
             for uid in unique_ids:
                 if uid != -1:  # Assuming -1 is used for pixels not belonging to any patch
