@@ -25,6 +25,7 @@ from scipy import constants
 __all__ = [
     'get_spectral_params_true_values',
     'parametric_sky_customized',
+    'parametric_sky_customized_arbitrary_patches',
     'get_observation_customized',
     'fgs_freq_maps_from_customized_model_nonparam',
 ]
@@ -120,6 +121,69 @@ def parametric_sky_customized(fgs_models, nside_map, nside_spv):
             # hp.mollview(beta_pl_dowgraded, title='Downgraded beta synch')
             beta_pl_new = hp.ud_grade(beta_pl_dowgraded, nside_map)
             # hp.mollview(beta_pl_new, title='New beta synch')
+            new_spectral_params.append(beta_pl_new)
+            for i, item in enumerate(beta_pl_new):
+                sky.components[f].pl_index[i] = item
+            # plt.show()
+        else:
+            raise ValueError('Model not recognized (only d1 and s1 supported as of now)')
+    return sky, new_spectral_params
+
+
+def parametric_sky_customized_arbitrary_patches(fgs_models, nside_map, patch_ids):
+    """t recognized (only d1 and s1 supported as of now)')
+    return sky, new_spectral_params
+    Gives d1s1-like model with less spv of the spectral parameters
+    (still parametric)
+    Returns a PySM-like Sky object
+
+    Parameters
+    ----------
+    fgs_models: list of str
+        PySM model to consider
+    nside_map: int
+        Healpix nside of the final maps
+    patch_ids: np.array
+        Maps with patches indices, dimension (n_fgs, npix)
+
+    Returns
+    -------
+    sky: pysm3.Sky
+        PySM-like Sky object with the modified spectral parameters
+    new_spectral_params: list of np.array
+        List of the new spectral parameters
+    """
+    new_spectral_params = []
+    ### Check size of patch_ids
+    assert len(fgs_models) == patch_ids.shape[0]
+    assert hp.nside2npix(nside_map) == patch_ids.shape[-1]
+    ### Get the sky
+    sky = Sky(nside=nside_map, preset_strings=fgs_models)
+    for f, model in enumerate(fgs_models):
+        ### Modify the spectral parameter values
+        if model == 'd1':
+            # beta dust
+            beta_mbb = sky.components[f].mbb_index.value
+            beta_mbb_new = beta_mbb*1.
+            for id in np.unique(patch_ids[f]):
+                beta_mbb_new[patch_ids[f] == id] = np.mean(beta_mbb[patch_ids[f] == id]) # average in a given arbitrary patch
+            new_spectral_params.append(beta_mbb_new)
+            for i, item in enumerate(beta_mbb_new):
+                sky.components[f].mbb_index.value[i] = item
+            # temp dust
+            temp_mbb = sky.components[f].mbb_temperature.value
+            temp_mbb_new = temp_mbb*1.
+            for id in np.unique(patch_ids[f]):
+                temp_mbb_new[patch_ids[f] == id] = np.mean(temp_mbb[patch_ids[f] == id]) # average in a given arbitrary patch
+            new_spectral_params.append(temp_mbb_new)
+            for i, item in enumerate(temp_mbb_new):
+                sky.components[f].mbb_temperature.value[i] = item
+        elif model == 's1':
+            # beta synch
+            beta_pl = sky.components[f].pl_index.value
+            beta_pl_new = hp.ud_grade(beta_pl, nside_map)
+            for id in np.unique(patch_ids[f]):
+                beta_pl_new[patch_ids[f] == id] = np.mean(beta_pl_new[patch_ids[f] == id]) # average in a given arbitrary patch
             new_spectral_params.append(beta_pl_new)
             for i, item in enumerate(beta_pl_new):
                 sky.components[f].pl_index[i] = item
