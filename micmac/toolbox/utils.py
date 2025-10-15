@@ -292,7 +292,7 @@ def normalize_templates(templates):
 
     assert templates.ndim == 3, 'Templates should be a 3D array [freq, comp, pix]'
 
-    templates_normalized = jnp.array(templates.copy())
+    templates_normalized = jnp.array(templates.copy(), dtype=jnp.int64)
 
     count_parameter = 0
     for comp in range(templates.shape[1]):

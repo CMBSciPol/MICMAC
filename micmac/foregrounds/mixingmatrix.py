@@ -90,6 +90,10 @@ class MixingMatrix:
                 12 * nside**2,
             ), msg_error
 
+            assert issubclass(templates.dtype.type, np.integer) or issubclass(
+                templates.dtype.type, jnp.integer
+            ), 'templates must be of integer type'
+
             for j in range(n_components - 1):
                 j_idx = j
 
@@ -109,10 +113,10 @@ class MixingMatrix:
                         unique_template_sorted[1:] - unique_template_sorted[:-1] == 1
                     ), f'templates values must be contiguous without lacking indices'
 
-                    self.templates = templates  # templates for all frequencies and components
-                    self.len_params = np.unique(
-                        self.templates
-                    ).size  # total number of free parameters (summed for frequency, component, patch)
+        self.templates = templates  # templates for all frequencies and components
+        self.len_params = np.unique(
+            self.templates
+        ).size  # total number of free parameters (summed for frequency, component, patch)
 
         if params is None:
             params = np.zeros(self.len_params)
