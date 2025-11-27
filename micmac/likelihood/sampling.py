@@ -25,6 +25,7 @@ import jax.scipy as jsp
 import jax_healpy as jhp
 import numpy as np
 import numpyro.distributions as dist
+from opt_einsum import contract
 
 from micmac.foregrounds.mixingmatrix import MixingMatrix
 from micmac.noise.noisecovar import get_BtinvN, get_inv_BtinvNB, get_inv_BtinvNB_c_ell
@@ -32,10 +33,13 @@ from micmac.toolbox.tools import (
     JAX_almxfl,
     alm_dot_product_JAX,
     alms_x_red_covariance_cell_JAX,
+    concatenate_frequency_stokes_alm,
+    concatenate_reduced_multi_components_matrix,
     frequency_alms_x_obj_red_covariance_cell_JAX,
     get_bool_array_in_boundary,
     get_reduced_matrix_from_c_ell_jax,
     get_sqrt_reduced_matrix_from_matrix_jax,
+    get_stacked_red_covariance_matrix_from_c_ell_jax,
     maps_x_red_covariance_cell_JAX,
 )
 
@@ -2401,6 +2405,146 @@ class SamplingFunctions(MixingMatrix):
 
         return -(first_term_complete + second_term_complete + third_term) * self.f_sky / 2
 
+    def smica_harmonic_marginal_probability(
+        self,
+        sample_dict,
+        noise_weighted_alm_data,
+        theoretical_red_cov_r1_tensor,
+        theoretical_red_cov_r0_total,
+        fixed_parameters_dict={},
+    ):
+        """
+        Compute marginal probability of the full likelihood over s_c, given by:
+            -1/2 (d^t P d - s_{c,ML}^t (C^{-1} + N_c^{-1})^{-1} s_{c,ML} + ln | (C + N_c) (C_approx + N_c)^-1 |)
+
+        With:
+            P = N^{-1} - N^{-1} B (B^t N^{-1} B)^{-1} B^t N^{-1}
+            In the routine, we don't compute the d^t N^{-1} d part as it stays constant per sample, but only the second part
+
+        Here we denote C_approx = \tilde{C}.
+
+        The data are assumed to be provided in the harmonic domain already noise weighted, and the covariance matrices are assumed to be in the harmonic domain as well.
+        All harmonic covariance matrices are assumed to be block diagonal.
+
+        The routine will only work in harmonic domain, so any mixing matrix within sample_Bf_r will be averaged over the pixels.
+
+        The routine doesn't explicitely retrieve C, but assume it to be parametrize by r, with C(r) = r * theoretical_red_cov_r1_tensor + theoretical_red_cov_r0_total
+
+        Parameters
+        ----------
+        sample_Bf_r: dictionary
+            sample of the mixing matrix and r parameter, foregrounds spectra
+        noise_weighted_alm_data: array[float] of dimensions [nfreq, nstokes, dim_alm]
+            noise weighted alms of the data, do N^{-1} d, given in harmonic domain
+        theoretical_red_cov_r1_tensor: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            tensor mode covariance matrices in harmonic domain
+        theoretical_red_cov_r0_total: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            scalar mode covariance matrices in harmonic domain
+            approximate covariance matrices in harmonic domain
+
+        Returns
+        -------
+        float
+            log-proba computation of the marginal probability of the full likelihood over s_c
+        """
+
+        ## Checking the dimensions of the inputs
+        chx.assert_axis_dimension(theoretical_red_cov_r1_tensor, 0, self.lmax + 1 - self.lmin)
+        chx.assert_equal_shape((theoretical_red_cov_r0_total, theoretical_red_cov_r1_tensor))
+        chx.assert_axis_dimension(noise_weighted_alm_data, 0, self.n_frequencies)
+        chx.assert_axis_dimension(noise_weighted_alm_data, 1, self.nstokes)
+
+        # assert Sfgs to have 2 nstokes
+
+        ## Retrieving the mixing matrix and r parameter
+        if 'r' in fixed_parameters_dict:
+            r_param = fixed_parameters_dict['r']
+        else:
+            r_param = sample_dict['r']
+        if 'Bf' in fixed_parameters_dict:
+            Bf = fixed_parameters_dict['Bf']
+        else:
+            Bf = sample_dict['Bf']
+        if 'Sfgs' in fixed_parameters_dict:
+            Sfgs = fixed_parameters_dict['Sfgs']
+        else:
+            Sfgs = sample_dict['Sfgs']
+
+        if Sfgs.shape[1] == 2:
+            red_fgs_cell = get_stacked_red_covariance_matrix_from_c_ell_jax(
+                jnp.concatenate((Sfgs, jnp.zeros((self.n_components - 1, 1, self.lmax - self.lmin + 1))), axis=1)
+            )
+        else:
+            red_fgs_cell = get_stacked_red_covariance_matrix_from_c_ell_jax(Sfgs)
+
+        ## Updating the mixing matrix
+        mixing_matrix_sample = self.get_B_from_params(Bf, jax_use=True)[
+            :, :, 0
+        ]  # Getting the mixing matrix without the pixel dimension ;
+        # all pixels are equivalent here and taking a specific ith pixel helps the XLA compiler to improve the computation
+
+        ## Reconstructing the CMB covariance matrix parametrized by r_param
+        red_CMB_cell = theoretical_red_cov_r0_total + r_param * theoretical_red_cov_r1_tensor
+
+        red_comp_cell = contract(
+            'clsk,cd->cdlsk', jnp.vstack((red_CMB_cell[jnp.newaxis, :], red_fgs_cell)), jnp.eye(self.n_components)
+        )
+
+        ## Getting the inverse component noise in harmonic domain
+        red_inv_BtinvNB_c_ell = contract(
+            'fnl,sk->fnlsk', get_inv_BtinvNB_c_ell(self.freq_noise_c_ell, mixing_matrix_sample), jnp.eye(self.nstokes)
+        )
+
+        # Computation of the first term -d^t N^{-1} B (B^t N^{-1} B)^{-1} B^t N^{-1} d
+
+        ## Computation of the central term B (B^t N^{-1} B)^{-1} B with dimensions [frequency, frequency, lmax-lmin+1, nstokes, nstokes]
+        central_term_1 = contract(
+            'fc,cklst,gk->fglst', mixing_matrix_sample, red_inv_BtinvNB_c_ell, mixing_matrix_sample
+        )
+
+        ## Applying B (B^t N^{-1} B)^{-1} B to N^{-1} d
+        frequency_alm_central_term_1 = frequency_alms_x_obj_red_covariance_cell_JAX(
+            noise_weighted_alm_data, central_term_1, lmin=self.lmin
+        )
+
+        ## Finally building the full first term: -(d N^{-1})^t B (B^t N^{-1} B)^{-1} B^t N^{-1} d
+        first_term_complete = -alm_dot_product_JAX(noise_weighted_alm_data, frequency_alm_central_term_1, self.lmax)
+
+        # Computation of the second term s_{c,ML}^t (C^{-1} + N_c^{-1}) s_{c,ML}
+
+        ## Computation in harmonic domain of s_{c,ML} = E^t (B^t N^{-1} B)^{-1} B^t N^{-1} d
+        ## First computation of (B^t N^{-1} B)^{-1} B^t [frequency, frequency, lmax-lmin+1, nstokes, nstokes]
+        multiplicative_term_s_GLS = contract('cklst,fk->cflst', red_inv_BtinvNB_c_ell, mixing_matrix_sample)
+        ## Applying (B^t N^{-1} B)^{-1} B^t to N^{-1} d
+        s_GLS = frequency_alms_x_obj_red_covariance_cell_JAX(
+            noise_weighted_alm_data, multiplicative_term_s_GLS, lmin=self.lmin
+        )
+
+        concatenated_s_GLS = concatenate_frequency_stokes_alm(s_GLS)
+        concatenated_central_term = concatenate_reduced_multi_components_matrix(red_inv_BtinvNB_c_ell + red_comp_cell)
+        concatenated_red_inv_BtinvNB_c_ell = concatenate_reduced_multi_components_matrix(red_inv_BtinvNB_c_ell)
+
+        ## Computation of the central term (C + N_c)^{-1} with dimensions [lmax-lmin+1, nstokes, nstokes]
+        central_term_2 = jnp.linalg.pinv(concatenated_central_term)
+        ## Applying (C + N_c)^{-1} to s_{c,ML}
+        # alm_central_term_2 = frequency_alms_x_obj_red_covariance_cell_JAX(s_GLS, central_term_2, lmin=self.lmin)
+        alm_central_term_2 = alms_x_red_covariance_cell_JAX(concatenated_s_GLS, central_term_2, lmin=self.lmin)
+
+        ## Retrieving the full log-proba of the second term
+        second_term_complete = alm_dot_product_JAX(concatenated_s_GLS, alm_central_term_2, self.lmax)
+
+        # Computation of the third term ln | (C + N_c) (C_approx + N_c)^-1 |
+        ## Building first the operator (C + N_c) (C_approx + N_c)^-1 with dimensions [lmax-lmin+1, nstokes, nstokes]
+        red_contribution = contract(
+            'lsk,lkm->lsm', concatenated_central_term, jnp.linalg.pinv(concatenated_red_inv_BtinvNB_c_ell)
+        )
+        ## Computing the determinant of the operator taking into account the block diagonal structure per ell and m
+        third_term = (
+            (2 * jnp.arange(self.lmin, self.lmax + 1) + 1) * jnp.log(jnp.abs(jnp.linalg.det(red_contribution)))
+        ).sum()
+
+        return -(first_term_complete + second_term_complete + third_term) * self.f_sky / 2
+
 
 def single_Metropolis_Hasting_step(random_PRNGKey, old_sample, step_size, log_proba, **model_kwargs):
     """
@@ -3134,3 +3278,73 @@ def separate_single_MH_step_index_accelerated(
     new_inverse_term = carry[2]
     # return latest_PRNGKey, new_sample.reshape(old_sample.shape,order='F'), new_inverse_term
     return latest_PRNGKey, new_sample, new_inverse_term
+
+
+def multivariate_Metropolis_Hasting_step_numpyro_bounded_dictionary_sample(
+    state, dict_covariance_matrix, log_proba, dict_boundary, **model_kwargs
+):
+    """
+    Metropolis-Hasting step for a multivariate parameter, with a multivariate Gaussian proposal distribution,
+    from a Numpyro state
+
+    Parameters
+    ----------
+    state: MHState
+        Numpyro state
+    covariance_matrix: array[float]
+        covariance matrix for the proposal distribution
+    log_proba: array[float]
+        log-probability function of the model
+    model_kwargs: dictionary
+        additional arguments for the log-probability function
+    boundary: array[float] of the same shape as the parameters
+        boundary for the parameters
+
+    Returns
+    -------
+    array
+        new sample of the parameter
+    """
+    # Retrieving the old sample and the random key from the Numpyro state
+    dict_old_sample, random_PRNGKey = state
+
+    # Generating a new random key for the proposal
+    dict_key_proposal = dict()
+    for key in dict_old_sample.keys():
+        random_PRNGKey, dict_key_proposal[key], key_accept = random.split(random_PRNGKey, 3)
+
+    # print(dict_old_sample, dict_covariance_matrix)
+    # Generating the proposal sample with a multivariate Gaussian distribution
+    dict_proposed_sample = jax.tree_map(
+        lambda old_sample, covariance_matrix, key_proposal: dist.MultivariateNormal(
+            jnp.ravel(old_sample, order='F'), covariance_matrix
+        )
+        .sample(key_proposal)
+        .reshape(old_sample.shape, order='F'),
+        dict_old_sample,
+        dict_covariance_matrix,
+        dict_key_proposal,
+    )
+
+    # Computing the acceptance probability
+    accept_prob = -(log_proba(dict_old_sample, **model_kwargs) - log_proba(dict_proposed_sample, **model_kwargs))
+
+    boolean_accept = jnp.log(dist.Uniform().sample(key_accept)) < accept_prob
+
+    def build_new_sample(proposed_sample, old_sample, boundary):
+        new_sample = jnp.where(boolean_accept, proposed_sample, old_sample)
+        return jnp.where(
+            get_bool_array_in_boundary(new_sample, boundary).all(),
+            new_sample,
+            old_sample,
+        )
+
+    # Accepting or rejecting the proposal
+    new_sample = jax.tree_map(
+        build_new_sample,
+        dict_proposed_sample,
+        dict_old_sample,
+        dict_boundary,
+    )
+
+    return new_sample, random_PRNGKey

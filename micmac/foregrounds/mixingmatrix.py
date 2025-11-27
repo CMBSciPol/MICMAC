@@ -83,9 +83,9 @@ class MixingMatrix:
                 for c in range(self.n_components - 1):
                     templates[f, c] = create_one_template(self.nside) + f * (self.n_components - 1) + c
         else:
-            msg_error = f'templates must be of dimensions {(self.n_frequencies - self.n_components + 1, self.n_components - 1, 12 * nside**2)}'
+            msg_error = f'templates must be of dimensions {(self.n_frequencies - len(pos_special_freqs), self.n_components - 1, 12 * nside**2)}'
             assert templates.shape == (
-                self.n_frequencies - self.n_components + 1,
+                self.n_frequencies - len(pos_special_freqs),
                 self.n_components - 1,
                 12 * nside**2,
             ), msg_error
@@ -97,7 +97,7 @@ class MixingMatrix:
             for j in range(n_components - 1):
                 j_idx = j
 
-                for i in range(self.n_frequencies - n_components + 1):
+                for i in range(self.n_frequencies - len(pos_special_freqs)):
                     if i == 0 and j == 0:
                         assert templates[i, j].min() == 0, 'templates values must start at 0'
                         continue
@@ -126,7 +126,11 @@ class MixingMatrix:
         self.params = params
 
         # Indexes frequency array without the special frequencies
-        self.indexes_frequency_array_no_special = np.delete(np.arange(self.n_frequencies), pos_special_freqs)
+        if len(pos_special_freqs) != 0:
+            self.indexes_frequency_array_no_special = (np.delete(np.arange(self.n_frequencies), pos_special_freqs), ...)
+        else:
+            self.indexes_frequency_array_no_special = ...
+        # self.indexes_frequency_array_no_special = np.delete(np.arange(self.n_frequencies), pos_special_freqs)
 
         ### checks on pos_special_freqs
 
@@ -149,7 +153,7 @@ class MixingMatrix:
             self.n_patches = jnp.array(n_patches_array)
 
             self.max_len_patches_Bf = int(self.n_patches.max())
-            n_unknown_freqs = self.n_frequencies - self.n_components + 1
+            n_unknown_freqs = self.n_frequencies - len(pos_special_freqs)
             n_comp_fgs = self.n_components - 1
             self.multipatch_bool = not (
                 (self.n_patches == 1).all() and (self.len_params == n_comp_fgs * n_unknown_freqs)
@@ -310,11 +314,15 @@ class MixingMatrix:
 
             B_fgs = jnp.zeros((self.n_frequencies, ncomp_fgs, self.n_pix))
             # insert all the ones given by the pos_special_freqs
-            B_fgs = B_fgs.at[jnp.array(self.pos_special_freqs), ...].set(
-                jnp.broadcast_to(jnp.eye(ncomp_fgs), (self.n_pix, ncomp_fgs, ncomp_fgs)).T
-            )
+            if jnp.array(self.pos_special_freqs).size > 0:
+                B_fgs = B_fgs.at[jnp.array(self.pos_special_freqs), ...].set(
+                    jnp.broadcast_to(jnp.eye(ncomp_fgs), (self.n_pix, ncomp_fgs, ncomp_fgs)).T
+                )
+            # B_fgs = B_fgs.at[jnp.array(self.pos_special_freqs), ...].set(
+            #     jnp.broadcast_to(jnp.eye(ncomp_fgs), (self.n_pix, ncomp_fgs, ncomp_fgs)).T
+            # )
             # insert all the parameters values
-            B_fgs = B_fgs.at[self.indexes_frequency_array_no_special, ...].set(params.at[templates].get())
+            B_fgs = B_fgs.at[self.indexes_frequency_array_no_special].set(params.at[templates].get())
 
             return B_fgs
 
@@ -396,11 +404,15 @@ class MixingMatrix:
         if jax_use:
             B_fgs = jnp.zeros((self.n_frequencies, ncomp_fgs, self.n_pix))
             # insert all the ones given by the pos_special_freqs
-            B_fgs = B_fgs.at[jnp.array(self.pos_special_freqs), ...].set(
-                jnp.broadcast_to(jnp.eye(ncomp_fgs), (self.n_pix, ncomp_fgs, ncomp_fgs)).T
-            )
+            if jnp.array(self.pos_special_freqs).size > 0:
+                B_fgs = B_fgs.at[jnp.array(self.pos_special_freqs), ...].set(
+                    jnp.broadcast_to(jnp.eye(ncomp_fgs), (self.n_pix, ncomp_fgs, ncomp_fgs)).T
+                )
+            # B_fgs = B_fgs.at[jnp.array(self.pos_special_freqs), ...].set(
+            #     jnp.broadcast_to(jnp.eye(ncomp_fgs), (self.n_pix, ncomp_fgs, ncomp_fgs)).T
+            # )
             # insert all the parameters values
-            B_fgs = B_fgs.at[self.indexes_frequency_array_no_special, ...].set(params[self.templates])
+            B_fgs = B_fgs.at[self.indexes_frequency_array_no_special].set(params[self.templates])
 
             # Retrieving freq and comp indices corresponding to idx_template
             # freq_idx_template, comp_idx_template = jnp.argwhere(self.indexes_b==idx_template)

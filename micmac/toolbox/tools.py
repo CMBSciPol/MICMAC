@@ -113,6 +113,10 @@ def get_reduced_matrix_from_c_ell_jax(c_ells_input):
     return reduced_matrix
 
 
+def get_stacked_red_covariance_matrix_from_c_ell_jax(stacked_c_ells_input):
+    return jax.vmap(get_reduced_matrix_from_c_ell_jax)(stacked_c_ells_input)
+
+
 def get_c_ells_from_red_covariance_matrix_JAX(red_cov_mat, nstokes=0):
     """
     Retrieve the c_ell in the format [number_correlations, lmax+1-lmin],
@@ -802,3 +806,34 @@ def maps_x_reduced_matrix_generalized_sqrt_sqrt(maps_TQU_input, red_matrix_sqrt,
     if nstokes != 1:
         return maps_output[3 - nstokes :, ...]
     return maps_output
+
+
+def concatenate_reduced_multi_components_matrix(red_multi_comp_cell):
+    '''
+    Map elements of a reduced multi-component covariance matrix of dimension [n_c, n_c, n_l, n_s, n_s]
+    into a matrix of dimension [n_l, n_c * n_s, n_c * n_s] where the ordering is the reshaped matrix is:
+    [c = 00, s = 00   c = 00, s = 01   c = 01, s = 00   c = 01, s = 01
+     c = 00, s = 10   c = 00, s = 11   c = 01, s = 10   c = 01, s = 11
+     c = 10, s = 00   c = 10, s = 01   c = 11, s = 00   c = 11, s = 01
+     c = 10, s = 10   c = 10, s = 11   c = 11, s = 10   c = 11, s = 01]
+    '''
+    n_c = red_multi_comp_cell.shape[0]
+    n_l = red_multi_comp_cell.shape[2]
+    n_s = red_multi_comp_cell.shape[4]
+    red_multi_comp_cell_swap = jnp.swapaxes(red_multi_comp_cell, axis1=0, axis2=2)
+    red_multi_comp_cell_transpose = red_multi_comp_cell_swap.transpose(0, 1, 3, 2, 4)
+    red_multi_comp_cell_concatenated = red_multi_comp_cell_transpose.reshape((n_l, n_c * n_s, n_c * n_s))
+    return red_multi_comp_cell_concatenated
+
+
+def concatenate_frequency_stokes_alm(frequency_stokes_alms):
+    '''
+    Map elements of a reduced multi-component covariance matrix of dimension [n_c, n_s, n_l]
+    into a matrix of dimension [n_c * n_s, n_l] where the ordering is the reshaped matrix is:
+    [c = 0, s = 0   c = 0, s = 1   c = 1, s = 0   c = 1, s = 1   ...]
+    '''
+    n_c = frequency_stokes_alms.shape[0]
+    n_s = frequency_stokes_alms.shape[1]
+    n_l = frequency_stokes_alms.shape[2]
+    frequency_stokes_alms_concatenated = frequency_stokes_alms.reshape((n_c * n_s, n_l))
+    return frequency_stokes_alms_concatenated

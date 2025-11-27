@@ -474,7 +474,7 @@ def create_one_template(node, all_nsides, spv_templates, nside, print_bool=False
     return spv_template_b
 
 
-def get_healpix_templates_from_tree(root_tree, nside, n_frequencies, n_components):
+def get_healpix_templates_from_tree(root_tree, nside, n_frequencies, n_components, n_special_freqs=2):
     """
     Retrieve all templates maps whose values correspond to the indices of params,
     and indexed per frequency and component
@@ -485,13 +485,13 @@ def get_healpix_templates_from_tree(root_tree, nside, n_frequencies, n_component
         All templates indexes maps whose values correspond to the indices of params
         for all the patches distributions per frequency and component
     """
-    n_unknown_freqs = n_frequencies - n_components + 1
+    n_unknown_freqs = n_frequencies - n_special_freqs
     n_comp_fgs = n_components - 1
 
     values_b = (
-        jnp.array(get_values_b(root_tree, n_frequencies - n_comp_fgs, n_components - 1))
+        jnp.array(get_values_b(root_tree, n_frequencies - n_special_freqs, n_components - 1))
         .ravel(order='F')
-        .reshape((n_frequencies - n_comp_fgs, n_components - 1), order='F')
+        .reshape((n_frequencies - n_special_freqs, n_components - 1), order='F')
     )
 
     size_patches = jnp.where(values_b == 0, 1, 12 * values_b**2)  # .ravel(order='F')

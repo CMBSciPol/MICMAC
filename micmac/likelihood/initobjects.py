@@ -9,6 +9,7 @@ from micmac.foregrounds.templates import (
     tree_spv_config,
 )
 from micmac.likelihood.harmonic import HarmonicMicmacSampler
+from micmac.likelihood.icarus import HarmonicIcarusSampler
 from micmac.likelihood.pixel import MicmacSampler
 from micmac.noise.noisecovar import get_noise_covar_extended, get_true_Cl_noise
 from micmac.toolbox.utils import get_instr, normalize_templates
@@ -17,6 +18,7 @@ __all__ = [
     'create_MicmacSampler_from_dictionnary',
     'create_MicmacSampler_from_toml_file',
     'create_HarmonicMicmacSampler_from_dictionnary',
+    'create_HarmonicIcarusSampler_from_dictionnary',
     'create_HarmonicMicmacSampler_from_toml_file',
     'create_HarmonicMicmacSampler_from_MicmacSampler_obj',
     'create_MicmacSampler_from_HarmonicMicmacSampler_obj',
@@ -332,3 +334,115 @@ def create_MicmacSampler_from_HarmonicMicmacSampler_obj(HarmonicMicmac_sampler_o
         )
 
     return MicmacSampler(**dictionary_parameters)
+
+
+def create_HarmonicIcarusSampler_from_dictionnary(dictionary_parameters, path_file_spv, transform_to_root_dict=False):
+    """
+    Create a HarmonicMicmacSampler object from the path of a toml file and the yaml file for spatial variability
+
+    Parameters
+    ----------
+    dictionary_parameters : dictionary
+        dictionary for the main options of HarmonicMicmacSampler
+    path_file_spv : str
+        path to the yaml file for the spatial variability options
+
+    Returns
+    -------
+    HarmonicMicmacSampler_obj : HarmonicMicmacSampler
+        HarmonicMicmacSampler object
+    """
+
+    if transform_to_root_dict:
+        dictionary_parameters = create_root_dictionary(dictionary_parameters)
+
+    if dictionary_parameters['instrument_name'] != 'customized_instrument':
+        instrument = get_instrument(dictionary_parameters['instrument_name'])
+    else:
+        instrument = get_instr(dictionary_parameters['frequency_array'], dictionary_parameters['depth_p'])
+        del dictionary_parameters['depth_p']
+
+    dictionary_parameters['frequency_array'] = jnp.array(instrument['frequency'])
+    dictionary_parameters['freq_noise_c_ell'] = get_true_Cl_noise(
+        jnp.array(instrument['depth_p']), dictionary_parameters['lmax']
+    )[..., dictionary_parameters['lmin'] :]
+
+    ## Spatial variability (spv) params
+    n_fgs_comp = dictionary_parameters['n_components'] - 1
+    # total number of params in the mixing matrix for a specific pixel
+    n_betas = (
+        np.shape(dictionary_parameters['frequency_array'])[0] - len(dictionary_parameters['pos_special_freqs'])
+    ) * (n_fgs_comp)
+    # Read or create spv config
+    if '.npy' in path_file_spv:
+        print('Loading the spv config from a numpy file')
+        templates = normalize_templates(np.load(path_file_spv))
+    else:
+        print('Loading or creating the spv config from a yaml file')
+
+        root_tree = get_nodes_b(
+            tree_spv_config(path_file_spv, n_betas, n_fgs_comp, print_tree=True)
+        )  # Getting the nodes_b from the tree
+        templates = get_healpix_templates_from_tree(
+            root_tree,
+            dictionary_parameters['nside'],
+            len(dictionary_parameters['frequency_array']),
+            dictionary_parameters['n_components'],
+            n_special_freqs=len(dictionary_parameters['pos_special_freqs']),
+        )
+    dictionary_parameters['templates'] = templates
+
+    ## Getting the covariance of Bf from toml file
+    if 'step_size_Bf_1' in dictionary_parameters and 'step_size_Bf_2' in dictionary_parameters:
+        n_frequencies = len(dictionary_parameters['frequency_array'])
+        col_dim_Bf = n_frequencies - len(dictionary_parameters['pos_special_freqs'])
+
+        dictionary_parameters['covariance_Bf'] = np.zeros(
+            (col_dim_Bf * n_fgs_comp, col_dim_Bf * n_fgs_comp)
+        )  # Creating the covariance matrix for Bf
+
+        np.fill_diagonal(
+            dictionary_parameters['covariance_Bf'][:col_dim_Bf, :col_dim_Bf],
+            dictionary_parameters['step_size_Bf_1'] ** 2,
+        )  # Filling diagonal with step_size_Bf_1 for first foreground component
+        np.fill_diagonal(
+            dictionary_parameters['covariance_Bf'][col_dim_Bf : 2 * col_dim_Bf, col_dim_Bf : 2 * col_dim_Bf],
+            dictionary_parameters['step_size_Bf_2'] ** 2,
+        )  # Filling diagonal with step_size_Bf_2 for second foreground component
+
+        del dictionary_parameters['step_size_Bf_1']
+        del dictionary_parameters['step_size_Bf_2']
+
+    if 'step_size_Sf_1' in dictionary_parameters and 'step_size_Sf_2' in dictionary_parameters:
+        n_multipoles = dictionary_parameters['lmax'] - dictionary_parameters['lmin'] + 1
+
+        dictionary_parameters['covariance_Sf'] = np.zeros(
+            (2 * n_fgs_comp * n_multipoles, 2 * n_fgs_comp * n_multipoles)
+        )  # Creating the covariance matrix for Bf
+
+        np.fill_diagonal(
+            dictionary_parameters['covariance_Sf'][:n_multipoles, :n_multipoles],
+            dictionary_parameters['step_size_Sf_1'] ** 2,
+        )  # Filling diagonal with step_size_Bf_1 for first foreground component
+        np.fill_diagonal(
+            dictionary_parameters['covariance_Sf'][n_multipoles : 2 * n_multipoles, n_multipoles : 2 * n_multipoles],
+            dictionary_parameters['step_size_Sf_2'] ** 2,
+        )  # Filling diagonal with step_size_Bf_2 for second foreground component
+
+        np.fill_diagonal(
+            dictionary_parameters['covariance_Sf'][
+                2 * n_multipoles : 3 * n_multipoles, 2 * n_multipoles : 3 * n_multipoles
+            ],
+            dictionary_parameters['step_size_Sf_1'] / 10**2,
+        )  # Filling diagonal with step_size_Bf_1 for first foreground component
+        np.fill_diagonal(
+            dictionary_parameters['covariance_Sf'][
+                3 * n_multipoles : 4 * n_multipoles, 3 * n_multipoles : 4 * n_multipoles
+            ],
+            dictionary_parameters['step_size_Sf_2'] / 10**2,
+        )  # Filling diagonal with step_size_Bf_2 for second foreground component
+
+        del dictionary_parameters['step_size_Sf_1']
+        del dictionary_parameters['step_size_Sf_2']
+
+    return HarmonicIcarusSampler(**dictionary_parameters)

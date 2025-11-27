@@ -6,12 +6,15 @@ repos:
     args: ["--py39-plus"]
     exclude: ^tests/
 
-- repo: https://github.com/hadialqattan/pycln
-  rev: "v2.4.0"
+- repo: local
   hooks:
   - id: pycln
+    name: pycln
+    entry: pycln
+    language: system
+    types: [python]
     args:
-    - --all
+      - --all
     include: ^micmac/foregrounds, ^micmac/likelihood, ^micmac/toolbox, ^micmac/noise
     exclude: ^tests/, ^tutorials/, ^micmac/
 
