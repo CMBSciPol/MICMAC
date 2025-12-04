@@ -33,6 +33,7 @@ from micmac.toolbox.tools import (
     JAX_almxfl,
     alm_dot_product_JAX,
     alms_x_red_covariance_cell_JAX,
+    component_maps_x_redcom_covariance_cell_JAX,
     concatenate_frequency_stokes_alm,
     concatenate_reduced_multi_components_matrix,
     frequency_alms_x_obj_red_covariance_cell_JAX,
@@ -595,6 +596,161 @@ class SamplingFunctions(MixingMatrix):
         ## Retrieving \zeta from C^{-1/2} \zeta
         return fluctuating_map.reshape((self.nstokes, self.n_pix))
 
+    def get_fluctuating_term_maps_multi_components(
+        self,
+        redcom_cov_matrix_sqrt,
+        BtinvN_sqrt,
+        redcom_N_inv,
+        jax_key_PNRG,
+        map_random_realization_xi=None,
+        map_random_realization_chi=None,
+        initial_guess=jnp.empty(0),
+        precond_func=None,
+    ):
+        r"""Sampling step 2: fluctuating term #TODO: continue here
+
+        Solve fluctuation term:
+            (Id + C^{1/2} N_c^{-1} C^{1/2}) C^{-1/2} \zeta = xi + C^{1/2} N_c^{-1/2} \chi
+
+        Or, fully developped:
+            (Id + C^{1/2} ((B^t N^{-1} B)^{-1})^{-1} C^{1/2}) \zeta = C^{1/2} C^{-1/2} xi + C^{1/2} ((B^t N^{-1} B)^{-1})^{-1} (B^t N^{-1} B)^{-1} B^t N^{-1/2} \chi
+
+        This ensures:
+        <\zeta \zeta^t> = (C^{-1} + N_c^{-1})^{-1}
+        < \zeta > = 0
+
+        Note C is assumed to be block diagonal
+
+        Parameters
+        ----------
+        redcom_cov_matrix_sqrt: array[float] of dimension [lmin:lmax, n_components, nstokes, n_components nstokes]
+            term C^{1/2}, matrix square root of CMB covariance matrices in harmonic domain
+        BtinvN_sqrt: array[float] of dimension [component, frequencies, n_pix]
+            matrix B^T N^{-1/2}
+        jax_key_PNRG: array[jnp.uint32]
+            random key for JAX PNRG
+        map_white_noise_xi: array[float] of dimensions [nstokes, n_pix] (optional)
+            set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term
+        map_white_noise_chi: array[float] of dimensions [nfreq, nstokes, n_pix] (optional)
+            set of maps 0 with mean and variance 1, which will be used to compute the fluctuation term
+        initial_guess: array[float] of dimensions [nstokes, n_pix] (optional)
+            initial guess for the CG, default jnp.empty(0) (then set to 0)
+        precond_func: function (optional)
+            function preconditioner for the CG, default None
+
+        Returns
+        -------
+        fluctuating_map_z: array[float] of dimensions [nstokes, n_pix]
+            Fluctuation maps for s_c sampling
+        """
+
+        # Chex test for arguments
+        chx.assert_shape(
+            redcom_cov_matrix_sqrt,
+            (self.lmax + 1 - self.lmin, self.n_components, self.nstokes, self.n_components, self.nstokes),
+        )
+        chx.assert_shape(redcom_N_inv, (self.n_pix, self.n_components, self.nstokes, self.n_components, self.nstokes))
+        chx.assert_shape(BtinvN_sqrt, (self.n_components, self.n_frequencies, self.n_pix))
+
+        jax_key_PNRG, jax_key_PNRG_xi = random.split(jax_key_PNRG)  # Splitting of the random key to generate a new one
+
+        # Creation of the random maps if they are not given
+        if map_random_realization_xi is None:
+            # If no random maps are provided, then it is computed within the routine
+            print('Recalculating xi !')
+            map_random_realization_xi = jax.random.normal(
+                jax_key_PNRG_xi, shape=(self.n_components, self.nstokes, self.n_pix)
+            ) / jhp.nside2resol(self.nside)
+
+        jax_key_PNRG, *jax_key_PNRG_chi = random.split(
+            jax_key_PNRG, self.n_frequencies + 1
+        )  # Splitting of the random key to generate a new one
+        if map_random_realization_chi is None:
+            # If no random maps are provided, then it is computed within the routine
+            print('Recalculating chi !')
+
+            def fmap(random_key):
+                random_map = jax.random.normal(random_key, shape=(self.nstokes, self.n_pix))
+                # return self.get_band_limited_maps(random_map)
+                return random_map
+
+            map_random_realization_chi = jax.vmap(fmap)(
+                jnp.array(jax_key_PNRG_chi)
+            )  # Generating a different random Gaussian map for each frequency
+
+            chx.assert_shape(map_random_realization_chi, (self.n_frequencies, self.nstokes, self.n_pix))
+
+        # Computation of the right side member of the CG
+
+        # First right member: xi
+        right_member_1 = map_random_realization_xi
+
+        # Second right member:
+
+        ## Computation of N_c^{-1/2} \chi = ((B^t N^{-1} B)^{-1}) (B^t N^{-1} B)^{-1} B^t N^{-1/2} \chi
+        right_member_2_part = jnp.einsum(
+            'csp, pekcs -> ekp', jnp.einsum('cfp,fsp->csp', BtinvN_sqrt, map_random_realization_chi), redcom_N_inv
+        )
+        # First compute N_c^{-1/2} \chi
+        right_member_2 = component_maps_x_redcom_covariance_cell_JAX(
+            right_member_2_part, redcom_cov_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter
+        )
+        # Then apply C^{1/2} to N_c^{-1/2} \chi
+
+        # right_member = (right_member_1 + right_member_2).ravel()
+        right_member = (jax.vmap(self.get_band_limited_maps)(right_member_1)).ravel() + right_member_2.ravel()
+
+        # Computation of the left side member of the equation
+
+        # Operator in harmonic domain: C^{1/2}
+        first_part_term_left = lambda x: component_maps_x_redcom_covariance_cell_JAX(
+            x.reshape((self.n_components, self.nstokes, self.n_pix)),
+            redcom_cov_matrix_sqrt,
+            nside=self.nside,
+            lmin=self.lmin,
+            n_iter=self.n_iter,
+        ).ravel()
+
+        ## Operator in pixel domain: (E^t (B^t N^{-1} B) E)^{-1}
+        def second_part_term_left(x):
+            return jnp.einsum(
+                'csp, pekcs -> ekp', x.reshape((self.n_components, self.nstokes, self.n_pix)), redcom_N_inv
+            ).ravel()
+
+        ## Defining the function to inverse with the CG
+        func_left_term = lambda x: x.ravel() + first_part_term_left(second_part_term_left(first_part_term_left(x)))
+
+        # Initial guess for the CG
+        if jnp.size(initial_guess) == 0:
+            initial_guess = jnp.zeros_like(map_random_realization_xi)
+
+        # Actual start of the CG
+
+        # Start of the CG
+        time_start = time.time()
+        fluctuating_map_z, number_iterations = jsp.sparse.linalg.cg(
+            func_left_term,
+            right_member.ravel(),
+            x0=initial_guess.ravel(),
+            tol=self.tolerance_CG,
+            maxiter=self.limit_iter_cg,
+            M=precond_func,
+        )
+        ## Computing the term C^{-1/2} \zeta
+
+        print('CG Fluct finished with', number_iterations, 'iterations in ', time.time() - time_start, 'seconds !!')
+
+        fluctuating_map = component_maps_x_redcom_covariance_cell_JAX(
+            fluctuating_map_z.reshape((self.n_components, self.nstokes, self.n_pix)),
+            redcom_cov_matrix_sqrt,
+            nside=self.nside,
+            lmin=self.lmin,
+            n_iter=self.n_iter,
+        )
+
+        ## Retrieving \zeta from C^{-1/2} \zeta
+        return fluctuating_map.reshape((self.n_components, self.nstokes, self.n_pix))
+
     def solve_generalized_wiener_filter_term_v2d(
         self, s_cML, red_cov_matrix_sqrt, invBtinvNB, initial_guess=jnp.empty(0), precond_func=None
     ):
@@ -695,6 +851,99 @@ class SamplingFunctions(MixingMatrix):
 
         return wiener_filter_term.reshape((self.nstokes, self.n_pix))
 
+    def solve_generalized_wiener_filter_term_multi_components(
+        self, s_ML, redcom_cov_matrix_sqrt, redcom_N_inv, initial_guess=jnp.empty(0), precond_func=None
+    ):
+        """
+        Solve Wiener filter term with CG:
+            $(Id + S^{1/2} N^{-1} S^{1/2}) S^{-1/2} s_{\rm WF} = S^{1/2} N^{-1} s_{\rm ML}$
+
+        This ensures:
+            $s_{\rm c,WF} = (C^{-1} + N_c^{-1})^{-1} N_c^{-1} s_{\rm c,ML}$
+        Note $S$ is assumed to be block diagonal
+
+        Parameters
+        ----------
+        s_ML: array[float] of dimensions [n_components, nstokes, n_pix]
+            Maximum Likelihood solution of component separation from input frequency maps
+        red_com_matrix_sqrt: array[float] of dimension [lmin:lmax, n_components, nstokes, n_components, nstokes]
+            term $C^{1/2}$, matrix square root of component covariance matrices in harmonic domain
+        invBtinvNB: array[float] of dimension [component, component, n_pix]
+            matrix $(B^t N^{-1} B)^{-1}$
+        initial_guess: array[float] of dimensions [nstokes, n_pix] (optional)
+            initial guess for the CG, default jnp.empty(0) (then set to 0)
+        precond_func: function (optional)
+            function preconditioner for the CG, default None
+
+        Returns
+        -------
+        array[float] of dimensions [nstokes, n_pix]
+            Wiener filter maps for s_c sampling
+        """
+
+        # Chex test for arguments
+        chx.assert_shape(
+            redcom_cov_matrix_sqrt,
+            (self.lmax + 1 - self.lmin, self.n_components, self.nstokes, self.n_components, self.nstokes),
+        )
+        chx.assert_shape(s_ML, (self.n_components, self.nstokes, self.n_pix))
+        chx.assert_shape(redcom_N_inv, (self.n_pix, self.n_components, self.nstokes, self.n_components, self.nstokes))
+
+        # Computation of the right side member of the CG: S^{1/2} N^{-1} s,ML
+        ## Computation of C^{1/2} N^{-1} s,ML
+        invNsML = jnp.einsum('csp, pekcs -> ekp', s_ML, redcom_N_inv)
+        right_member = component_maps_x_redcom_covariance_cell_JAX(
+            invNsML, redcom_cov_matrix_sqrt, nside=self.nside, lmin=self.lmin, n_iter=self.n_iter
+        )
+
+        # Preparation of the harmonic operator C^{1/2} for the LHS of the CG
+        first_part_term_left = lambda x: component_maps_x_redcom_covariance_cell_JAX(
+            x.reshape((self.n_components, self.nstokes, self.n_pix)),
+            redcom_cov_matrix_sqrt,
+            nside=self.nside,
+            lmin=self.lmin,
+            n_iter=self.n_iter,
+        ).ravel()
+
+        ## Second left member pixel operator: (E^t (B^t N^{-1} B)^{-1} E) x
+        def second_part_term_left(x):
+            return jnp.einsum(
+                'csp, pekcs -> ekp', x.reshape((self.n_components, self.nstokes, self.n_pix)), redcom_N_inv
+            ).ravel()
+
+        # Full operator to inverse: Id + C^{1/2} N_c^{-1} C^{1/2}
+        func_left_term = lambda x: x + first_part_term_left(second_part_term_left(first_part_term_left(x)))
+
+        # Initial guess for the CG
+        if jnp.size(initial_guess) == 0:
+            initial_guess = jnp.zeros_like(s_ML)
+
+        # Actual start of the CG
+
+        time_start = time.time()
+        wiener_filter_term_z, number_iterations = jsp.sparse.linalg.cg(
+            func_left_term,
+            right_member.ravel(),
+            x0=initial_guess.ravel(),
+            tol=self.tolerance_CG,
+            maxiter=self.limit_iter_cg,
+            M=precond_func,
+        )  # atol=self.atol_CG,
+        ## Computing the term C^{-1/2} s_{c,WF}
+
+        print('CG WF finished with', number_iterations, 'iterations in ', time.time() - time_start, 'seconds !!')
+
+        wiener_filter_term = component_maps_x_redcom_covariance_cell_JAX(
+            wiener_filter_term_z.reshape((self.n_components, self.nstokes, self.n_pix)),
+            redcom_cov_matrix_sqrt,
+            nside=self.nside,
+            lmin=self.lmin,
+            n_iter=self.n_iter,
+        )
+        ## Retrieving s_{c,WF} from C^{-1/2} s_{c,WF}
+
+        return wiener_filter_term.reshape((self.n_components, self.nstokes, self.n_pix))
+
     def get_inverse_wishart_sampling_from_c_ells(self, sigma_ell, PRNGKey, old_sample=None, acceptance_posdef=False):
         """
         Solve sampling step 3: inverse Wishart distribution with C
@@ -733,15 +982,19 @@ class SamplingFunctions(MixingMatrix):
             sample_gaussian = random.multivariate_normal(
                 ell_PNRGKey,
                 jnp.zeros(self.nstokes),
-                invert_parameter_Wishart[ell],
+                invert_parameter_Wishart[ell - self.lmin],
                 shape=(2 * self.lmax - self.nstokes,),
             )
 
-            weighting = jnp.where(ell >= (jnp.arange(2 * self.lmax - self.nstokes) + self.nstokes) / 2, 1, 0)
-
-            sample_to_return = jnp.einsum('lk,l,lm->km', sample_gaussian, weighting, sample_gaussian)
+            # weighting = jnp.where(ell >= (jnp.arange(2 * self.lmax - self.nstokes) + self.nstokes) / 2, 1, 0)
+            weighting = jnp.where(jnp.cumsum(jnp.ones(2 * self.lmax - self.nstokes)) <= 2 * ell - self.nstokes, 1, 0)
+            mean_sample_gaussian = jnp.mean(sample_gaussian, axis=0)
+            sample_to_return = jnp.einsum(
+                'lk,l,lm->km', sample_gaussian - mean_sample_gaussian, weighting, sample_gaussian - mean_sample_gaussian
+            )
             # new_carry = new_ell_PRNGKey
             return sample_to_return
+            # return invert_parameter_Wishart[ell - self.lmin]
 
         PRNGKey_map = random.split(PRNGKey, self.lmax - self.lmin + 1)  # Prepare lmax+1-lmin PRNGKeys to be used
         # sampling_Wishart_map = jax.vmap(map_sampling_Wishart)(PRNGKey_map, jnp.arange(self.lmin,self.lmax+1))
@@ -1235,6 +1488,54 @@ class SamplingFunctions(MixingMatrix):
             -((red_sigma_ell_[:, 1, 1] / BB_cov_matrix_sampled).sum() + sum_dets) / 2
         )  # -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
 
+    def get_conditional_proba_F_ell_indep(
+        self,
+        F_ell_sample,
+        ell,
+        red_sigma_ell,
+    ):
+        """
+        Compute log-proba of one ell bin of F_ell
+
+        The associated log proba is:
+            -1/2 (tr Sigma_ell F_ell^-1) - 1/2 log det F_ell
+
+        Parameters
+        ----------
+        F_ell: array[float] of dimensions [n_correlations]
+            ell bin of the covariance F to be sampled
+        red_sigma_ell: array[float] of dimensions [nstokes, nstokes]
+            covariance matrices in harmonic domain
+        ell: int
+            multipole that is being sampled
+
+        Returns
+        -------
+        float
+            log-proba of F_ell
+        """
+
+        chx.assert_shape(
+            red_sigma_ell,
+            (
+                self.nstokes,
+                self.nstokes,
+            ),
+        )
+
+        # Getting the sigma_ell in the format [lmax,nstokes,nstokes] multiplied by 2 ell+1, to take into account the m
+        red_sigma_ell_ = red_sigma_ell * (2 * ell + 1)
+
+        # Getting the CMB covariance matrix parametrized by r_param
+        F_cov_matrix_sampled = jnp.array([[F_ell_sample[0], F_ell_sample[2]], [F_ell_sample[2], F_ell_sample[1]]])
+
+        # Getting determinant of the covariance matrix log det C(r) ; taking into account the factor 2ell+1 for the multiples m
+        sum_dets = (2 * ell + 1) * jnp.log(jnp.linalg.det(F_cov_matrix_sampled))
+
+        return (
+            -((jnp.trace(red_sigma_ell_ @ jnp.linalg.pinv(F_cov_matrix_sampled))) + sum_dets) / 2
+        )  # -1/2 (tr sigma_ell C(r)^-1) - 1/2 log det C(r)
+
     def get_binned_conditional_proba_C_from_r_wBB(
         self, r_param, red_sigma_ell, theoretical_red_cov_r1_tensor, theoretical_red_cov_r0_total
     ):
@@ -1604,6 +1905,52 @@ class SamplingFunctions(MixingMatrix):
             'csp,cmp,msp->p', full_data_without_CMB_with_noise, invBtinvNB_fg, full_data_without_CMB_with_noise
         )
         return -(-first_term_complete + 0) / 2.0
+
+    def get_conditional_proba_spectral_likelihood_JAX_pixel_icarus(
+        self, complete_mixing_matrix, full_data_without_CMB, foreground_maps_sample
+    ):
+        """
+        Get conditional probability of spectral likelihood from the full mixing matrix
+
+        The associated conditional probability is given by:
+        - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
+
+        with d = full_data_without_CMB, B_c = complete_mixing_matrix, B_f = complete_mixing_matrix[:,1:,:]
+        d is assumed to be band-limited
+
+        Parameters
+        ----------
+        complete_mixing_matrix: array[float] of dimensions [component, frequencies]
+            complete mixing matrix
+        full_data_without_CMB: array[float] of dimensions [frequencies, n_pix]
+            data without from which the CMB (sample) was substracted
+
+        Returns
+        -------
+        array[float] of dimensions [n_pix]
+            computation of spectral likelihood per pixel
+        """
+
+        # Building the spectral_likelihood: - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
+
+        chx.assert_shape(complete_mixing_matrix, (self.n_frequencies, self.n_components, self.n_pix))
+        chx.assert_shape(full_data_without_CMB, (self.n_frequencies, self.nstokes, self.n_pix))
+        chx.assert_shape(foreground_maps_sample, (self.n_components - 1, self.n_stokes, self.n_pix))
+        chx.assert_shape(self.freq_inverse_noise, (self.n_frequencies, self.n_frequencies, self.n_pix))
+
+        ## Getting B_fg, foreground part of the mixing matrix
+        complete_mixing_matrix_fg = complete_mixing_matrix[:, 1:, :]
+
+        # Computing B_f s_f
+        Bs_fg = jnp.einsum('fcp,csp->fsp', complete_mixing_matrix_fg, foreground_maps_sample)
+        full_data_without_component = full_data_without_CMB - Bs_fg
+        # Computing N^{-1} (d - B_c s_c - B_f s_f)
+
+        ## Computation of the spectral likelihood: - (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
+        first_term_complete = jnp.einsum(
+            'csp,cmp,msp->p', full_data_without_component, self.freq_inverse_noise, full_data_without_component
+        )
+        return -first_term_complete / 2.0
 
     def get_conditional_proba_correction_likelihood_JAX_v2d(
         self,
@@ -2213,6 +2560,77 @@ class SamplingFunctions(MixingMatrix):
 
         return jax.vmap(project_pixel_to_patches)(jnp.arange(self.max_len_patches_Bf))
 
+    def get_conditional_proba_mixing_matrix_v3_pixel_icarus_JAX(
+        self,
+        new_params_mixing_matrix,
+        old_params_mixing_matrix,
+        full_data_without_CMB,
+        red_cov_approx_matrix_sqrt,
+        index_patch,
+        foreground_maps_sample,
+        component_eta_maps=None,
+        first_guess=None,
+        previous_inverse_x_Capprox_root=None,
+        biased_bool=False,
+        use_mask_contribution_eta=False,
+    ):
+        """Get conditional probability of the conditional probability associated with the Bf parameters
+
+        Note that the difference between the old and new mixing matrix is assumed to be small
+
+        With notation C_approx instead of \tilde{C}, the associated conditional probability is given by:
+            - (d - A_c s_c - A_f s_f)^t N^{-1} (d - A_c s_c - A_f s_f)
+
+        Parameters
+        ----------
+        old_params_mixing_matrix: array[float] of dimensions [component, frequencies]
+            old mixing matrix B_{old} to generate N_{c,old}
+        new_params_mixing_matrix: array[float] of dimensions [component, frequencies]
+            new mixing matrix B_{new} to generate N_{c,new}
+        full_data_without_CMB: array[float] of dimensions [frequencies, n_pix]
+            data without from which the CMB (sample) was substracted, of dimension
+        red_cov_approx_matrix: array[float] of dimensions [lmin:lmax, nstokes, nstokes]
+            matrix square root of the covariance of the covariance matrice approx (C_approx) in harmonic domain
+        index_patch: int
+            index of the template of the parameters being sampled
+        component_eta_maps: array[float] of dimensions [nstokes, n_pix]
+            set of eta maps
+        first_guess: array[float] of dimensions [component, n_pix] (optional)
+            previous inverse term computed with N_{c,old}, default is None to use maps of 0
+        previous_inverse_x_Capprox_root: array[float] of dimensions [component, n_pix] (optional)
+            C_approx^{1/2} A^{-1} eta, default None to have it recomputed
+        biased_bool: bool (optional)
+            indicate if the log-proba is biased, so computed without the correction, or not
+
+        Returns
+        -------
+        array[float] of dimensions [max_length_patch]
+            computation of the conditional probability of the mixing matrix for each patch
+        """
+
+        ## Updating parameters of the mixing matrix
+        # new_mixing_matrix, template = self.get_patch_B_from_params(nside_patch, new_params_mixing_matrix, jax_use=True)
+        new_mixing_matrix = self.get_B_from_params(new_params_mixing_matrix, jax_use=True)
+
+        template = self.templates[
+            index_patch % (self.n_frequencies - self.n_components - 1),
+            index_patch // (self.n_frequencies - self.n_components - 1),
+        ]
+        template = template.at[:].set(template - template.min())  # Re-indexing from 0 to max_len_patch-1
+
+        # Compute spectral likelihood: (d - B_c s_c)^t N^{-1} B_f (B_f^t N^{-1} B_f)^{-1} B_f^t N^{-1} (d - B_c s_c)
+        log_proba_spectral_likelihood = self.get_conditional_proba_spectral_likelihood_JAX_pixel_icarus(
+            new_mixing_matrix, jnp.array(full_data_without_CMB), jnp.array(foreground_maps_sample)
+        )
+
+        full_log_proba_pixel = log_proba_spectral_likelihood
+
+        def project_pixel_to_patches(idx_patch):
+            mask = jnp.where(template == idx_patch, 1, 0)
+            return (full_log_proba_pixel * mask).sum()
+
+        return jax.vmap(project_pixel_to_patches)(jnp.arange(self.max_len_patches_Bf))
+
     def get_conditional_proba_mixing_matrix_v4_JAX(
         self,
         new_params_mixing_matrix,
@@ -2405,7 +2823,7 @@ class SamplingFunctions(MixingMatrix):
 
         return -(first_term_complete + second_term_complete + third_term) * self.f_sky / 2
 
-    def smica_harmonic_marginal_probability(
+    def icarus_harmonic_marginal_probability(
         self,
         sample_dict,
         noise_weighted_alm_data,

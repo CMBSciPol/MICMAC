@@ -9,7 +9,7 @@ from micmac.foregrounds.templates import (
     tree_spv_config,
 )
 from micmac.likelihood.harmonic import HarmonicMicmacSampler
-from micmac.likelihood.icarus import HarmonicIcarusSampler
+from micmac.likelihood.icarus import IcarusSampler
 from micmac.likelihood.pixel import MicmacSampler
 from micmac.noise.noisecovar import get_noise_covar_extended, get_true_Cl_noise
 from micmac.toolbox.utils import get_instr, normalize_templates
@@ -18,7 +18,7 @@ __all__ = [
     'create_MicmacSampler_from_dictionnary',
     'create_MicmacSampler_from_toml_file',
     'create_HarmonicMicmacSampler_from_dictionnary',
-    'create_HarmonicIcarusSampler_from_dictionnary',
+    'create_IcarusSampler_from_dictionnary',
     'create_HarmonicMicmacSampler_from_toml_file',
     'create_HarmonicMicmacSampler_from_MicmacSampler_obj',
     'create_MicmacSampler_from_HarmonicMicmacSampler_obj',
@@ -336,7 +336,7 @@ def create_MicmacSampler_from_HarmonicMicmacSampler_obj(HarmonicMicmac_sampler_o
     return MicmacSampler(**dictionary_parameters)
 
 
-def create_HarmonicIcarusSampler_from_dictionnary(dictionary_parameters, path_file_spv, transform_to_root_dict=False):
+def create_IcarusSampler_from_dictionnary(dictionary_parameters, path_file_spv, transform_to_root_dict=False):
     """
     Create a HarmonicMicmacSampler object from the path of a toml file and the yaml file for spatial variability
 
@@ -445,4 +445,4 @@ def create_HarmonicIcarusSampler_from_dictionnary(dictionary_parameters, path_fi
         del dictionary_parameters['step_size_Sf_1']
         del dictionary_parameters['step_size_Sf_2']
 
-    return HarmonicIcarusSampler(**dictionary_parameters)
+    return IcarusSampler(**dictionary_parameters)

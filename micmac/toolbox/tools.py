@@ -837,3 +837,124 @@ def concatenate_frequency_stokes_alm(frequency_stokes_alms):
     n_l = frequency_stokes_alms.shape[2]
     frequency_stokes_alms_concatenated = frequency_stokes_alms.reshape((n_c * n_s, n_l))
     return frequency_stokes_alms_concatenated
+
+
+def component_maps_x_redcom_covariance_cell_JAX(component_maps_input, redcom_matrix_sqrt, nside, lmin, n_iter=3):
+    """
+    Return maps convolved with the harmonic covariance matrix given as input
+    in the format [lmax+1-lmin, nstokes, nstokes], assuming it's block diagonal
+
+    The input matrix have to start from ell=lmin, otherwise the lmax associated with the harmonic
+    operations will be wrong
+
+    Parameters
+    ----------
+    maps_input: array[float] of shape [n_components, nstokes, n_pix]
+         input maps
+    red_matrix_sqrt: array[float] of shape [lmax+1-lmin, n_components, nstokes, n_components, nstokes]
+        input reduced spectra
+    nside: int
+        nside of the input maps
+    lmin: int
+        minimum ell for the spectrum
+    n_iter: int
+        number of iterations for harmonic operations
+
+    Returns
+    -------
+    maps_output: array[float] of shape [n_components, nstokes, n_pix]
+        input maps convolved with input spectra
+    """
+
+    # Getting scalar parameters from the input covariance
+    all_params = 3  # 3 is the maximum number of stokes parameters
+    n_components = component_maps_input.shape[0]
+    nstokes = component_maps_input.shape[1]
+    lmax = redcom_matrix_sqrt.shape[0] - 1 + lmin
+
+    # Few tests to check the input
+    chx.assert_axis_dimension(redcom_matrix_sqrt, 0, lmax + 1 - lmin)
+    chx.assert_axis_dimension(redcom_matrix_sqrt, 2, nstokes)
+    chx.assert_axis_dimension(redcom_matrix_sqrt, 3, component_maps_input.shape[0])
+    chx.assert_axis_dimension(redcom_matrix_sqrt, 4, nstokes)
+
+    # # Building the full covariance matrix from the covariance matrix
+    # redcom_decomp = jnp.zeros((lmax + 1, redcom_matrix_sqrt.shape[1], all_params, n_components, all_params))  # 3 is the maximum number of stokes parameters
+    # if nstokes != 1:
+    #     redcom_decomp = redcom_decomp.at[lmin:, :, all_params - nstokes :, :, all_params - nstokes :].set(redcom_matrix_sqrt)
+    # else:
+    #     redcom_decomp = redcom_decomp.at[lmin:].set(redcom_matrix_sqrt)
+    # Extending the pixel maps if they are given with only polarization Stokes parameters (nstokes=2)
+    if component_maps_input.shape[1] == 2:
+        component_maps_TQU = jnp.concatenate(
+            (jnp.zeros_like(component_maps_input[:, 0][:, None, ...]), jnp.copy(component_maps_input[:, ...])), axis=1
+        )
+    else:
+        component_maps_TQU = jnp.copy(component_maps_input)
+
+    # Wrapper for map2alm, to prepare the pure callback of JAX
+    def wrapper_map2alm(maps_, lmax=lmax, n_iter=n_iter, nside=nside):
+        maps_np = jax.tree.map(np.asarray, maps_).reshape((3, 12 * nside**2))
+        alm_T, alm_E, alm_B = hp.map2alm(maps_np, lmax=lmax, iter=n_iter)
+        return np.array([alm_T, alm_E, alm_B])
+
+    # Wrapper for alm2map, to prepare the pure callback of JAX
+    def wrapper_alm2map(alm_, lmax=lmax, nside=nside):
+        if alm_.shape[0] != 3:
+            alm_ = jnp.vstack((jnp.zeros(((3 - alm_.shape[0]), alm_.shape[1])), alm_))
+        alm_np = jax.tree.map(np.asarray, alm_)
+        return hp.alm2map(alm_np, nside, lmax=lmax)
+
+    # Pure call back of map2alm, to be used with JAX for JIT compilation
+    @partial(jax.jit, static_argnums=(1, 2))
+    def pure_call_map2alm(maps_, lmax=lmax, nside=nside):
+        shape_output = (3, (lmax + 1) * (lmax // 2 + 1))
+        return jax.pure_callback(
+            wrapper_map2alm,
+            jax.ShapeDtypeStruct(shape_output, np.complex128),
+            maps_.ravel(),
+        )
+
+    @partial(jax.jit)
+    def pure_call_alm2map(alm_):
+        shape_output = (3, 12 * nside**2)
+        return jax.pure_callback(wrapper_alm2map, jax.ShapeDtypeStruct(shape_output, np.float64), alm_)
+
+    comp_alms_input = jax.vmap(pure_call_map2alm)(component_maps_TQU)[
+        :, 3 - nstokes :, ...
+    ]  # Getting only the relevant Stokes parameters
+
+    # print("comp_alms_input.shape", comp_alms_input.shape, redcom_decomp.shape)
+
+    def scan_func(carry, idx_j):
+        """
+        For a given frequency_j, returns the alms convolved with the frequency covariance matrix to be summed up for all nstokes_i
+        """
+        val_alms_j, idx_i = carry
+        result_almxfl = alms_x_red_covariance_cell_JAX(
+            comp_alms_input[idx_j, :], redcom_matrix_sqrt[:, idx_i, :, idx_j, :], lmin=lmin
+        )
+        new_carry = (val_alms_j + result_almxfl, idx_i)
+        return new_carry, val_alms_j + result_almxfl
+
+    # Multiplying the ie alms with the covariance matrix
+    def fmap(idx_i):
+        """
+        For a given idx_i, returns the alms convolved with the frequency covariance matrix to be summed up for all corresponding frequencies
+        """
+        return jlax.scan(
+            scan_func,
+            (jnp.zeros_like(comp_alms_input[0]), idx_i),
+            jnp.arange(n_components),
+        )[
+            0
+        ][0]
+
+    # Multiplying the alms with the covariance matrix
+    alms_output = jax.vmap(fmap)(jnp.arange(n_components))
+
+    # Retrieving the maps from the alms convolved with the input covariance matrix
+    maps_output = jax.vmap(pure_call_alm2map)(alms_output)
+    if nstokes != 1:
+        return maps_output[:, 3 - nstokes :, ...]  # If only polarization maps are given, return only polarization maps
+    return maps_output
