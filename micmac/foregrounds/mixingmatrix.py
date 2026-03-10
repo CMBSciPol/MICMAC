@@ -20,7 +20,11 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from micmac.foregrounds.templates import create_one_template
+from micmac.foregrounds.templates import (
+    get_healpix_templates_from_tree,
+    get_nodes_b,
+    tree_spv_config,
+)
 
 __all__ = ['get_indexes_b', 'MixingMatrix']
 
@@ -78,10 +82,21 @@ class MixingMatrix:
         self.n_components = n_components  # all comps (also cmb)
 
         if templates is None:
-            templates = np.zeros((self.n_frequencies, self.n_components, 12 * nside**2), dtype=int)
-            for f in range(self.n_frequencies):
-                for c in range(self.n_components - 1):
-                    templates[f, c] = create_one_template(self.nside) + f * (self.n_components - 1) + c
+            n_fgs_comp = self.n_components - 1
+            n_betas = (self.n_frequencies - len(pos_special_freqs)) * n_fgs_comp
+            root_tree = get_nodes_b(
+                tree_spv_config('', n_betas, n_fgs_comp, print_tree=True)
+            )  # Getting the nodes_b from the tree
+            templates = get_healpix_templates_from_tree(
+                root_tree,
+                self.nside,
+                self.n_frequencies,
+                self.n_components,
+            )
+            # templates = np.zeros((self.n_frequencies, self.n_components, 12 * nside**2), dtype=int)
+            # for f in range(self.n_frequencies):
+            #     for c in range(self.n_components - 1):
+            #         templates[f, c] = create_one_template(self.nside) + f * (self.n_components - 1) + c
         else:
             msg_error = f'templates must be of dimensions {(self.n_frequencies - len(pos_special_freqs), self.n_components - 1, 12 * nside**2)}'
             assert templates.shape == (
@@ -465,8 +480,8 @@ class MixingMatrix:
 
             def set_1(i):
                 params_dBi = jnp.zeros((nrows, ncols))
-                index_i = i // 2
-                index_j = i % 2
+                index_i = i // (self.n_components - 1)
+                index_j = i % (self.n_components - 1)
                 return params_dBi.at[index_i, index_j].set(1).ravel(order='C').reshape((nrows, ncols), order='F')
 
             return jax.vmap(set_1)(jnp.arange(nrows * ncols))

@@ -486,6 +486,13 @@ def alms_x_red_covariance_cell_JAX(alm_Stokes_input, red_matrix, lmin):
             0
         ][0]
 
+    # def fmap(nstokes_i):
+    #     return jlax.scan(
+    #         scan_func,
+    #         (jnp.zeros_like(alm_input[0]), nstokes_i),
+    #         jnp.arange(nstokes),
+    #     )[1]
+
     # Multiplying the alms with the covariance matrix
     alms_output = jax.vmap(fmap, in_axes=0)(jnp.arange(nstokes))
 
@@ -556,6 +563,13 @@ def frequency_alms_x_obj_red_covariance_cell_JAX(freq_alm_Stokes_input, freq_red
         )[
             0
         ][0]
+
+    # def fmap(idx_i):
+    #     return jlax.scan(
+    #         scan_func,
+    #         (jnp.zeros_like(freq_alm_input[0]), idx_i),
+    #         jnp.arange(n_frequencies),
+    #     )[1]
 
     # Multiplying the frequency alms with the first dimension-frequency covariance matrix
     freq_alms_output = jax.vmap(fmap, in_axes=0)(jnp.arange(first_dim_red_matrix))
@@ -958,3 +972,30 @@ def component_maps_x_redcom_covariance_cell_JAX(component_maps_input, redcom_mat
     if nstokes != 1:
         return maps_output[:, 3 - nstokes :, ...]  # If only polarization maps are given, return only polarization maps
     return maps_output
+
+
+def transform_alms_shape(alms_array, lmax, transformation=None, lmin=None) -> jnp.ndarray:
+    if transformation is not None:
+        assert (
+            transformation == 'healpix_to_2dlm' or transformation == '2dlm_to_healpix'
+        ), f"The transformation msut be 'healpix_to_2dlm' or '2dlm_to_healpix', got f{transformation}"
+    else:
+        if alms_array.shape[-1] == hp.Alm.getsize(lmax):
+            transformation = 'healpix_to_2dlm'
+        else:
+            transformation = '2dlm_to_healpix'
+
+    if transformation == 'healpix_to_2dlm':
+        alms_2d = jnp.zeros(alms_array.shape[:-1] + (lmax + 1, 2 * (lmax + 1) - 1), dtype=alms_array.dtype)
+
+        indices_m, indices_ells = jnp.triu_indices(n=lmax + 1, k=1, m=lmax + 1) + np.array([[1], [0]])
+        alms_2d = alms_2d.at[..., : lmax + 1, lmax].set(alms_array[..., : lmax + 1])
+        alms_2d = alms_2d.at[..., indices_ells, lmax + indices_m].set(alms_array[..., lmax + 1 :])
+        alms_2d = alms_2d.at[..., indices_ells, lmax - indices_m].set(
+            (-1) ** indices_m * alms_array[..., lmax + 1 :].conj()
+        )
+        return alms_2d
+
+    elif transformation == '2dlm_to_healpix':
+        indices_m, indices_ells = jnp.triu_indices(n=lmax + 1, m=lmax + 1)
+        return alms_array[..., indices_ells, lmax + indices_m]
