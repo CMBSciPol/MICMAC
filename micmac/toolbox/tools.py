@@ -974,6 +974,7 @@ def component_maps_x_redcom_covariance_cell_JAX(component_maps_input, redcom_mat
     return maps_output
 
 
+@partial(jax.jit, static_argnames=('lmax', 'lmin', 'transformation'))
 def transform_alms_shape(alms_array, lmax, transformation=None, lmin=None) -> jnp.ndarray:
     if transformation is not None:
         assert (
@@ -988,11 +989,17 @@ def transform_alms_shape(alms_array, lmax, transformation=None, lmin=None) -> jn
     if transformation == 'healpix_to_2dlm':
         alms_2d = jnp.zeros(alms_array.shape[:-1] + (lmax + 1, 2 * (lmax + 1) - 1), dtype=alms_array.dtype)
 
-        indices_m, indices_ells = jnp.triu_indices(n=lmax + 1, k=1, m=lmax + 1) + np.array([[1], [0]])
-        alms_2d = alms_2d.at[..., : lmax + 1, lmax].set(alms_array[..., : lmax + 1])
-        alms_2d = alms_2d.at[..., indices_ells, lmax + indices_m].set(alms_array[..., lmax + 1 :])
+        indices_m, indices_ells = jnp.array(jnp.triu_indices(n=lmax + 1, k=1, m=lmax + 1)) + jnp.array([[1], [0]])
+        alms_2d = alms_2d.at[..., : lmax + 1, lmax].set(
+            alms_array[..., : lmax + 1],
+            unique_indices=True,
+        )
+        alms_2d = alms_2d.at[..., indices_ells, lmax + indices_m].set(
+            alms_array[..., lmax + 1 :],
+            unique_indices=True,
+        )
         alms_2d = alms_2d.at[..., indices_ells, lmax - indices_m].set(
-            (-1) ** indices_m * alms_array[..., lmax + 1 :].conj()
+            (-1) ** indices_m * alms_array[..., lmax + 1 :].conj(), unique_indices=True
         )
         return alms_2d
 

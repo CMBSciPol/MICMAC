@@ -691,7 +691,7 @@ class SamplingFunctions(MixingMatrix):
         ## Computation of \chi term = S^{1/2} B^t N^{-1/2} \chi
 
         # First compute B^t N^{-1/2} \chi
-        right_member_2_part = jnp.einsum(
+        right_member_2_part = contract(
             'cfp,fsp->csp', BtinvN_sqrt / jhp.nside2resol(self.nside), map_random_realization_chi
         )
 
@@ -716,7 +716,7 @@ class SamplingFunctions(MixingMatrix):
 
         ## Operator in pixel domain: (B^t N^{-1} B)
         def second_part_term_left(x):
-            return jnp.einsum(
+            return contract(
                 'csp, pekcs -> ekp',
                 x.reshape((self.n_components, self.nstokes, self.n_pix)),
                 redcom_N_inv / jhp.nside2resol(self.nside) ** 2,
@@ -896,7 +896,7 @@ class SamplingFunctions(MixingMatrix):
 
         # Computation of the right side member of the CG: S^{1/2} N^{-1} s,ML
         ## Computation of C^{1/2} N^{-1} s,ML
-        invNsML = jnp.einsum('csp, pekcs -> ekp', s_ML, redcom_N_inv)
+        invNsML = contract('csp, pekcs -> ekp', s_ML, redcom_N_inv)
         right_member = component_maps_x_redcom_covariance_cell_JAX(
             invNsML / jhp.nside2resol(self.nside) ** 2,
             redcom_cov_matrix_sqrt,
@@ -916,7 +916,7 @@ class SamplingFunctions(MixingMatrix):
 
         ## Second left member pixel operator: (E^t (B^t N^{-1} B)^{-1} E) x
         def second_part_term_left(x):
-            return jnp.einsum(
+            return contract(
                 'csp, pekcs -> ekp',
                 x.reshape((self.n_components, self.nstokes, self.n_pix)),
                 redcom_N_inv / jhp.nside2resol(self.nside) ** 2,
@@ -1041,7 +1041,7 @@ class SamplingFunctions(MixingMatrix):
         ## Computation of \chi term = S^{1/2} B^t N^{-1/2} \chi
 
         # First compute B^t N^{-1/2} \chi
-        right_member_fluct_2_part = jnp.einsum(
+        right_member_fluct_2_part = contract(
             'cfp,fsp->csp', BtinvN_sqrt / jhp.nside2resol(self.nside), map_random_realization_chi
         )
 
@@ -1054,7 +1054,7 @@ class SamplingFunctions(MixingMatrix):
             jax.vmap(self.get_band_limited_maps)(right_member_fluct_1)
         ).ravel() + right_member_fluct_2.ravel()
 
-        invNsML = jnp.einsum('csp, pekcs -> ekp', s_ML, redcom_N_inv)
+        invNsML = contract('csp, pekcs -> ekp', s_ML, redcom_N_inv)
         right_member_wf = component_maps_x_redcom_covariance_cell_JAX(
             invNsML / jhp.nside2resol(self.nside) ** 2,
             redcom_cov_matrix_sqrt,
@@ -1202,7 +1202,7 @@ class SamplingFunctions(MixingMatrix):
         ## Computation of \chi term = S^{1/2} B^t N^{-1/2} \chi
 
         # First compute B^t N^{-1/2} \chi
-        right_member_fluct_2_part = jnp.einsum(
+        right_member_fluct_2_part = contract(
             'cfp,fsp->csp', BtinvN_sqrt / jhp.nside2resol(self.nside), map_random_realization_chi
         )
 
@@ -1215,7 +1215,7 @@ class SamplingFunctions(MixingMatrix):
             jax.vmap(self.get_band_limited_maps)(right_member_fluct_1)
         ).ravel() + right_member_fluct_2.ravel()
 
-        invNsML = jnp.einsum('csp, pekcs -> ekp', s_ML, redcom_N_inv)
+        invNsML = contract('csp, pekcs -> ekp', s_ML, redcom_N_inv)
         right_member_wf = component_maps_x_redcom_covariance_cell_JAX(
             invNsML / jhp.nside2resol(self.nside) ** 2,
             redcom_cov_matrix_sqrt,
@@ -1274,6 +1274,7 @@ class SamplingFunctions(MixingMatrix):
         )
         solution = lx.linear_solve(func_lineax, right_member.ravel(), solver=solver, throw=throw, options=options)
         print('CG solved in', time.time() - time_start, 'seconds !')
+        jax.debug.print('CG solved in {x} seconds !', x=solution.stats['num_steps'])
         result_lineax = solution.value.reshape((self.n_components, self.nstokes, self.n_pix))
 
         combined_term = component_maps_x_redcom_covariance_cell_JAX(

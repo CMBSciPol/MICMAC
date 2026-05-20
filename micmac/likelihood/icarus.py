@@ -29,6 +29,7 @@ import numpyro
 import numpyro.distributions as dist
 from jax import checkpoint, config
 from jax_tqdm import scan_tqdm
+from opt_einsum import contract
 
 from micmac.likelihood.sampling import (
     SamplingFunctions,
@@ -86,6 +87,7 @@ class IcarusSampler(SamplingFunctions):
         save_all_Bf_params=True,
         save_s_c_spectra=False,
         sample_r_Metropolis=True,
+        fixed_r_Metropolis=False,
         sample_C_inv_Wishart=False,
         sample_F=False,
         sample_F_indep=False,
@@ -299,6 +301,7 @@ class IcarusSampler(SamplingFunctions):
         self.save_all_Bf_params = bool(save_all_Bf_params)
         self.save_s_c_spectra = bool(save_s_c_spectra)
         self.sample_r_Metropolis = bool(sample_r_Metropolis)
+        self.fixed_r_Metropolis = bool(fixed_r_Metropolis)
         self.sample_C_inv_Wishart = bool(sample_C_inv_Wishart)
         self.sample_F = bool(sample_F)
         self.sample_F_indep = bool(sample_F_indep)
@@ -700,7 +703,7 @@ class IcarusSampler(SamplingFunctions):
         if input_freq_alms is None:
             input_freq_alms = self.get_alm_from_frequency_maps(input_freq_maps)
         ## Preparing the noise weighted alms
-        freq_red_inverse_noise = jnp.einsum(
+        freq_red_inverse_noise = contract(
             'fgl,sk->fglsk', self.freq_noise_c_ell, jnp.eye(self.nstokes)
         )  ## Operator N^-1 in format [frequencies, frequencies, lmax+1-lmin, nstokes, nstokes]
         ## Applying N^-1 to the alms of the input data
@@ -708,7 +711,7 @@ class IcarusSampler(SamplingFunctions):
         #     input_freq_alms, freq_red_inverse_noise, lmin=self.lmin
         # )
         input_freq_alms_2d = transform_alms_shape(input_freq_alms, lmax=self.lmax, transformation='healpix_to_2dlm')
-        noise_weighted_alm_data_2d_cut = jnp.einsum(
+        noise_weighted_alm_data_2d_cut = contract(
             'fsLm, efLst -> etLm', input_freq_alms_2d[:, :, self.lmin : :, :], freq_red_inverse_noise
         )
         noise_weighted_alm_data_2d = jnp.zeros(jnp.shape(input_freq_alms_2d), dtype=input_freq_alms_2d.dtype)
@@ -1258,7 +1261,8 @@ class IcarusSampler(SamplingFunctions):
 
         ## Preparing the preconditioner in the case of a full sky and white noise
         use_precond = False
-        if self.mask.sum() == self.n_pix and self.freq_noise_c_ell is not None:
+        # if self.mask.sum() == self.n_pix and self.freq_noise_c_ell is not None:
+        if True:
             assert len(self.freq_noise_c_ell.shape) == 3
             assert self.freq_noise_c_ell.shape[0] == self.n_frequencies
             assert self.freq_noise_c_ell.shape[1] == self.n_frequencies
@@ -1377,7 +1381,7 @@ class IcarusSampler(SamplingFunctions):
             precond_func_s = None
             if use_precond:
                 N_ell = get_inv_BtinvNB_c_ell(self.freq_noise_c_ell, mixing_matrix_sampled.mean(axis=2))
-                redcom_N_ell = jnp.einsum('cdl,sk->lcsdk', N_ell, np.eye(self.nstokes))
+                redcom_N_ell = contract('cdl,sk->lcsdk', N_ell, np.eye(self.nstokes))
                 inv_redcom_N_ell = jnp.linalg.pinv(
                     redcom_N_ell.reshape(
                         self.lmax - self.lmin + 1, self.n_components * self.nstokes, self.n_components * self.nstokes
@@ -1385,7 +1389,7 @@ class IcarusSampler(SamplingFunctions):
                 ).reshape(self.lmax - self.lmin + 1, self.n_components, self.nstokes, self.n_components, self.nstokes)
                 redcom_preconditioner_s = jnp.linalg.pinv(
                     jnp.eye(self.n_components * self.nstokes)
-                    + jnp.einsum(
+                    + contract(
                         'labcd,lcdef,lefgh->labgh', redcom_cov_matrix_sqrt, inv_redcom_N_ell, redcom_cov_matrix_sqrt
                     ).reshape(
                         self.lmax - self.lmin + 1, self.n_components * self.nstokes, self.n_components * self.nstokes
@@ -1413,13 +1417,17 @@ class IcarusSampler(SamplingFunctions):
                     n_iter=self.n_iter,
                 )
                 ## Sampling the Wiener filter term #TODO: change sampling function to the one with appropriate dimensionality
-                # redcom_N = jnp.einsum('cdp,sk->pcsdk', invBtinvNB * hp.nside2resol(self.nside) ** 2, jnp.eye(self.nstokes))
-                redcom_N = jnp.einsum('cdp,sk->pcsdk', invBtinvNB, jnp.eye(self.nstokes))
+                # redcom_N = contract('cdp,sk->pcsdk', invBtinvNB * hp.nside2resol(self.nside) ** 2, jnp.eye(self.nstokes))
+                redcom_N = contract('cdp,sk->pcsdk', invBtinvNB, jnp.eye(self.nstokes))
                 redcom_N_inv = jnp.copy(redcom_N)
                 redcom_N_inv = redcom_N_inv.at[self.mask != 0, ...].set(
-                    jnp.linalg.pinv(
-                        redcom_N.reshape(self.n_pix, self.n_components * self.nstokes, self.n_components * self.nstokes)
-                    ).reshape(self.n_pix, self.n_components, self.nstokes, self.n_components, self.nstokes)
+                    (
+                        jnp.linalg.pinv(
+                            redcom_N.reshape(
+                                self.n_pix, self.n_components * self.nstokes, self.n_components * self.nstokes
+                            )
+                        ).reshape(self.n_pix, self.n_components, self.nstokes, self.n_components, self.nstokes)
+                    )[self.mask != 0, ...]
                 )
 
                 new_carry['wiener_filter_term'] = sampling_func_WF(
@@ -1474,14 +1482,19 @@ class IcarusSampler(SamplingFunctions):
                     lmin=self.lmin,
                     n_iter=self.n_iter,
                 )
-                ## Sampling the Wiener filter term #TODO: change sampling function to the one with appropriate dimensionality
-                # redcom_N = jnp.einsum('cdp,sk->pcsdk', invBtinvNB * hp.nside2resol(self.nside) ** 2, jnp.eye(self.nstokes))
-                redcom_N = jnp.einsum('cdp,sk->pcsdk', invBtinvNB, jnp.eye(self.nstokes))
+
+                # initial_guess_combined = jnp.zeros_like(carry['combined_maps'])
+
+                redcom_N = contract('cdp,sk->pcsdk', invBtinvNB, jnp.eye(self.nstokes))
                 redcom_N_inv = jnp.copy(redcom_N)
                 redcom_N_inv = redcom_N_inv.at[self.mask != 0, ...].set(
-                    jnp.linalg.pinv(
-                        redcom_N.reshape(self.n_pix, self.n_components * self.nstokes, self.n_components * self.nstokes)
-                    ).reshape(self.n_pix, self.n_components, self.nstokes, self.n_components, self.nstokes)
+                    (
+                        jnp.linalg.pinv(
+                            redcom_N.reshape(
+                                self.n_pix, self.n_components * self.nstokes, self.n_components * self.nstokes
+                            )
+                        ).reshape(self.n_pix, self.n_components, self.nstokes, self.n_components, self.nstokes)
+                    )[self.mask != 0, ...]
                 )
 
                 new_carry['combined_maps'] = sampling_func_combined(
@@ -1607,6 +1620,12 @@ class IcarusSampler(SamplingFunctions):
                 all_samples['r_sample'] = new_carry['r_sample']
             else:
                 raise Exception('C not sampled in any way !!! It must be either inv Wishart or through r sampling !')
+
+            if self.fixed_r_Metropolis:
+                new_carry['r_sample'] = carry['r_sample']
+                all_samples['r_sample'] = new_carry['r_sample']
+                # jax.debug.print("{a}", a = new_carry['r_sample'])
+                # jax.debug.print(f"{new_carry['r_sample']}")
 
             # ## Checking the shape of the resulting covariance matrix, and correcting it if needed
             # if new_carry['redcom_cov_matrix_sample'].shape[0] == self.lmax + 1:
@@ -2003,6 +2022,7 @@ class IcarusSampler(SamplingFunctions):
 
         # Saving the samples as attributes of the Sampler object
         time_start_updating = time.time()
+        all_samples['r_sample'].block_until_ready()
         self.update_samples(all_samples)
         time_end_updating = (time.time() - time_start_updating) / 60
         print(f'End of updating in {time_end_updating} minutes', flush=True)
