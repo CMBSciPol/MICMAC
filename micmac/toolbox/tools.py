@@ -390,15 +390,15 @@ def maps_x_red_covariance_cell_JAX(maps_input, red_matrix_sqrt, nside, lmin, n_i
     def pure_call_map2alm(maps_, lmax, nside):
         shape_output = (3, (lmax + 1) * (lmax // 2 + 1))
         return jax.pure_callback(
-            wrapper_map2alm,
-            jax.ShapeDtypeStruct(shape_output, np.complex128),
-            maps_.ravel(),
+            wrapper_map2alm, jax.ShapeDtypeStruct(shape_output, np.complex128), maps_.ravel(), vmap_method='sequential'
         )
 
     @partial(jax.jit, static_argnums=(1, 2))
     def pure_call_alm2map(alm_, lmax, nside):
         shape_output = (3, 12 * nside**2)
-        return jax.pure_callback(wrapper_alm2map, jax.ShapeDtypeStruct(shape_output, np.float64), alm_)
+        return jax.pure_callback(
+            wrapper_alm2map, jax.ShapeDtypeStruct(shape_output, np.float64), alm_, vmap_method='sequential'
+        )
 
     alms_input = pure_call_map2alm(maps_TQU, lmax=lmax, nside=nside)
 
@@ -924,15 +924,15 @@ def component_maps_x_redcom_covariance_cell_JAX(component_maps_input, redcom_mat
     def pure_call_map2alm(maps_, lmax=lmax, nside=nside):
         shape_output = (3, (lmax + 1) * (lmax // 2 + 1))
         return jax.pure_callback(
-            wrapper_map2alm,
-            jax.ShapeDtypeStruct(shape_output, np.complex128),
-            maps_.ravel(),
+            wrapper_map2alm, jax.ShapeDtypeStruct(shape_output, np.complex128), maps_.ravel(), vmap_method='sequential'
         )
 
     @partial(jax.jit)
     def pure_call_alm2map(alm_):
         shape_output = (3, 12 * nside**2)
-        return jax.pure_callback(wrapper_alm2map, jax.ShapeDtypeStruct(shape_output, np.float64), alm_)
+        return jax.pure_callback(
+            wrapper_alm2map, jax.ShapeDtypeStruct(shape_output, np.float64), alm_, vmap_method='sequential'
+        )
 
     comp_alms_input = jax.vmap(pure_call_map2alm)(component_maps_TQU)[
         :, 3 - nstokes :, ...

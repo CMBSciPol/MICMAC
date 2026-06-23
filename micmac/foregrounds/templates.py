@@ -251,9 +251,7 @@ def create_template_map(spv_nside, nside, use_jax=False, print_bool=False):
         def pure_call_ud_grade(nside_in):
             shape_output = (12 * nside**2,)
             return jax.pure_callback(
-                wrapper_ud_grade,
-                jax.ShapeDtypeStruct(shape_output, np.int64),
-                nside_in,
+                wrapper_ud_grade, jax.ShapeDtypeStruct(shape_output, np.int64), nside_in, vmap_method='sequential'
             )
 
         spv_template = pure_call_ud_grade(spv_nside)
