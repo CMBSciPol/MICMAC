@@ -568,7 +568,12 @@ class IcarusSampler(SamplingFunctions):
                 3,
                 (lmax + 1) * (lmax // 2 + 1),
             )  ## Shape of the output alms : [3 for all Stokes params, (lmax+1)*(lmax+2)//2 for all alms in the Healpy convention]
-            return jax.pure_callback(wrapper_map2alm, jax.ShapeDtypeStruct(shape_output, np.complex128), maps_.ravel())
+            return jax.pure_callback(
+                wrapper_map2alm,
+                jax.ShapeDtypeStruct(shape_output, np.complex128),
+                maps_.ravel(),
+                vmap_method='sequential',
+            )
 
         JAX_input_freq_maps = jnp.array(input_freq_maps)
 
@@ -1294,7 +1299,12 @@ class IcarusSampler(SamplingFunctions):
                 3,
                 (lmax + 1) * (lmax // 2 + 1),
             )  ## Shape of the output alms : [3 for all Stokes params, (lmax+1)*(lmax+2)//2 for all alms in the Healpy convention]
-            return jax.pure_callback(wrapper_map2alm, jax.ShapeDtypeStruct(shape_output, np.complex128), maps_.ravel())
+            return jax.pure_callback(
+                wrapper_map2alm,
+                jax.ShapeDtypeStruct(shape_output, np.complex128),
+                maps_.ravel(),
+                vmap_method='sequential',
+            )
 
         @scan_tqdm(actual_number_of_iterations, print_rate=1)
         def all_sampling_steps(carry, iteration):
