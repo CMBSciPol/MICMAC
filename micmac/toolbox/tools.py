@@ -219,7 +219,9 @@ def get_cell_from_map_jax(pixel_maps, lmax, n_iter=8):
     def pure_call_anafast(maps_, lmax):
         """Pure call back of anafast, to be used with JAX for JIT compilation"""
         shape_output = (6, lmax + 1)
-        return jax.pure_callback(wrapper_anafast, jax.ShapeDtypeStruct(shape_output, np.float64), maps_)
+        return jax.pure_callback(
+            wrapper_anafast, jax.ShapeDtypeStruct(shape_output, np.float64), maps_, vmap_method='sequential'
+        )
 
     # Getting nstokes from the input maps
     if jnp.size(pixel_maps.shape) == 1:
